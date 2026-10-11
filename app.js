@@ -1,6 +1,6 @@
 (function(){
 'use strict';
-const APP_VERSION='v30';
+const APP_VERSION='v31';
 const SECTIONS=['文字・語彙','文法','読解'];
 const SEC_INFO={'文字・語彙':{en:'Kanji & Vocabulary',glyph:'字'},'文法':{en:'Grammar',glyph:'文'},'読解':{en:'Reading',glyph:'読'}};
 const IC=(d,extra='')=>`<svg class="ico" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"${extra}>${d}</svg>`;
@@ -165,13 +165,15 @@ function questionHTML(q){
 function choiceHTML(q,k,answered){if(isUsageQ(q)&&q.choices_hl&&q.choices_hl[k])return hlHTML(q.choices_hl[k],q.choices_hl_ruby&&q.choices_hl_ruby[k]);const r=q.choices_ruby&&q.choices_ruby[k];return furi&&r&&(answered||!isKanjiQ(q))?r:esc(q.choices[k])}
 function stepLabel(){const[st,n]=S.steps[S.si];return n>1?`Q${st+1}–${st+n}`:`Q${st+1}`}
 function showQ(){S.ans={};const[st,n]=S.steps[S.si];S.i=st;const qs=S.list.slice(st,st+n),q0=qs[0];
-  app.innerHTML=`<div class="qtop"><div class="qprog"><div style="width:${S.si*100/S.steps.length}%"></div></div><span class="mut sm">${S.si+1}/${S.steps.length}${n>1?` · ${stepLabel()}`:''}</span></div>
+  app.innerHTML=`<div class="qtop"><div class="qprog"><div style="width:${S.si*100/S.steps.length}%"></div></div><span class="mut sm">${S.si+1}/${S.steps.length}${n>1?` · ${stepLabel()}`:''}</span><button class="aa" aria-label="Text size" title="Text size">A<small>a</small><i>${({s:'S',m:'M',l:'L'})[store.get('ts','m')]||'M'}</i></button></div>
   ${n>1?`<div class="card qcardq gpass"><div class="chips"><span class="pill">${esc(secOf(q0))}</span><span class="pill sub">${esc(q0.category)}</span><span class="pill">${n} questions</span>${S.missedMode?'<span class="pill red">review</span>':''}</div>${passageHTML(q0,true)}${q0.reading_guide?'':techHTML(q0)}</div>`:''}
   ${qs.map((q,j)=>`<div class="gq" id="gq${j}"><div class="card qcardq">${n>1?`<div class="chips"><span class="pill gnum">${j+1}/${n}</span></div>`:`<div class="chips"><span class="pill">${esc(secOf(q))}</span><span class="pill sub">${esc(q.category)}</span>${S.missedMode?'<span class="pill red">review</span>':''}</div>${passageHTML(q)}${q.reading_guide?'':techHTML(q)}`}
   ${questionHTML(q)}${q.reading_guide?`<div class="gw">${guideHTML(q,false)}</div>`:''}</div>
   <div class="choices${isLongQ(q)?' usage long':''}">${Object.keys(q.choices).map(k=>`<button class="choice" data-k="${esc(k)}" data-j="${j}"><span class="ck">${esc(k)}</span><span class="cv">${choiceHTML(q,k,false)}</span></button>`).join('')}</div><div class="fbw"></div></div>`).join('')}
   <div id="nxw"></div>`;
   app.querySelectorAll('.choice').forEach(b=>b.onclick=()=>answer(b.dataset.k,+b.dataset.j));
+  document.documentElement.classList.toggle('nofuri',!furi);
+  const aa=app.querySelector('.aa');if(aa)aa.onclick=()=>{const o=['s','m','l'],t=o[(o.indexOf(store.get('ts','m'))+1)%3];store.set('ts',t);document.documentElement.dataset.ts=t;aa.querySelector('i').textContent=t.toUpperCase()};
 }
 function answer(k,j=0){
   if(S.ans[j]!=null)return;
@@ -265,6 +267,7 @@ function wireSim(root,single){root.querySelectorAll('.simrow').forEach(b=>b.oncl
   if(single&&o)root.querySelectorAll('.simg.open').forEach(x=>{if(x!==c)setSimOpen(x,false)});setSimOpen(c,o)})}
 const TIPS=window.TIPS||{sections:[],hints:{}};
 function tipKey(q){return Object.keys(TIPS.hints).find(k=>q.category.includes(k))}
+document.documentElement.dataset.ts=store.get('ts','m');
 // ---- tap-a-word (v30): glossary is lazy-loaded on first use
 let glossP=null;function loadGloss(){return glossP||(glossP=new Promise((ok,no)=>{if(window.GLOSS)return ok(window.GLOSS);const sc=document.createElement('script');sc.src='glossary.js?v=30';sc.onload=()=>ok(window.GLOSS);sc.onerror=()=>{glossP=null;no()};document.head.appendChild(sc)}))}
 const surfOf=el=>{const c=el.cloneNode(true);c.querySelectorAll('rt,rp').forEach(r=>r.remove());return c.textContent.trim()};
