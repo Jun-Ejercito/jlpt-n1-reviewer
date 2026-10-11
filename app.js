@@ -1,6 +1,6 @@
 (function(){
 'use strict';
-const APP_VERSION='v40';
+const APP_VERSION='v41';
 const SECTIONS=['文字・語彙','文法','読解'];
 const SEC_INFO={'文字・語彙':{en:'Kanji & Vocabulary',glyph:'字'},'文法':{en:'Grammar',glyph:'文'},'読解':{en:'Reading',glyph:'読'}};
 const IC=(d,extra='')=>`<svg class="ico" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"${extra}>${d}</svg>`;
@@ -93,9 +93,9 @@ function home(){
   <p class="ver">JLPT N1 Reviewer · ${APP_VERSION}</p>`;
   $('#gm').onclick=()=>{store.set('goal',Math.max(5,goal-5));home()};$('#gp').onclick=()=>{store.set('goal',Math.min(200,goal+5));home()};
   const o=store.get('quizOpts',{cat:'',shuffle:true,n:10,autoplay:false});
-  $('#qq').onclick=()=>{nav('quiz',()=>start(smartPick(Q,10),{...o,shuffle:true},false,10))};
-  $('#qm').onclick=()=>{nav('quiz',()=>start(shuffle(Q.filter(q=>missed.includes(q.id))),o,true))};
-  app.querySelectorAll('.seccard').forEach(b=>b.onclick=()=>{const sec=b.dataset.sec;store.set('quizOpts',{...o,cat:sec});nav('quiz',()=>start(smartPick(Q.filter(q=>secOf(q)===sec),o.n||10),{...o,cat:sec,shuffle:true},false,o.n||10))});
+  $('#qq').onclick=()=>{nav('quiz/play',()=>start(smartPick(Q,10),{...o,shuffle:true},false,10))};
+  $('#qm').onclick=()=>{nav('quiz/play',()=>start(shuffle(Q.filter(q=>missed.includes(q.id))),o,true))};
+  app.querySelectorAll('.seccard').forEach(b=>b.onclick=()=>{const sec=b.dataset.sec;store.set('quizOpts',{...o,cat:sec});nav('quiz/play',()=>start(smartPick(Q.filter(q=>secOf(q)===sec),o.n||10),{...o,cat:sec,shuffle:true},false,o.n||10))});
   if(store.get('wordsFilter',null)===null)store.set('wordsFilter',false);
 }
 let pending=null;function nav(h,fn){pending=fn;if(location.hash==='#'+h)route();else location.hash=h}
@@ -119,22 +119,22 @@ function progress(){
   <button class="btn danger" id="reset">Reset all progress</button><p class="ver">App version ${APP_VERSION} · ${Q.length} questions · ${V.length} words · ${K.length} kanji</p>`;
   $('#reset').onclick=()=>{if(confirm('Reset ALL quiz, word, kanji and streak progress? This cannot be undone.')){['missed','stats','qAtt','vocabStatus','catStats','daily','kanjiViewed','last','srs','srsNew','srsLog','srsPri','srsNote','mnemo'].forEach(k=>localStorage.removeItem('n1_'+k));progress()}};
   wireBackup();
-  if($('#pw'))$('#pw').onclick=()=>{const o=store.get('quizOpts',{});nav('quiz',()=>start(shuffle(Q.filter(q=>secOf(q)===weak.c)),{...o,cat:weak.c},false))};
+  if($('#pw'))$('#pw').onclick=()=>{const o=store.get('quizOpts',{});nav('quiz/play',()=>start(shuffle(Q.filter(q=>secOf(q)===weak.c)),{...o,cat:weak.c},false))};
 }
 
 /* ---------- Quiz ---------- */
 let S=null;
-function quizSetup(){S=null;
+function quizSetup(){
   const cats=SECTIONS.filter(x=>Q.some(q=>secOf(q)===x)),missed=store.get('missed',[]),o=store.get('quizOpts',{cat:'',shuffle:true,n:10,autoplay:false});if(o.cat&&!SECTIONS.includes(o.cat))o.cat='';
-  app.innerHTML=`<h1 class="pt">Quiz 問題</h1><div class="card form">
+  app.innerHTML=`<h1 class="pt">Quiz 問題</h1>${S&&!S.done?`<a class="card resq" href="#quiz/play">▶ <b>Resume your quiz</b> <span class="mut sm">· question ${S.si+1}/${S.steps.length}</span></a>`:''}<div class="card form">
   <label><span class="lbl">Section</span><select id="cat"><option value="">All (${Q.length})</option>${cats.map(c=>`<option ${c===o.cat?'selected':''} value="${esc(c)}">${esc(c)} (${Q.filter(q=>secOf(q)===c).length})</option>`).join('')}</select></label>
   <label><span class="lbl">Number of questions</span><input id="n" type="number" min="1" max="${Q.length}" value="${o.n}"></label>
   <label class="sw"><input type="checkbox" id="shuf" ${o.shuffle?'checked':''}><span></span> Shuffle questions <small class="mut">· Mix: 60% least-tried</small></label>
   <label class="sw"><input type="checkbox" id="auto" ${o.autoplay?'checked':''}><span></span> Autoplay audio after answering</label>
   <div class="row"><button class="btn primary big" id="go">Start quiz</button><button class="btn ghost big" id="rm" ${missed.length?'':'disabled'}>↺ Review missed only (${missed.length})</button></div></div>`;
   const opts=()=>{const x={cat:$('#cat').value,shuffle:$('#shuf').checked,n:Math.max(1,+$('#n').value||10),autoplay:$('#auto').checked};store.set('quizOpts',x);return x};
-  $('#go').onclick=()=>{const x=opts();let p=Q.filter(q=>!x.cat||secOf(q)===x.cat);if(x.shuffle)p=smartPick(p,x.n);start(p,x,false,x.n)};
-  $('#rm').onclick=()=>{const x=opts();let p=Q.filter(q=>missed.includes(q.id));if(x.shuffle)p=shuffle(p);start(p,x,true)};
+  $('#go').onclick=()=>{const x=opts();let p=Q.filter(q=>!x.cat||secOf(q)===x.cat);if(x.shuffle)p=smartPick(p,x.n);nav('quiz/play',()=>start(p,x,false,x.n))};
+  $('#rm').onclick=()=>{const x=opts();let p=Q.filter(q=>missed.includes(q.id));if(x.shuffle)p=shuffle(p);nav('quiz/play',()=>start(p,x,true))};
 }
 // v39: ~60% of a random quiz comes from the least-attempted questions (passage groups = one unit, min member count)
 function smartPick(list,limit){const att=store.get('qAtt',{}),units=[],seen=new Set();
@@ -144,7 +144,7 @@ function smartPick(list,limit){const att=store.get('qAtt',{}),units=[],seen=new 
   const pick=[];let c=0;while(sc.length&&c<quota){const x=sc.shift();pick.push(x.u);c+=x.u.length}
   for(const x of shuffle(sc)){if(c>=limit)break;pick.push(x.u);c+=x.u.length}
   return shuffle(pick).flat()}
-function start(list,opts,missedMode,limit){if(!list.length){alert('No questions match.');return}
+function start(list,opts,missedMode,limit){if(!list.length){alert('No questions match.');return false}
   // passage groups: a group is always taken whole (members from the full bank, id order) and counts as one unit;
   // with a size limit we add whole units until the limit is reached (may slightly exceed it, never splits a group)
   const units=[],seen=new Set();
@@ -234,7 +234,7 @@ function results(celebrate=true){S.done=true;
   ${S.wrong.length?`<h2 class="sec-t">Review missed questions</h2>`+S.wrong.map(({q,k})=>`<div class="card"><p class="ja">${F(q,'complete_sentence')}</p><p class="mut">${esc(q.complete_sentence_en)}</p>
   <p>Your answer: <span class="t-bad">${esc(k)}. ${choiceHTML(q,k,true)}</span><br>正解：<span class="t-ok">${esc(q.answer)}. ${F(q,'answer_word')}</span> <span class="mut">(${esc(q.answer_romaji)})</span></p>
   <p class="mut sm">${esc(q.explanation_en)}</p>${q.audio?`<button class="btn sm ghost" data-a="${esc(q.audio)}">🔊 Play</button>`:''}</div>`).join(''):'<div class="card t-ok center">Perfect score! 満点！</div>'}`;
-  $('#again').onclick=quizSetup;app.querySelectorAll('[data-a]').forEach(b=>b.onclick=()=>play(b.dataset.a));
+  $('#again').onclick=()=>{S=null;saveSess();location.hash='quiz'};app.querySelectorAll('[data-a]').forEach(b=>b.onclick=()=>play(b.dataset.a));
   if($('#rw'))$('#rw').onclick=()=>start(S.wrong.map(w=>w.q),S.opts,true);
   if(celebrate&&p>=80)confetti();
 }
@@ -283,7 +283,8 @@ document.documentElement.dataset.ts=store.get('ts','m');
 let glossP=null;function loadGloss(){return glossP||(glossP=new Promise((ok,no)=>{if(window.GLOSS)return ok(window.GLOSS);const sc=document.createElement('script');sc.src='glossary.js?v=30';sc.onload=()=>ok(window.GLOSS);sc.onerror=()=>{glossP=null;no()};document.head.appendChild(sc)}))}
 const surfOf=el=>{const c=el.cloneNode(true);c.querySelectorAll('rt,rp').forEach(r=>r.remove());return c.textContent.trim()};
 let wsheet=null,wcur=null;
-function closeWord(){if(wsheet)wsheet.classList.remove('show');if(wcur)wcur.classList.remove('on');wcur=null}
+function closeWord(){closeWordRaw();ovDrop()}
+function closeWordRaw(){if(wsheet)wsheet.classList.remove('show');if(wcur)wcur.classList.remove('on');wcur=null}
 function showWord(el){loadGloss().then(G=>{const g=G[+el.dataset.g];if(!g)return;
   if(wcur)wcur.classList.remove('on');wcur=el;el.classList.add('on');
   if(!wsheet){wsheet=document.createElement('div');wsheet.className='wsheet';wsheet.setAttribute('role','dialog');document.body.appendChild(wsheet)}
@@ -294,7 +295,7 @@ function showWord(el){loadGloss().then(G=>{const g=G[+el.dataset.g];if(!g)return
    <div class="wp"><span class="pill sub">${esc(pos)}</span>${vw?'<span class="pill n1">★ N1 bank</span>':''}${rare?'<span class="pill rare">less common</span>':''}</div>
    <p class="wg">${esc(gl)}</p>${vw?`<a class="btn sm wcard" href="#vocab/${encodeURIComponent(vw)}">Open card →</a>`:''}`;
   wsheet.querySelector('.wx').onclick=closeWord;const a=wsheet.querySelector('.wcard');if(a)a.onclick=()=>closeWord();
-  requestAnimationFrame(()=>wsheet.classList.add('show'))}).catch(()=>{})}
+  ovOpen(closeWordRaw);requestAnimationFrame(()=>wsheet.classList.add('show'))}).catch(()=>{})}
 function renderWL(box){const pid=+box.dataset.p,P=Q.find(x=>x.id===pid);if(!P)return;
   loadGloss().then(G=>{const ko=store.get('wlKanji',false),hf=store.get('wlHard',true);
    let ids=P.wl.slice();if(ko)ids=ids.filter(i=>/[\u3400-\u9fff々]/.test(G[i][0]));
@@ -305,9 +306,9 @@ function renderWL(box){const pid=+box.dataset.p,P=Q.find(x=>x.id===pid);if(!P)re
    box.querySelector('.wk').onchange=e=>{store.set('wlKanji',e.target.checked);renderWL(box)};box.querySelector('.wh2').onchange=e=>{store.set('wlHard',e.target.checked);renderWL(box)}})}
 document.addEventListener('click',e=>{const w=e.target.closest&&e.target.closest('.ptext .w,.q .w,.wli');
   if(w){e.preventDefault();showWord(w);return}
-  if(wsheet&&wsheet.classList.contains('show')&&!e.target.closest('.wsheet'))closeWord()},true);
+  if(wsheet&&wsheet.classList.contains('show')&&!e.target.closest('.wsheet,#hbk'))closeWord()},true);
 document.addEventListener('toggle',e=>{const d=e.target;if(d.classList&&d.classList.contains('wlist')&&d.open)renderWL(d)},true);
-window.addEventListener('hashchange',closeWord);
+window.addEventListener('hashchange',()=>{if(wsheet&&wsheet.classList.contains('show')){closeWordRaw()}});
 // strip a leading "WORD: " / "WORD (reading) — " that repeats the headword
 function stripW(t,...ws){if(!t)return t;const E=x=>x.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
   for(const w of ws.filter(Boolean).sort((a,b)=>b.length-a.length))for(const c of [w,w.replace(/な$/,'')]){const m=t.match(new RegExp('^'+E(c)+'な?\\s*(?:[（(][^)）]{0,30}[)）])?\\s*[:：—–=\\-]\\s*'));if(m&&t.length>m[0].length)return t.slice(m[0].length)}
@@ -451,7 +452,16 @@ function deck(kind,focus){
 
 /* ---------- Shell: header, tabs, routing ---------- */
 let cur='',NAV={k:0,d:0},navCtr=+sessionStorage.getItem('n1_navk')||0;const SCR=(()=>{try{return JSON.parse(sessionStorage.getItem('n1_scr'))||{}}catch(e){return{}}})();
-function goBack(){if(NAV.d>0)history.back();else location.hash='home'}
+function goBack(){if(OV||NAV.d>0)history.back();else if(cur!=='home')replaceTo('home')}
+function replaceTo(h){delete SCR[NAV.k];history.replaceState({k:NAV.k,d:NAV.d},'','#'+h);cur='';route()}
+// overlays (word popover, story editor) get one history entry so Back closes them first
+let OV=null,ignorePop=false;
+function ovOpen(close){if(OV){OV=close;return}OV=close;history.pushState({k:NAV.k,d:NAV.d,ov:1},'',location.href)}
+function ovDrop(){if(!OV)return;OV=null;ignorePop=true;history.back()}
+window.addEventListener('popstate',e=>{if(ignorePop){ignorePop=false;return}if(OV){const f=OV;OV=null;f();return}
+  if(e.state&&e.state.ov&&location.hash===('#'+cur)){ignorePop=true;history.back()}});
+document.addEventListener('click',e=>{if(!OV)return;const a=e.target.closest&&e.target.closest('a[href^="#"]');if(!a)return;e.preventDefault();e.stopPropagation();
+  const f=OV;OV=null;f();history.replaceState(null,'',a.getAttribute('href'));route()},true);
 const QBY=Object.fromEntries(Q.map(q=>[q.id,q]));
 function saveSess(){try{sessionStorage.setItem('n1_S',S?JSON.stringify({...S,list:S.list.map(q=>q.id),wrong:S.wrong.map(w=>({q:w.q.id,k:w.k}))}):'');sessionStorage.setItem('n1_SS',SS?JSON.stringify(SS):'');sessionStorage.setItem('n1_scr',JSON.stringify(SCR))}catch(e){}}
 function loadSess(){try{const a=sessionStorage.getItem('n1_S');if(a){const o=JSON.parse(a);o.list=o.list.map(i=>QBY[i]).filter(Boolean);o.wrong=o.wrong.map(w=>({q:QBY[w.q],k:w.k})).filter(w=>w.q);S=o}
@@ -461,7 +471,7 @@ function snap(){if(!cur)return;const si=document.querySelector('#s');VS[cur]=Obj
 window.addEventListener('pagehide',snap);document.addEventListener('visibilitychange',()=>{if(document.hidden)snap()});
 function resumeQuiz(){if(S.done)return results(false);const a=S.ans||{};showQ();for(const j in a){S.ans[j]=a[j];renderAnswered(+j,false)}}
 function resumeStudy(){if(SS.graded){SS.i++;SS.graded=false;SS.shown=false}const sh=SS.shown;SS.shown=false;studyCard();if(sh&&SS.items[SS.i])reveal(SS.items[SS.i])}
-document.addEventListener('click',e=>{if(e.target.closest&&e.target.closest('#qend')&&confirm('End this quiz? Answers so far are saved.')){S=null;saveSess();quizSetup();window.scrollTo(0,0)}});
+document.addEventListener('click',e=>{if(e.target.closest&&e.target.closest('#qend')&&confirm('End this quiz? Answers so far are saved.')){S=null;saveSess();replaceTo('quiz')}});
 const TABS=[['home',ICONS.home,'Home'],['quiz',ICONS.quiz,'Quiz'],['vocab',ICONS.vocab,'Words'],['kanji',ICONS.kanji,'Kanji'],['progress',ICONS.progress,'Progress']];
 function header(){const h=$('header'),root=(cur||'home').split('/')[0],showBack=NAV.d>0||root!=='home';
   const dark=document.documentElement.dataset.theme==='dark';
@@ -471,10 +481,10 @@ function header(){const h=$('header'),root=(cur||'home').split('/')[0],showBack=
   $('#hf').onclick=()=>{furiOn=!furiOn;store.set('furigana',furiOn);applyFuri();const b=$('#hf');b.classList.toggle('on',furiOn);b.setAttribute('aria-pressed',furiOn);b.setAttribute('aria-label','Furigana '+(furiOn?'on':'off'))};
   $('#hd').onclick=()=>{store.set('theme',document.documentElement.dataset.theme==='dark'?'light':'dark');applyTheme();header()};
   const tabRoot=(root==='kanjicards'||root==='similar')?'kanji':(root==='tips'||root==='study'||root==='studyguide')?'home':root;
-  $('#tabs').innerHTML=TABS.map(([k,i,l])=>`<a href="#${k}" data-tab="${k}" class="tab${tabRoot===k?' on':''}" ${tabRoot===k?'aria-current="page"':''}><span class="ti">${i}</span><span>${l}</span></a>`).join('');
+  $('#tabs').innerHTML=TABS.map(([k,i,l])=>`<a href="#${k==='kanji'&&store.get('kanjiMode','grid')==='cards'?'kanjicards':k}" data-tab="${k}" class="tab${tabRoot===k?' on':''}" ${tabRoot===k?'aria-current="page"':''}><span class="ti">${i}</span><span>${l}</span></a>`).join('');
   $('#tabs').querySelectorAll('[data-tab]').forEach(a=>a.onclick=()=>{const t=a.dataset.tab;   // entering a tab fresh → new random order
     if(t==='vocab'){ORDER.vocab=null;delete VS.vocab}if(t==='kanji'){ORDER.kanji=null;delete VS.kanjicards;delete VS.kanji}
-    if(location.hash==='#'+t&&(t==='vocab'||t==='kanji'))setTimeout(rerender,0)});
+    if(location.hash===a.getAttribute('href')&&(t==='vocab'||t==='kanji'))setTimeout(rerender,0)});
 }
 const inQuiz=()=>S&&!S.done&&(cur||'').startsWith('quiz')&&document.querySelector('.choice');
 let skip=false;
@@ -484,11 +494,11 @@ function route(){const h=location.hash.slice(1)||'home';
   const fresh=!!pending||!SCR[NAV.k];
   cur=h;if(h!=='home')store.set('last',h);header();if(audio)audio.pause();
   const [p,arg]=h.split('/');const a=arg&&decodeURIComponent(arg);
-  if(p==='quiz'){if(pending){const f=pending;pending=null;f()}else if(S)resumeQuiz();else quizSetup()}else render(p,a);
+  if(p==='quiz'){if(a==='play'){if(pending){const f=pending;pending=null;if(f()===false)return history.back()}else if(S)resumeQuiz();else{pending=null;return replaceTo('quiz')}}else{pending=null;quizSetup()}}else render(p,a);
   const sv=fresh?null:SCR[NAV.k];if(sv&&sv.open){const ds=app.querySelectorAll('details');sv.open.forEach(i=>{if(ds[i])ds[i].open=true})}
   const y=sv?sv.y:(p==='quiz'||p==='study'?0:(VS[h]||{}).y||0);window.scrollTo(0,y);requestAnimationFrame(()=>window.scrollTo(0,y));saveSess();
 }
-function render(p,a){if(p==='vocab')deck('vocab',a);else if(p==='kanji'){if(a)kanjiDetail(a);else if(store.get('kanjiMode','grid')==='cards')deck('kanji');else kanjiGrid()}else if(p==='kanjicards')deck('kanji',a);else if(p==='similar')similarView();else if(p==='tips')tipsView();else if(p==='study'){if(a){if(SS&&SS.mode===a&&SS.items&&SS.i<SS.items.length)resumeStudy();else studyStart(a)}else studyHome()}else if(p==='studyguide')studyGuide();else if(p==='progress')progress();else home()}
+function render(p,a){if(p==='vocab')deck('vocab',a);else if(p==='kanji'){if(a)kanjiDetail(a);else kanjiGrid()}else if(p==='kanjicards')deck('kanji',a);else if(p==='similar')similarView();else if(p==='tips')tipsView();else if(p==='study'){if(a){if(SS&&SS.mode===a&&SS.items&&SS.i<SS.items.length)resumeStudy();else studyStart(a)}else studyHome()}else if(p==='studyguide')studyGuide();else if(p==='progress')progress();else home()}
 function rerender(){const y=window.scrollY;
   if(S&&!S.done&&document.querySelector('.choice')){const a=S.ans||{};showQ();for(const j in a){S.ans[j]=a[j];renderAnswered(+j,false)}}
   else if(S&&S.done)results(false);
@@ -617,7 +627,8 @@ function storyHTML(c){const x=KBY[c],m=x&&x.mnemonic;if(!m)return'';const own=st
    ${m.reading_hook?`<p class="mhook">🔉 ${esc(m.reading_hook)}</p>`:''}${m.distinguish?`<p class="mdist">👀 ${esc(m.distinguish)}</p>`:''}
    <div class="medit" hidden><textarea rows="3" placeholder="Write a story that links the parts to the meaning…">${esc(own||'')}</textarea><div class="mbtns"><button class="btn sm primary msave">Save</button><button class="btn sm ghost mcancel">Cancel</button>${own?'<button class="btn sm ghost mreset">Reset to default</button>':''}</div></div></div>`}
 document.addEventListener('click',e=>{const b=e.target.closest&&e.target.closest('.mned,.msave,.mcancel,.mreset');if(!b)return;const box=b.closest('.mnemo'),c=box.dataset.c,ed=box.querySelector('.medit');e.stopPropagation();
-  if(b.classList.contains('mned')||b.classList.contains('mcancel')){ed.hidden=!ed.hidden;if(!ed.hidden)ed.querySelector('textarea').focus();return}
+  if(b.classList.contains('mned')||b.classList.contains('mcancel')){if(ed.hidden){ed.hidden=false;ed.querySelector('textarea').focus();ovOpen(()=>{ed.hidden=true})}else{ed.hidden=true;ovDrop()}return}
+  ovDrop();
   const o=store.get('mnemo',{});if(b.classList.contains('msave')){const t=ed.querySelector('textarea').value.trim();if(t)o[c]=t;else delete o[c]}else delete o[c];store.set('mnemo',o);
   const tmp=document.createElement('div');tmp.innerHTML=storyHTML(c);box.replaceWith(tmp.firstElementChild)});
 function srsMiss(q){const add=[q.answer_word,...Object.values(q.choices||{})].map(w=>VW[w]).filter(Boolean).map(v=>'w'+v.id);if(!add.length)return;
@@ -643,6 +654,6 @@ function studyGuide(){app.innerHTML=`<div class="ph"><h1 class="pt">How to study
  <a class="btn primary full" href="#study/mixed">▶ Start today's session</a>`}
 
 window.addEventListener('hashchange',route);
-window.__n1q=Q;window.__n1={pick:smartPick,nav:()=>NAV,ss:()=>SS,state:()=>S,start:(ids)=>start(Q.filter(q=>ids.includes(q.id)),store.get("quizOpts",{}),false)};
+window.__n1q=Q;window.__n1={pick:smartPick,nav:()=>NAV,ss:()=>SS,state:()=>S,start:(ids)=>nav('quiz/play',()=>start(Q.filter(q=>ids.includes(q.id)),store.get("quizOpts",{}),false))};
 loadSess();route();
 })();
