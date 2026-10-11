@@ -513,3 +513,23 @@ input[type=search],select,input[type=number]{border-radius:14px!important;border
 .card.simg,.card.tsec,.card.listbox{padding:0}
 .passage summary{display:block;padding-right:28px;position:relative;line-height:2}
 .passage summary::after{position:absolute;right:10px;top:50%;margin-top:-.7em}
+
+/* v29 reading guide */
+.gw{margin-top:var(--s3)}
+.guide{border:1px solid color-mix(in srgb,var(--indigo) 35%,transparent);border-radius:14px;padding:0 var(--s3);font-size:.92em;background:color-mix(in srgb,var(--indigo) 5%,transparent)}
+.guide>summary{cursor:pointer;padding:10px 0;font-weight:600;color:var(--indigo);list-style:none;display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px}
+.guide>summary::-webkit-details-marker{display:none}
+.guide>summary::after{content:'▾';margin-left:auto;transition:transform .2s}.guide[open]>summary::after{transform:rotate(180deg)}
+.gtype{font-weight:500;font-size:.78em;color:var(--mut);background:var(--card,transparent);border:1px solid var(--line,#ccc);border-radius:99px;padding:1px 8px}
+.gsec{margin:0 0 12px}.gsec p{margin:4px 0;line-height:1.65}
+.glbl{display:block;font-size:.78em;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--mut);margin-bottom:2px}
+.gsteps{margin:4px 0;padding-left:1.4em}.gsteps li{margin:4px 0;line-height:1.6}
+.gks{list-style:none;margin:4px 0;padding:0}.gks li{border-left:3px solid #e0b84a;background:color-mix(in srgb,#f5d76e 16%,transparent);border-radius:0 8px 8px 0;padding:6px 10px;margin:6px 0}
+.gks .ja{font-size:1.02em;line-height:1.9;margin:0}.gks .en{margin:2px 0;color:var(--mut)}.gks .why{margin:2px 0;font-size:.92em}
+.gans{border-left:3px solid var(--ok,#2e8b57);padding-left:10px}.gtake{border-left:3px solid var(--indigo);padding-left:10px}
+.gtraps{list-style:none;margin:4px 0;padding:0}.gtraps li{display:flex;gap:8px;margin:6px 0}.gtraps .ck{flex:none}
+.gtraps .trap{color:var(--bad,#c0392b)}.gtraps .cj{color:var(--mut);font-size:.92em}.gtraps p{margin:2px 0}
+.glock{color:var(--mut);font-style:italic;margin:0 0 10px}
+.guide>a{display:inline-block;margin-bottom:10px;color:var(--indigo)}
+mark.ks{background:none;color:inherit;transition:background .4s}
+mark.ks.on{background:color-mix(in srgb,#f5d76e 38%,transparent);border-radius:3px;box-shadow:0 0 0 1px color-mix(in srgb,#e0b84a 30%,transparent)}

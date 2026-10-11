@@ -1,6 +1,6 @@
 (function(){
 'use strict';
-const APP_VERSION='v28';
+const APP_VERSION='v29';
 const SECTIONS=['文字・語彙','文法','読解'];
 const SEC_INFO={'文字・語彙':{en:'Kanji & Vocabulary',glyph:'字'},'文法':{en:'Grammar',glyph:'文'},'読解':{en:'Reading',glyph:'読'}};
 const IC=(d,extra='')=>`<svg class="ico" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"${extra}>${d}</svg>`;
@@ -146,7 +146,7 @@ const BLANK=/_{2,}|（[\s　]*）/g;
 const isOrderQ=q=>/並べ替え/.test(q.category)&&Array.isArray(q.correct_order),isLongQ=q=>isUsageQ(q)||/内容理解|統合理解|情報検索/.test(q.category)||Object.values(q.choices).some(c=>c.length>14);
 function passageHTML(q,open){if(!q.passage&&!q.passage_title)return'';const t=q.passage_title?(furi&&q.passage_title_ruby?q.passage_title_ruby:esc(q.passage_title)):'';
   if(!q.passage)return `<p class="ptitle">📄 ${t}</p>`;
-  return `<details class="passage"${open||(S&&S.passOpen)?' open':''}><summary>📄 ${t||'Passage 本文'}</summary><div class="ptext ja">${(furi&&q.passage_ruby?q.passage_ruby:esc(q.passage)).replace(/\[(\d+)\]/g,'<b class="blank num">［$1］</b>')}</div></details>`}
+  return `<details class="passage"${open||(S&&S.passOpen)?' open':''}><summary>📄 ${t||'Passage 本文'}</summary><div class="ptext ja">${(q.passage_ks?(furi?q.passage_ks_ruby:q.passage_ks):furi&&q.passage_ruby?q.passage_ruby:esc(q.passage)).replace(/\[(\d+)\]/g,'<b class="blank num">［$1］</b>')}</div></details>`}
 function orderQHTML(q){let i=0;const body=F(q,'question').replace(/_{3,}|★/g,m=>m==='★'?'<b class="slot star">★</b>':'<b class="slot"></b>'.repeat(Math.max(1,Math.round(m.length/5))));
   return `<p class="q">${body}</p><p class="qhint">Arrange the four parts in order — choose the one that goes in ★</p>`}
 function orderAnsHTML(q){let si;const sl=q.question.match(/_{3,}|★/g)||[];si=sl.indexOf('★');if(si<0||String(q.correct_order[si])!==String(q.answer))si=q.correct_order.map(String).indexOf(String(q.answer));
@@ -165,9 +165,9 @@ function choiceHTML(q,k,answered){if(isUsageQ(q)&&q.choices_hl&&q.choices_hl[k])
 function stepLabel(){const[st,n]=S.steps[S.si];return n>1?`Q${st+1}–${st+n}`:`Q${st+1}`}
 function showQ(){S.ans={};const[st,n]=S.steps[S.si];S.i=st;const qs=S.list.slice(st,st+n),q0=qs[0];
   app.innerHTML=`<div class="qtop"><div class="qprog"><div style="width:${S.si*100/S.steps.length}%"></div></div><span class="mut sm">${S.si+1}/${S.steps.length}${n>1?` · ${stepLabel()}`:''}</span></div>
-  ${n>1?`<div class="card qcardq gpass"><div class="chips"><span class="pill">${esc(secOf(q0))}</span><span class="pill sub">${esc(q0.category)}</span><span class="pill">${n} questions</span>${S.missedMode?'<span class="pill red">review</span>':''}</div>${passageHTML(q0,true)}${techHTML(q0)}</div>`:''}
-  ${qs.map((q,j)=>`<div class="gq" id="gq${j}"><div class="card qcardq">${n>1?`<div class="chips"><span class="pill gnum">${j+1}/${n}</span></div>`:`<div class="chips"><span class="pill">${esc(secOf(q))}</span><span class="pill sub">${esc(q.category)}</span>${S.missedMode?'<span class="pill red">review</span>':''}</div>${passageHTML(q)}${techHTML(q)}`}
-  ${questionHTML(q)}</div>
+  ${n>1?`<div class="card qcardq gpass"><div class="chips"><span class="pill">${esc(secOf(q0))}</span><span class="pill sub">${esc(q0.category)}</span><span class="pill">${n} questions</span>${S.missedMode?'<span class="pill red">review</span>':''}</div>${passageHTML(q0,true)}${q0.reading_guide?'':techHTML(q0)}</div>`:''}
+  ${qs.map((q,j)=>`<div class="gq" id="gq${j}"><div class="card qcardq">${n>1?`<div class="chips"><span class="pill gnum">${j+1}/${n}</span></div>`:`<div class="chips"><span class="pill">${esc(secOf(q))}</span><span class="pill sub">${esc(q.category)}</span>${S.missedMode?'<span class="pill red">review</span>':''}</div>${passageHTML(q)}${q.reading_guide?'':techHTML(q)}`}
+  ${questionHTML(q)}${q.reading_guide?`<div class="gw">${guideHTML(q,false)}</div>`:''}</div>
   <div class="choices${isLongQ(q)?' usage long':''}">${Object.keys(q.choices).map(k=>`<button class="choice" data-k="${esc(k)}" data-j="${j}"><span class="ck">${esc(k)}</span><span class="cv">${choiceHTML(q,k,false)}</span></button>`).join('')}</div><div class="fbw"></div></div>`).join('')}
   <div id="nxw"></div>`;
   app.querySelectorAll('.choice').forEach(b=>b.onclick=()=>answer(b.dataset.k,+b.dataset.j));
@@ -189,6 +189,8 @@ function renderAnswered(j,anim){
   const hl=q.complete_sentence_hl?(furi&&q.complete_sentence_hl_ruby?q.complete_sentence_hl_ruby:q.complete_sentence_hl.map(esc)):null;
   const sent=hl?`${hl[0]}<mark class="hl">${hl[1]}</mark>${hl[2]}`:F(q,'complete_sentence');
   const ex=q.explain;
+  const gw=box.querySelector('.gw');if(gw){const d=gw.querySelector('details');gw.innerHTML=guideHTML(q,true,d&&d.open)}
+  app.querySelectorAll(`mark.ks[data-qs~="${q.id}"]`).forEach(m=>m.classList.add('on'));
   box.querySelector('.fbw').innerHTML=`<div class="card fb ${ok?'is-ok':'is-bad'}">
   <div class="fbh"><div class="verdict">${ok?'<span class="vi">✓</span> Correct':'<span class="vi">✕</span> Incorrect'}${ok?'':`<span class="ya">Your answer: <b>${esc(k)}</b> ${choiceHTML(q,k,true)}</span>`}</div>
    ${q.audio?`<button class="abtn" aria-label="Play audio" title="Play audio">🔊</button>`:''}</div>
@@ -262,6 +264,18 @@ function wireSim(root,single){root.querySelectorAll('.simrow').forEach(b=>b.oncl
   if(single&&o)root.querySelectorAll('.simg.open').forEach(x=>{if(x!==c)setSimOpen(x,false)});setSimOpen(c,o)})}
 const TIPS=window.TIPS||{sections:[],hints:{}};
 function tipKey(q){return Object.keys(TIPS.hints).find(k=>q.category.includes(k))}
+function guideHTML(q,answered,open){const g=q.reading_guide;if(!g)return'';
+  const ks=g.key_sentences.map(k=>`<li><p class="ja">${furi&&k.ja_ruby?k.ja_ruby:esc(k.ja)}</p><p class="en">${esc(k.en)}</p><p class="why">→ ${esc(k.why)}</p></li>`).join('');
+  const tr=Object.entries(g.choice_traps).map(([c,t])=>`<li><span class="ck">${esc(c)}</span><div><b class="trap">${esc(t.trap)}</b> <span class="cj">${esc(q.choices[c]||'')}</span><p>${esc(t.evidence)}</p></div></li>`).join('');
+  return `<details class="guide"${open?' open':''}><summary>💡 How to solve this question<span class="gtype">${esc(g.type)}</span></summary>
+  <div class="gsec"><span class="glbl">📍 Where to look</span><p>${esc(g.where_to_look)}</p></div>
+  <div class="gsec"><span class="glbl">🧭 Steps</span><ol class="gsteps">${g.steps.map(t=>`<li>${esc(t)}</li>`).join('')}</ol></div>
+  ${answered?`<div class="gsec"><span class="glbl">🔑 Key sentences</span><ul class="gks">${ks}</ul></div>
+  <div class="gsec gans"><span class="glbl">✓ Why ${esc(q.answer)} is correct</span><p>${esc(g.answer_reason)}</p></div>
+  <div class="gsec"><span class="glbl">⚠ Choice traps</span><ul class="gtraps">${tr}</ul></div>
+  <div class="gsec gtake"><span class="glbl">★ Takeaway</span><p>${esc(g.takeaway)}</p></div>`
+  :`<p class="glock">🔒 Answer the question to see the key sentences, why the answer is right, and the traps in the other choices.</p>`}
+  <a href="#tips" class="sm">General 読解 tips →</a></details>`}
 function techHTML(q){const k=tipKey(q);if(!k)return'';return `<details class="tech"><summary>💡 Technique · ${esc(k)}</summary><p>${esc(TIPS.hints[k])}</p><a href="#tips" class="sm">Full 読解 guide →</a></details>`}
 function tipsView(){app.innerHTML=`<div class="ph"><h1 class="pt">読解 Tips 解き方</h1></div><div class="card tintro"><p>${TIPS.intro||''}</p></div>
   ${TIPS.sections.map((s,i)=>`<details class="card tsec"${i===0?' open':''}><summary>${esc(s.title)}</summary><div class="tbody">${s.html}</div></details>`).join('')}
