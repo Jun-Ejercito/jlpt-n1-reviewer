@@ -1,6 +1,6 @@
 (function(){
 'use strict';
-const APP_VERSION='v34';
+const APP_VERSION='v35';
 const SECTIONS=['文字・語彙','文法','読解'];
 const SEC_INFO={'文字・語彙':{en:'Kanji & Vocabulary',glyph:'字'},'文法':{en:'Grammar',glyph:'文'},'読解':{en:'Reading',glyph:'読'}};
 const IC=(d,extra='')=>`<svg class="ico" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"${extra}>${d}</svg>`;
@@ -526,7 +526,7 @@ function todayCard(q,cta=true){const mins=Math.max(1,Math.ceil((q.due*10+(q.nw+q
    ${cta?`<div class="td-a"><a class="btn primary" id="tdgo" href="#study/mixed">${q.items.length?'▶ Start':'✓ All done — study more'}</a><a class="btn ghost" href="#study">Options</a></div>`:''}</div>`}
 function studyStart(mode){const q=buildQueue(mode);SS={mode,items:q.items.slice(),i:0,done:0,again:{},res:{1:0,2:0,3:0,4:0}};if(!SS.items.length)return studyDone();studyCard()}
 function studyDone(){const r=SS?SS.res:{1:0,2:0,3:0,4:0},n=r[1]+r[2]+r[3]+r[4];
-  app.innerHTML=`<div class="card sdone"><div class="sg">${n?'お疲れさま':'今日は完了'}</div><h2>${n?`Session complete · ${n} cards`:'Nothing due right now'}</h2>
+  app.innerHTML=`<div class="card sdone"><div class="dseal" aria-hidden="true">${n?'済':'<span class="dck">✓</span>'}</div><div class="dpill">${n?'お疲れさま':'今日は完了'}</div><h2>${n?`Session complete · ${n} cards`:'Nothing due right now'}</h2>
    ${n?`<p class="mut">Again ${r[1]} · Hard ${r[2]} · Good ${r[3]} · Easy ${r[4]}</p>`:'<p class="mut">All reviews are done and today\'s new-card limit is used. Come back tomorrow, or raise the daily limit.</p>'}
    <div class="td-a"><a class="btn primary" href="#home">Home</a><a class="btn" href="#study">Study options</a></div></div>`}
 function frontHTML(it){const k=it.key,isW=k[0]==='w',t=it.type;
