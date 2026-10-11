@@ -1,6 +1,6 @@
 (function(){
 'use strict';
-const APP_VERSION='v36';
+const APP_VERSION='v37';
 const SECTIONS=['文字・語彙','文法','読解'];
 const SEC_INFO={'文字・語彙':{en:'Kanji & Vocabulary',glyph:'字'},'文法':{en:'Grammar',glyph:'文'},'読解':{en:'Reading',glyph:'読'}};
 const IC=(d,extra='')=>`<svg class="ico" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"${extra}>${d}</svg>`;
@@ -594,7 +594,7 @@ document.addEventListener('keydown',e=>{if(!SS||!(cur||'').startsWith('study/')|
   if(!SS.shown&&(e.key===' '||e.key==='Enter')){e.preventDefault();const it=SS.items[SS.i];if(it&&!$('#ty')&&!$('.kopt'))reveal(it)}else if(SS.shown&&/^[1-4]$/.test(e.key))grade(SS.items[SS.i],+e.key)});
 function storyHTML(c){const x=KBY[c],m=x&&x.mnemonic;if(!m)return'';const own=store.get('mnemo',{})[c];
   return `<div class="mnemo" data-c="${esc(c)}"><div class="mh"><b>🧠 Memory story</b><button class="mned" aria-label="Write my own story" title="Write my own">✏️</button></div>
-   <div class="mparts">${m.parts.map(p=>`<span class="mpc"><b class="ja">${esc(p.part)}</b><small>${esc(p.meaning)}</small></span>`).join('<i>+</i>')}<i>→</i><span class="mpc res"><b class="ja">${esc(c)}</b><small>${esc((x.meaning_en||'').split(';')[0])}</small></span></div>
+   <div class="mparts">${m.parts.map(p=>`<span class="mpc"><b class="ja">${esc(p.part)}</b><small>${esc(p.meaning)}</small></span>`).join('<i>+</i>')}${m.parts.length===1&&m.parts[0].part===c?'':`<i>→</i><span class="mpc res"><b class="ja">${esc(c)}</b><small>${esc((x.meaning_en||'').split(';')[0])}</small></span>`}</div>
    <p class="mstory">${own?`<span class="mown">your story</span> ${esc(own)}`:esc(m.story)}</p>
    ${m.reading_hook?`<p class="mhook">🔉 ${esc(m.reading_hook)}</p>`:''}${m.distinguish?`<p class="mdist">👀 ${esc(m.distinguish)}</p>`:''}
    <div class="medit" hidden><textarea rows="3" placeholder="Write a story that links the parts to the meaning…">${esc(own||'')}</textarea><div class="mbtns"><button class="btn sm primary msave">Save</button><button class="btn sm ghost mcancel">Cancel</button>${own?'<button class="btn sm ghost mreset">Reset to default</button>':''}</div></div></div>`}
