@@ -1,6 +1,6 @@
 (function(){
 'use strict';
-const APP_VERSION='v41';
+const APP_VERSION='v42';
 const SECTIONS=['文字・語彙','文法','読解'];
 const SEC_INFO={'文字・語彙':{en:'Kanji & Vocabulary',glyph:'字'},'文法':{en:'Grammar',glyph:'文'},'読解':{en:'Reading',glyph:'読'}};
 const IC=(d,extra='')=>`<svg class="ico" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"${extra}>${d}</svg>`;
@@ -131,8 +131,9 @@ function quizSetup(){
   <label><span class="lbl">Number of questions</span><input id="n" type="number" min="1" max="${Q.length}" value="${o.n}"></label>
   <label class="sw"><input type="checkbox" id="shuf" ${o.shuffle?'checked':''}><span></span> Shuffle questions <small class="mut">· Mix: 60% least-tried</small></label>
   <label class="sw"><input type="checkbox" id="auto" ${o.autoplay?'checked':''}><span></span> Autoplay audio after answering</label>
+  <label class="sw"><input type="checkbox" id="shc" ${o.sc!==false?'checked':''}><span></span> Shuffle choices</label>
   <div class="row"><button class="btn primary big" id="go">Start quiz</button><button class="btn ghost big" id="rm" ${missed.length?'':'disabled'}>↺ Review missed only (${missed.length})</button></div></div>`;
-  const opts=()=>{const x={cat:$('#cat').value,shuffle:$('#shuf').checked,n:Math.max(1,+$('#n').value||10),autoplay:$('#auto').checked};store.set('quizOpts',x);return x};
+  const opts=()=>{const x={cat:$('#cat').value,shuffle:$('#shuf').checked,n:Math.max(1,+$('#n').value||10),autoplay:$('#auto').checked,sc:$('#shc').checked};store.set('quizOpts',x);return x};
   $('#go').onclick=()=>{const x=opts();let p=Q.filter(q=>!x.cat||secOf(q)===x.cat);if(x.shuffle)p=smartPick(p,x.n);nav('quiz/play',()=>start(p,x,false,x.n))};
   $('#rm').onclick=()=>{const x=opts();let p=Q.filter(q=>missed.includes(q.id));if(x.shuffle)p=shuffle(p);nav('quiz/play',()=>start(p,x,true))};
 }
@@ -151,7 +152,13 @@ function start(list,opts,missedMode,limit){if(!list.length){alert('No questions 
   for(const q of list){const g=q.passage_group;if(!g){units.push([q]);continue}if(seen.has(g))continue;seen.add(g);units.push(Q.filter(x=>x.passage_group===g).sort((a,b)=>a.id-b.id))}
   let take=units;if(limit>0){take=[];let c=0;for(const u of units){if(c>=limit)break;take.push(u);c+=u.length}}
   const flat=[],steps=[];take.forEach(u=>{steps.push([flat.length,u.length]);flat.push(...u)});
-  S={list:flat,steps,si:0,opts,missedMode,i:0,score:0,wrong:[],ans:{}};showQ()}
+  const sc=store.get('quizOpts',{}).sc!==false,perm={};if(sc)flat.forEach(q=>{if(!isOrderQ(q))perm[q.id]=shuffle(Object.keys(q.choices))});
+  S={list:flat,steps,si:0,opts,missedMode,i:0,score:0,wrong:[],ans:{},perm};showQ()}
+// v42: shuffled choice order lives in S.perm[qid] (original keys in display order); labels follow position
+const corder=q=>(S&&S.perm&&S.perm[q.id])||Object.keys(q.choices);
+function dk(q,k){const p=S&&S.perm&&S.perm[q.id];if(!p)return String(k);const i=p.indexOf(String(k));return i<0?String(k):Object.keys(q.choices)[i]}
+// rewrite "choice 2", "choices 1 and 3", "option B" in note text to the displayed labels
+function rmap(q,t){if(!t||!(S&&S.perm&&S.perm[q.id]))return t;return String(t).replace(/(\b(?:[Cc]hoices?|[Oo]ptions?)\s*)((?:[1-4A-D]\b(?:\s*(?:,|and|or|&|\/)\s*)?)+)/g,(m,a,b)=>a+b.replace(/[1-4A-D]\b/g,d=>q.choices[d]!=null?dk(q,d):d))}
 const isKanjiQ=q=>/表記/.test(q.category),isReadingQ=q=>/読み/.test(q.category),isUsageQ=q=>/用法/.test(q.category),isParaQ=q=>/言い換え/.test(q.category);
 const hlHTML=(p,r)=>{const t=furi&&r?r:p.map(esc);return `${t[0]}<mark class="hl">${t[1]}</mark>${t[2]}`};
 const BLANK=/_{2,}|（[\s　]*）/g;
@@ -181,7 +188,7 @@ function showQ(){S.ans={};const[st,n]=S.steps[S.si];S.i=st;const qs=S.list.slice
   ${n>1?`<div class="card qcardq gpass"><div class="chips"><span class="pill">${esc(secOf(q0))}</span><span class="pill sub">${esc(q0.category)}</span><span class="pill">${n} questions</span>${S.missedMode?'<span class="pill red">review</span>':''}</div>${passageHTML(q0,true)}${q0.reading_guide?'':techHTML(q0)}</div>`:''}
   ${qs.map((q,j)=>`<div class="gq" id="gq${j}"><div class="card qcardq">${n>1?`<div class="chips"><span class="pill gnum">${j+1}/${n}</span></div>`:`<div class="chips"><span class="pill">${esc(secOf(q))}</span><span class="pill sub">${esc(q.category)}</span>${S.missedMode?'<span class="pill red">review</span>':''}</div>${passageHTML(q)}${q.reading_guide?'':techHTML(q)}`}
   ${questionHTML(q)}${q.reading_guide?`<div class="gw">${guideHTML(q,false)}</div>`:''}</div>
-  <div class="choices${isLongQ(q)?' usage long':''}">${Object.keys(q.choices).map(k=>`<button class="choice" data-k="${esc(k)}" data-j="${j}"><span class="ck">${esc(k)}</span><span class="cv">${choiceHTML(q,k,false)}</span></button>`).join('')}</div><div class="fbw"></div></div>`).join('')}
+  <div class="choices${isLongQ(q)?' usage long':''}">${corder(q).map(k=>`<button class="choice" data-k="${esc(k)}" data-j="${j}"><span class="ck">${esc(dk(q,k))}</span><span class="cv">${choiceHTML(q,k,false)}</span></button>`).join('')}</div><div class="fbw"></div></div>`).join('')}
   <div id="nxw"></div>`;
   app.querySelectorAll('.choice').forEach(b=>b.onclick=()=>answer(b.dataset.k,+b.dataset.j));
   const aa=app.querySelector('.aa');if(aa)aa.onclick=()=>{const o=['s','m','l'],t=o[(o.indexOf(store.get('ts','m'))+1)%3];store.set('ts',t);document.documentElement.dataset.ts=t;aa.querySelector('i').textContent=t.toUpperCase()};
@@ -206,17 +213,17 @@ function renderAnswered(j,anim){
   const gw=box.querySelector('.gw');if(gw){const d=gw.querySelector('details');gw.innerHTML=guideHTML(q,true,d&&d.open)}
   app.querySelectorAll(`mark.ks[data-qs~="${q.id}"]`).forEach(m=>m.classList.add('on'));
   box.querySelector('.fbw').innerHTML=`<div class="card fb ${ok?'is-ok':'is-bad'}">
-  <div class="fbh"><div class="verdict">${ok?'<span class="vi">✓</span> Correct':'<span class="vi">✕</span> Incorrect'}${ok?'':`<span class="ya">Your answer: <b>${esc(k)}</b> ${choiceHTML(q,k,true)}</span>`}</div>
+  <div class="fbh"><div class="verdict">${ok?'<span class="vi">✓</span> Correct':'<span class="vi">✕</span> Incorrect'}${ok?'':`<span class="ya">Your answer: <b>${esc(dk(q,k))}</b> ${choiceHTML(q,k,true)}</span>`}</div>
    ${q.audio?`<button class="abtn" aria-label="Play audio" title="Play audio">🔊</button>`:''}</div>
   ${isOrderQ(q)?orderAnsHTML(q):''}<p class="ja sent">${sent}</p><p class="mut sm en">${esc(q.complete_sentence_en)}</p>
-  <div class="achip"><span class="badge ok">正解 ${esc(q.answer)}</span><span class="aw">${F(q,'answer_word')}</span><span class="mut sm">${esc(q.answer_romaji)}</span></div>
-  ${ex?`<p class="anote">${esc(stripW(ex.answer_note,q.answer_word))}</p>
-   <div class="others${isLongQ(q)?' usage':''}"><span class="lbl">Other choices</span>${ex.others.map(o=>{const cn=(q.choice_notes||{})[o.key]||null;
+  <div class="achip"><span class="badge ok">正解 ${esc(dk(q,q.answer))}</span><span class="aw">${F(q,'answer_word')}</span><span class="mut sm">${esc(q.answer_romaji)}</span></div>
+  ${ex?`<p class="anote">${esc(rmap(q,stripW(ex.answer_note,q.answer_word)))}</p>
+   <div class="others${isLongQ(q)?' usage':''}"><span class="lbl">Other choices</span>${ex.others.slice().sort((a,b)=>corder(q).indexOf(String(a.key))-corder(q).indexOf(String(b.key))).map(o=>{const cn=(q.choice_notes||{})[o.key]||null;
      const fake=cn?/not a real word|wrong reading|does not connect|not natural|not a (common|natural|correct)/.test(cn.note)&&!cn.example_ja:o.fake;
      const mean=stripW(cn?(cn.meaning_en&&cn.meaning_en.trim()!==String(q.choices[o.key]).trim()?cn.meaning_en:''):(o.form?o.form+' ':'')+o.note,q.choices[o.key],cn&&cn.reading), form=cn&&cn.form?`<span class="of">${esc(cn.form)}</span> `:'';
-     return `<div class="orow${fake?' fake':''}"><span class="badge">${esc(o.key)}</span><div class="obody"><div class="oline"><span class="ow">${choiceHTML(q,o.key,true)}</span>${mean?`<span class="on2">${form}${esc(mean)}</span>`:''}${cn&&cn.note&&!/^\s*wrong\s*$/i.test(cn.note)?`<span class="onote">${esc(cn.note)}</span>`:''}</div>
+     return `<div class="orow${fake?' fake':''}"><span class="badge">${esc(dk(q,o.key))}</span><div class="obody"><div class="oline"><span class="ow">${choiceHTML(q,o.key,true)}</span>${mean?`<span class="on2">${form}${esc(rmap(q,mean))}</span>`:''}${cn&&cn.note&&!/^\s*wrong\s*$/i.test(cn.note)?`<span class="onote">${esc(rmap(q,cn.note))}</span>`:''}</div>
       ${cn&&cn.example_ja?`<div class="oex"><span class="rei">例</span><div><div class="ja">${furi&&cn.example_ja_ruby?cn.example_ja_ruby:esc(cn.example_ja)}</div><div class="oen">${esc(cn.example_en)}</div></div></div>`:''}</div></div>`}).join('')}</div>
-   ${ex.tip?`<p class="tip">💡 <b>Tip</b> ${esc(ex.tip)}</p>`:''}`:`<p class="anote">${esc(q.explanation_en)}</p>`}
+   ${ex.tip?`<p class="tip">💡 <b>Tip</b> ${esc(rmap(q,ex.tip))}</p>`:''}`:`<p class="anote">${esc(rmap(q,q.explanation_en))}</p>`}
   <div class="ex tight"><span class="lbl">Example 例文</span><div class="ja">${F(q,'example_ja')}</div><div class="mut sm">${esc(q.example_en)}</div></div></div>`;
   if(q.audio)box.querySelector('.abtn').onclick=()=>play(q.audio);
   const done=Object.keys(S.ans).length>=n;
@@ -232,7 +239,7 @@ function results(celebrate=true){S.done=true;
   <p class="mut">${p>=80?'すばらしい！ Excellent work.':p>=50?'いい調子！ Keep going.':'がんばろう！ Review and try again.'}</p>
   <div class="row center"><button class="btn primary" id="again">New quiz</button>${S.wrong.length?`<button class="btn ghost" id="rw">↺ Retry missed</button>`:''}<a class="btn ghost" href="#home">Home</a></div></div>
   ${S.wrong.length?`<h2 class="sec-t">Review missed questions</h2>`+S.wrong.map(({q,k})=>`<div class="card"><p class="ja">${F(q,'complete_sentence')}</p><p class="mut">${esc(q.complete_sentence_en)}</p>
-  <p>Your answer: <span class="t-bad">${esc(k)}. ${choiceHTML(q,k,true)}</span><br>正解：<span class="t-ok">${esc(q.answer)}. ${F(q,'answer_word')}</span> <span class="mut">(${esc(q.answer_romaji)})</span></p>
+  <p>Your answer: <span class="t-bad">${esc(dk(q,k))}. ${choiceHTML(q,k,true)}</span><br>正解：<span class="t-ok">${esc(dk(q,q.answer))}. ${F(q,'answer_word')}</span> <span class="mut">(${esc(q.answer_romaji)})</span></p>
   <p class="mut sm">${esc(q.explanation_en)}</p>${q.audio?`<button class="btn sm ghost" data-a="${esc(q.audio)}">🔊 Play</button>`:''}</div>`).join(''):'<div class="card t-ok center">Perfect score! 満点！</div>'}`;
   $('#again').onclick=()=>{S=null;saveSess();location.hash='quiz'};app.querySelectorAll('[data-a]').forEach(b=>b.onclick=()=>play(b.dataset.a));
   if($('#rw'))$('#rw').onclick=()=>start(S.wrong.map(w=>w.q),S.opts,true);
@@ -315,14 +322,14 @@ function stripW(t,...ws){if(!t)return t;const E=x=>x.replace(/[.*+?^${}()|[\]\\]
   return t}
 function guideHTML(q,answered,open){const g=q.reading_guide;if(!g)return'';
   const ks=g.key_sentences.map(k=>`<li><p class="ja">${furi&&k.ja_ruby?k.ja_ruby:esc(k.ja)}</p><p class="en">${esc(k.en)}</p><p class="why">→ ${esc(k.why)}</p></li>`).join('');
-  const tr=Object.entries(g.choice_traps).map(([c,t])=>`<li><span class="ck">${esc(c)}</span><div><b class="trap">${esc(t.trap)}</b> <span class="cj">${esc(q.choices[c]||'')}</span><p>${esc(t.evidence)}</p></div></li>`).join('');
+  const tr=Object.entries(g.choice_traps).sort((a,b)=>corder(q).indexOf(a[0])-corder(q).indexOf(b[0])).map(([c,t])=>`<li><span class="ck">${esc(dk(q,c))}</span><div><b class="trap">${esc(t.trap)}</b> <span class="cj">${esc(q.choices[c]||'')}</span><p>${esc(rmap(q,t.evidence))}</p></div></li>`).join('');
   return `<details class="guide"${open?' open':''}><summary>💡 How to solve this question<span class="gtype">${esc(g.type)}</span></summary>
-  <div class="gsec"><span class="glbl">📍 Where to look</span><p>${esc(g.where_to_look)}</p></div>
-  <div class="gsec"><span class="glbl">🧭 Steps</span><ol class="gsteps">${g.steps.map(t=>`<li>${esc(t)}</li>`).join('')}</ol></div>
+  <div class="gsec"><span class="glbl">📍 Where to look</span><p>${esc(rmap(q,g.where_to_look))}</p></div>
+  <div class="gsec"><span class="glbl">🧭 Steps</span><ol class="gsteps">${g.steps.map(t=>`<li>${esc(rmap(q,t))}</li>`).join('')}</ol></div>
   ${answered?`<div class="gsec"><span class="glbl">🔑 Key sentences</span><ul class="gks">${ks}</ul></div>
-  <div class="gsec gans"><span class="glbl">✓ Why ${esc(q.answer)} is correct</span><p>${esc(g.answer_reason)}</p></div>
+  <div class="gsec gans"><span class="glbl">✓ Why ${esc(dk(q,q.answer))} is correct</span><p>${esc(rmap(q,g.answer_reason))}</p></div>
   <div class="gsec"><span class="glbl">⚠ Choice traps</span><ul class="gtraps">${tr}</ul></div>
-  <div class="gsec gtake"><span class="glbl">★ Takeaway</span><p>${esc(g.takeaway)}</p></div>`
+  <div class="gsec gtake"><span class="glbl">★ Takeaway</span><p>${esc(rmap(q,g.takeaway))}</p></div>`
   :`<p class="glock">🔒 Answer the question to see the key sentences, why the answer is right, and the traps in the other choices.</p>`}
   <a href="#tips" class="sm">General 読解 tips →</a></details>`}
 function techHTML(q){const k=tipKey(q);if(!k)return'';return `<details class="tech"><summary>💡 Technique · ${esc(k)}</summary><p>${esc(TIPS.hints[k])}</p><a href="#tips" class="sm">Full 読解 guide →</a></details>`}
