@@ -617,3 +617,14 @@ html{--pfs:17px}html[data-ts=s]{--pfs:15px}html[data-ts=l]{--pfs:19px}
 .gbtn.sug{box-shadow:0 0 0 3px color-mix(in srgb,var(--indigo) 30%,transparent)}.gbtn.g1.sug{box-shadow:0 0 0 3px color-mix(in srgb,var(--bad) 30%,transparent)}
 .swh{text-align:center;margin:6px 0 0}.sdone{text-align:center;padding:28px 18px}.sdone .sg{font-family:var(--serif);font-size:2em;color:var(--accent)}.guidec p,.guidec li{line-height:1.65}
 @media (prefers-reduced-motion:reduce){.scard,.sback{transition:none;animation:none}}
+
+/* v34 memory stories */
+.mnemo{margin:12px 0 4px;border:1px solid color-mix(in srgb,var(--indigo) 30%,var(--line));background:color-mix(in srgb,var(--indigo) 6%,transparent);border-radius:14px;padding:10px 12px;text-align:left}
+.mh{display:flex;align-items:center;justify-content:space-between;font-size:.9em;color:var(--indigo)}.mned{border:0;background:none;cursor:pointer;font-size:1em;padding:2px 6px;border-radius:8px}
+.mparts{display:flex;flex-wrap:wrap;align-items:center;gap:4px 6px;margin:8px 0}.mparts i{font-style:normal;color:var(--mut)}
+.mpc{display:inline-flex;flex-direction:column;align-items:center;background:var(--card);border:1px solid var(--line);border-radius:10px;padding:3px 9px;min-width:2.6em}
+.mpc b{font-family:var(--serif);font-size:1.25em;line-height:1.2}.mpc small{font-size:.7em;color:var(--mut);white-space:nowrap}.mpc.res{border-color:color-mix(in srgb,var(--accent) 45%,var(--line))}.mpc.res b{color:var(--accent)}
+.mstory{margin:4px 0;line-height:1.6;font-size:.98em}.mown{font-size:.72em;background:color-mix(in srgb,var(--accent) 15%,transparent);border-radius:99px;padding:1px 7px;margin-right:4px}
+.mhook,.mdist{margin:6px 0 0;font-size:.88em;color:var(--mut);line-height:1.5}
+.medit textarea{width:100%;box-sizing:border-box;font:inherit;border-radius:10px;border:1px solid var(--line);background:var(--card);color:var(--ink);padding:8px;margin-top:8px}.mbtns{display:flex;gap:6px;margin-top:6px;flex-wrap:wrap}
+.mnd>summary{cursor:pointer;font-weight:600;color:var(--indigo)}.mnd .mnemo{border:0;background:none;padding:6px 0 0}.mnd .mh b{visibility:hidden}

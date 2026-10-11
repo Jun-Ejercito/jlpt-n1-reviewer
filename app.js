@@ -1,6 +1,6 @@
 (function(){
 'use strict';
-const APP_VERSION='v33';
+const APP_VERSION='v34';
 const SECTIONS=['文字・語彙','文法','読解'];
 const SEC_INFO={'文字・語彙':{en:'Kanji & Vocabulary',glyph:'字'},'文法':{en:'Grammar',glyph:'文'},'読解':{en:'Reading',glyph:'読'}};
 const IC=(d,extra='')=>`<svg class="ico" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"${extra}>${d}</svg>`;
@@ -116,7 +116,7 @@ function progress(){
    <p class="mut sm">Section stats are counted from this version onward; overall totals include earlier answers.</p></div>
   ${srsStatsHTML()}
   <button class="btn danger" id="reset">Reset all progress</button><p class="ver">App version ${APP_VERSION} · ${Q.length} questions · ${V.length} words · ${K.length} kanji</p>`;
-  $('#reset').onclick=()=>{if(confirm('Reset ALL quiz, word, kanji and streak progress? This cannot be undone.')){['missed','stats','vocabStatus','catStats','daily','kanjiViewed','last','srs','srsNew','srsLog','srsPri','srsNote'].forEach(k=>localStorage.removeItem('n1_'+k));progress()}};
+  $('#reset').onclick=()=>{if(confirm('Reset ALL quiz, word, kanji and streak progress? This cannot be undone.')){['missed','stats','vocabStatus','catStats','daily','kanjiViewed','last','srs','srsNew','srsLog','srsPri','srsNote','mnemo'].forEach(k=>localStorage.removeItem('n1_'+k));progress()}};
   wireBackup();
   if($('#pw'))$('#pw').onclick=()=>{const o=store.get('quizOpts',{});nav('quiz',()=>start(shuffle(Q.filter(q=>secOf(q)===weak.c)),{...o,cat:weak.c},false))};
 }
@@ -363,7 +363,7 @@ function kanjiDetail(c){
   const x=K.find(k=>k.kanji===c);if(!x){app.innerHTML='<div class="card">Kanji not found.</div>';return}
   markKanji(c);const words=V.filter(v=>(v.kanji||[]).includes(c));
   app.innerHTML=`<div class="card kb"><div class="khead"><div class="kbig">${esc(x.kanji)}</div><div><div class="kmean">${esc(x.meaning_en)}</div>${kBadges(x)}</div></div>${kStats(x)}</div>
-   <div class="card">${sampleWords(c,0)}</div>${simOf(c).length?`<h2 class="sec-t">Look-alike kanji 似ている漢字</h2>${simOf(c).map(g=>simCard(g,true,c)).join('')}`:''}`;
+   ${x.mnemonic?`<details class="card mnd"><summary>🧠 Memory story</summary>${storyHTML(c)}</details>`:''}<div class="card">${sampleWords(c,0)}</div>${simOf(c).length?`<h2 class="sec-t">Look-alike kanji 似ている漢字</h2>${simOf(c).map(g=>simCard(g,true,c)).join('')}`:''}`;
   wireSim(app);
 }
 
@@ -542,7 +542,8 @@ function frontHTML(it){const k=it.key,isW=k[0]==='w',t=it.type;
    <div class="kopts">${shuffle(g.kanji).map(o=>`<button class="kopt" data-c="${esc(o)}">${esc(o)}</button>`).join('')}</div>`}
 function mnemo(cs){return cs.map(c=>{const x=KBY[c];if(!x)return'';return `<li><b class="ja">${esc(c)}</b> ${esc((x.meaning_en||'').split(';')[0])} — radical <b class="ja">${esc(x.radical||'?')}</b>${x.stroke_count?` · ${x.stroke_count} strokes`:''}${x.onyomi&&x.onyomi.length?` · 音 ${esc(x.onyomi.join('、'))}`:''}</li>`}).join('')}
 function backHTML(it){const k=it.key,isW=k[0]==='w',st=srsDB()[k]||{},leech=(st.lap||0)>=4,note=store.get('srsNote',{})[k]||'';
-  const lb=leech?`<div class="leech"><b>🩹 Leech</b> — missed ${st.lap} times. Break it down:<ul>${mnemo(isW?kOfW(VBY[+k.slice(1)]):[k.slice(1)])}</ul><textarea id="mn" rows="2" placeholder="Write your own mnemonic…">${esc(note)}</textarea></div>`:'';
+  const lb=leech?`<div class="leech"><b>🩹 Leech</b> — missed ${st.lap} times. ${(()=>{const cs=isW?kOfW(VBY[+k.slice(1)]):[k.slice(1)],withS=cs.filter(c=>KBY[c]&&KBY[c].mnemonic),rest=cs.filter(c=>!withS.includes(c));
+   return (isW?withS.map(c=>storyHTML(c)).join(''):withS.length?'<p class="sm">Re-read the memory story above and picture it vividly.</p>':'')+(rest.length?`Break it down:<ul>${mnemo(rest)}</ul>`:'')})()}<textarea id="mn" rows="2" placeholder="Write your own mnemonic…">${esc(note)}</textarea></div>`:'';
   if(isW){const v=VBY[+k.slice(1)];
     return `<div class="sans"><div class="sbig ja">${furi&&v.word_ruby?v.word_ruby:esc(v.word)}</div><div class="srd">${esc(v.reading)} <button class="say" data-t="${esc(v.word)}" aria-label="Say word">🔊</button></div>
      <div class="smean">${esc(v.meaning_en)}</div><p class="mut sm">${esc(v.part_of_speech||'')}</p>
@@ -552,7 +553,7 @@ function backHTML(it){const k=it.key,isW=k[0]==='w',st=srsDB()[k]||{},leech=(st.
   return `<div class="sans"><div class="sbig kj">${esc(c)}</div><div class="smean">${esc(x.meaning_en)}</div>
    <div class="kread"><span class="lbl">音</span> ${esc((x.onyomi||[]).join('、')||'—')}</div><div class="kread"><span class="lbl">訓</span> ${kunHTML(x.kunyomi)}</div>
    ${sw.length?`<ul class="ksw">${sw.map(v=>`<li><span class="ja">${furi&&v.word_ruby?v.word_ruby:esc(v.word)}</span> <span class="mut sm">${esc(v.reading)} · ${esc(v.meaning_en)}</span> <button class="say" data-t="${esc(v.word)}" aria-label="Say">🔊</button></li>`).join('')}</ul>`:''}
-   ${g&&g.difference?`<p class="sdiff sm">👀 ${esc(g.difference)}</p>`:''}
+   ${x.mnemonic?storyHTML(c):g&&g.difference?`<p class="sdiff sm">👀 ${esc(g.difference)}</p>`:''}
    <div class="slinks"><a class="sm" href="#kanji/${encodeURIComponent(c)}">Open card →</a></div>${lb}</div>`}
 function studyCard(){const it0=SS.items[SS.i];if(!it0)return studyDone();
   const it=typeof it0==='string'?{key:it0}:it0;SS.items[SS.i]=it;const db=srsDB();if(!it.type)it.type=pickType(it.key,db[it.key]);
@@ -588,6 +589,16 @@ function grade(it,g){if(!SS||SS.graded)return;SS.graded=true;const db=srsDB(),wa
   if(sc&&!reduced()){sc.classList.add(g===1?'out-l':'out-r');setTimeout(next,180)}else next()}
 document.addEventListener('keydown',e=>{if(!SS||!(cur||'').startsWith('study/')||e.target.tagName==='INPUT'||e.target.tagName==='TEXTAREA')return;
   if(!SS.shown&&(e.key===' '||e.key==='Enter')){e.preventDefault();const it=SS.items[SS.i];if(it&&!$('#ty')&&!$('.kopt'))reveal(it)}else if(SS.shown&&/^[1-4]$/.test(e.key))grade(SS.items[SS.i],+e.key)});
+function storyHTML(c){const x=KBY[c],m=x&&x.mnemonic;if(!m)return'';const own=store.get('mnemo',{})[c];
+  return `<div class="mnemo" data-c="${esc(c)}"><div class="mh"><b>🧠 Memory story</b><button class="mned" aria-label="Write my own story" title="Write my own">✏️</button></div>
+   <div class="mparts">${m.parts.map(p=>`<span class="mpc"><b class="ja">${esc(p.part)}</b><small>${esc(p.meaning)}</small></span>`).join('<i>+</i>')}<i>→</i><span class="mpc res"><b class="ja">${esc(c)}</b><small>${esc((x.meaning_en||'').split(';')[0])}</small></span></div>
+   <p class="mstory">${own?`<span class="mown">your story</span> ${esc(own)}`:esc(m.story)}</p>
+   ${m.reading_hook?`<p class="mhook">🔉 ${esc(m.reading_hook)}</p>`:''}${m.distinguish?`<p class="mdist">👀 ${esc(m.distinguish)}</p>`:''}
+   <div class="medit" hidden><textarea rows="3" placeholder="Write a story that links the parts to the meaning…">${esc(own||'')}</textarea><div class="mbtns"><button class="btn sm primary msave">Save</button><button class="btn sm ghost mcancel">Cancel</button>${own?'<button class="btn sm ghost mreset">Reset to default</button>':''}</div></div></div>`}
+document.addEventListener('click',e=>{const b=e.target.closest&&e.target.closest('.mned,.msave,.mcancel,.mreset');if(!b)return;const box=b.closest('.mnemo'),c=box.dataset.c,ed=box.querySelector('.medit');e.stopPropagation();
+  if(b.classList.contains('mned')||b.classList.contains('mcancel')){ed.hidden=!ed.hidden;if(!ed.hidden)ed.querySelector('textarea').focus();return}
+  const o=store.get('mnemo',{});if(b.classList.contains('msave')){const t=ed.querySelector('textarea').value.trim();if(t)o[c]=t;else delete o[c]}else delete o[c];store.set('mnemo',o);
+  const tmp=document.createElement('div');tmp.innerHTML=storyHTML(c);box.replaceWith(tmp.firstElementChild)});
 function srsMiss(q){const add=[q.answer_word,...Object.values(q.choices||{})].map(w=>VW[w]).filter(Boolean).map(v=>'w'+v.id);if(!add.length)return;
   const p=store.get('srsPri',[]),db=srsDB();for(const k of add){if(db[k]){if(db[k].d>dn()+1){db[k].d=dn()+1}}else if(!p.includes(k))p.push(k)}store.set('srsPri',p.slice(-60));store.set('srs',db)}
 function srsStatsHTML(){const db=srsDB(),t=dn(),ks=Object.keys(db),lg=store.get('srsLog',{});let r=0,ok=0;for(const d in lg)if(+d>t-30){r+=lg[d].r;ok+=lg[d].ok}
