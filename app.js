@@ -1,6 +1,6 @@
 (function(){
 'use strict';
-const APP_VERSION='v37';
+const APP_VERSION='v38';
 const SECTIONS=['文字・語彙','文法','読解'];
 const SEC_INFO={'文字・語彙':{en:'Kanji & Vocabulary',glyph:'字'},'文法':{en:'Grammar',glyph:'文'},'読解':{en:'Reading',glyph:'読'}};
 const IC=(d,extra='')=>`<svg class="ico" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"${extra}>${d}</svg>`;
@@ -123,7 +123,7 @@ function progress(){
 
 /* ---------- Quiz ---------- */
 let S=null;
-function quizSetup(){
+function quizSetup(){S=null;
   const cats=SECTIONS.filter(x=>Q.some(q=>secOf(q)===x)),missed=store.get('missed',[]),o=store.get('quizOpts',{cat:'',shuffle:true,n:10,autoplay:false});if(o.cat&&!SECTIONS.includes(o.cat))o.cat='';
   app.innerHTML=`<h1 class="pt">Quiz 問題</h1><div class="card form">
   <label><span class="lbl">Section</span><select id="cat"><option value="">All (${Q.length})</option>${cats.map(c=>`<option ${c===o.cat?'selected':''} value="${esc(c)}">${esc(c)} (${Q.filter(q=>secOf(q)===c).length})</option>`).join('')}</select></label>
@@ -168,7 +168,7 @@ function questionHTML(q){
 function choiceHTML(q,k,answered){if(isUsageQ(q)&&q.choices_hl&&q.choices_hl[k])return hlHTML(q.choices_hl[k],q.choices_hl_ruby&&q.choices_hl_ruby[k]);const r=q.choices_ruby&&q.choices_ruby[k];return furi&&r&&(answered||!isKanjiQ(q))?r:esc(q.choices[k])}
 function stepLabel(){const[st,n]=S.steps[S.si];return n>1?`Q${st+1}–${st+n}`:`Q${st+1}`}
 function showQ(){S.ans={};const[st,n]=S.steps[S.si];S.i=st;const qs=S.list.slice(st,st+n),q0=qs[0];
-  app.innerHTML=`<div class="qtop"><div class="qprog"><div style="width:${S.si*100/S.steps.length}%"></div></div><span class="mut sm">${S.si+1}/${S.steps.length}${n>1?` · ${stepLabel()}`:''}</span><button class="aa" aria-label="Text size" title="Text size">A<small>a</small><i>${({s:'S',m:'M',l:'L'})[store.get('ts','m')]||'M'}</i></button></div>
+  app.innerHTML=`<div class="qtop"><div class="qprog"><div style="width:${S.si*100/S.steps.length}%"></div></div><span class="mut sm">${S.si+1}/${S.steps.length}${n>1?` · ${stepLabel()}`:''}</span><button class="aa qend" id="qend" aria-label="End quiz" title="End quiz">✕</button><button class="aa" aria-label="Text size" title="Text size">A<small>a</small><i>${({s:'S',m:'M',l:'L'})[store.get('ts','m')]||'M'}</i></button></div>
   ${n>1?`<div class="card qcardq gpass"><div class="chips"><span class="pill">${esc(secOf(q0))}</span><span class="pill sub">${esc(q0.category)}</span><span class="pill">${n} questions</span>${S.missedMode?'<span class="pill red">review</span>':''}</div>${passageHTML(q0,true)}${q0.reading_guide?'':techHTML(q0)}</div>`:''}
   ${qs.map((q,j)=>`<div class="gq" id="gq${j}"><div class="card qcardq">${n>1?`<div class="chips"><span class="pill gnum">${j+1}/${n}</span></div>`:`<div class="chips"><span class="pill">${esc(secOf(q))}</span><span class="pill sub">${esc(q.category)}</span>${S.missedMode?'<span class="pill red">review</span>':''}</div>${passageHTML(q)}${q.reading_guide?'':techHTML(q)}`}
   ${questionHTML(q)}${q.reading_guide?`<div class="gw">${guideHTML(q,false)}</div>`:''}</div>
@@ -442,10 +442,20 @@ function deck(kind,focus){
 }
 
 /* ---------- Shell: header, tabs, routing ---------- */
-const stack=[];let cur='';
-function goBack(){if(stack.length>1)history.back();else location.hash='home'}
+let cur='',NAV={k:0,d:0},navCtr=+sessionStorage.getItem('n1_navk')||0;const SCR=(()=>{try{return JSON.parse(sessionStorage.getItem('n1_scr'))||{}}catch(e){return{}}})();
+function goBack(){if(NAV.d>0)history.back();else location.hash='home'}
+const QBY=Object.fromEntries(Q.map(q=>[q.id,q]));
+function saveSess(){try{sessionStorage.setItem('n1_S',S?JSON.stringify({...S,list:S.list.map(q=>q.id),wrong:S.wrong.map(w=>({q:w.q.id,k:w.k}))}):'');sessionStorage.setItem('n1_SS',SS?JSON.stringify(SS):'');sessionStorage.setItem('n1_scr',JSON.stringify(SCR))}catch(e){}}
+function loadSess(){try{const a=sessionStorage.getItem('n1_S');if(a){const o=JSON.parse(a);o.list=o.list.map(i=>QBY[i]).filter(Boolean);o.wrong=o.wrong.map(w=>({q:QBY[w.q],k:w.k})).filter(w=>w.q);S=o}
+  const b=sessionStorage.getItem('n1_SS');if(b)SS=JSON.parse(b)}catch(e){}}
+function snap(){if(!cur)return;const si=document.querySelector('#s');VS[cur]=Object.assign(VS[cur]||{},{q:si?si.value:'',y:window.scrollY});
+  SCR[NAV.k]={y:window.scrollY,open:[...app.querySelectorAll('details')].map((d,i)=>d.open?i:-1).filter(i=>i>=0)};const ks=Object.keys(SCR);if(ks.length>200)delete SCR[ks[0]];saveSess()}
+window.addEventListener('pagehide',snap);document.addEventListener('visibilitychange',()=>{if(document.hidden)snap()});
+function resumeQuiz(){if(S.done)return results(false);const a=S.ans||{};showQ();for(const j in a){S.ans[j]=a[j];renderAnswered(+j,false)}}
+function resumeStudy(){if(SS.graded){SS.i++;SS.graded=false;SS.shown=false}const sh=SS.shown;SS.shown=false;studyCard();if(sh&&SS.items[SS.i])reveal(SS.items[SS.i])}
+document.addEventListener('click',e=>{if(e.target.closest&&e.target.closest('#qend')&&confirm('End this quiz? Answers so far are saved.')){S=null;saveSess();quizSetup();window.scrollTo(0,0)}});
 const TABS=[['home',ICONS.home,'Home'],['quiz',ICONS.quiz,'Quiz'],['vocab',ICONS.vocab,'Words'],['kanji',ICONS.kanji,'Kanji'],['progress',ICONS.progress,'Progress']];
-function header(){const h=$('header'),root=(cur||'home').split('/')[0],showBack=stack.length>1&&root!=='home';
+function header(){const h=$('header'),root=(cur||'home').split('/')[0],showBack=NAV.d>0||root!=='home';
   const dark=document.documentElement.dataset.theme==='dark';
   h.innerHTML=`${showBack?`<button class="hb icon" id="hbk" aria-label="Back">${ICONS.back}</button>`:''}<a href="#home" class="brand"><span class="hanko">N1</span><span class="bt">JLPT N1 Reviewer</span></a>
    <div class="hbtns"><button class="hb ${furi?'on':''}" id="hf" aria-pressed="${furi}" aria-label="Furigana ${furi?'on':'off'}" title="Furigana"><span class="lg">ふりがな</span><span class="ic">あ</span></button><button class="hb icon" id="hd" aria-label="Toggle dark mode">${dark?ICONS.sun:ICONS.moon}</button></div>`;
@@ -460,17 +470,17 @@ function header(){const h=$('header'),root=(cur||'home').split('/')[0],showBack=
 }
 const inQuiz=()=>S&&!S.done&&(cur||'').startsWith('quiz')&&document.querySelector('.choice');
 let skip=false;
-function route(){if(skip){skip=false;return}const h=location.hash.slice(1)||'home';
-  if(h!==cur&&inQuiz()&&!confirm('Leave the quiz? Your current quiz will end (answers so far are saved).')){skip=true;location.hash=cur;return}
-  if(cur&&h!==cur){const si=document.querySelector('#s');VS[cur]=Object.assign(VS[cur]||{},{q:si?si.value:'',y:window.scrollY})}
-  if(stack.length>1&&stack[stack.length-2]===h)stack.pop();else if(stack[stack.length-1]!==h)stack.push(h);
+function route(){const h=location.hash.slice(1)||'home';
+  snap();const prev=NAV,st=history.state;
+  if(st&&st.k!=null)NAV={k:st.k,d:st.d||0};else{NAV={k:++navCtr,d:cur?prev.d+1:0};history.replaceState(NAV,'');sessionStorage.setItem('n1_navk',navCtr)}
+  const fresh=!!pending||!SCR[NAV.k];
   cur=h;if(h!=='home')store.set('last',h);header();if(audio)audio.pause();
   const [p,arg]=h.split('/');const a=arg&&decodeURIComponent(arg);
-  S=null;
-  if(p==='quiz'){if(pending){const f=pending;pending=null;f()}else quizSetup()}else render(p,a);
-  const y=(VS[h]||{}).y||0;window.scrollTo(0,y);requestAnimationFrame(()=>window.scrollTo(0,y));
+  if(p==='quiz'){if(pending){const f=pending;pending=null;f()}else if(S)resumeQuiz();else quizSetup()}else render(p,a);
+  const sv=fresh?null:SCR[NAV.k];if(sv&&sv.open){const ds=app.querySelectorAll('details');sv.open.forEach(i=>{if(ds[i])ds[i].open=true})}
+  const y=sv?sv.y:(p==='quiz'||p==='study'?0:(VS[h]||{}).y||0);window.scrollTo(0,y);requestAnimationFrame(()=>window.scrollTo(0,y));saveSess();
 }
-function render(p,a){if(p==='vocab')deck('vocab',a);else if(p==='kanji'){if(a)kanjiDetail(a);else if(store.get('kanjiMode','grid')==='cards')deck('kanji');else kanjiGrid()}else if(p==='kanjicards')deck('kanji',a);else if(p==='similar')similarView();else if(p==='tips')tipsView();else if(p==='study'){if(a)studyStart(a);else{SS=null;studyHome()}}else if(p==='studyguide')studyGuide();else if(p==='progress')progress();else home()}
+function render(p,a){if(p==='vocab')deck('vocab',a);else if(p==='kanji'){if(a)kanjiDetail(a);else if(store.get('kanjiMode','grid')==='cards')deck('kanji');else kanjiGrid()}else if(p==='kanjicards')deck('kanji',a);else if(p==='similar')similarView();else if(p==='tips')tipsView();else if(p==='study'){if(a){if(SS&&SS.mode===a&&SS.items&&SS.i<SS.items.length)resumeStudy();else studyStart(a)}else studyHome()}else if(p==='studyguide')studyGuide();else if(p==='progress')progress();else home()}
 function rerender(){const y=window.scrollY;
   if(S&&!S.done&&document.querySelector('.choice')){const a=S.ans||{};showQ();for(const j in a){S.ans[j]=a[j];renderAnswered(+j,false)}}
   else if(S&&S.done)results(false);
@@ -625,6 +635,6 @@ function studyGuide(){app.innerHTML=`<div class="ph"><h1 class="pt">How to study
  <a class="btn primary full" href="#study/mixed">▶ Start today's session</a>`}
 
 window.addEventListener('hashchange',route);
-window.__n1={stack:()=>stack.slice(),state:()=>S,start:(ids)=>start(Q.filter(q=>ids.includes(q.id)),store.get("quizOpts",{}),false)};
-route();
+window.__n1={nav:()=>NAV,ss:()=>SS,state:()=>S,start:(ids)=>start(Q.filter(q=>ids.includes(q.id)),store.get("quizOpts",{}),false)};
+loadSess();route();
 })();
