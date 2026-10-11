@@ -1,6 +1,6 @@
 (function(){
 'use strict';
-const APP_VERSION='v31';
+const APP_VERSION='v32';
 const SECTIONS=['文字・語彙','文法','読解'];
 const SEC_INFO={'文字・語彙':{en:'Kanji & Vocabulary',glyph:'字'},'文法':{en:'Grammar',glyph:'文'},'読解':{en:'Reading',glyph:'読'}};
 const IC=(d,extra='')=>`<svg class="ico" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"${extra}>${d}</svg>`;
@@ -199,10 +199,10 @@ function renderAnswered(j,anim){
    ${q.audio?`<button class="abtn" aria-label="Play audio" title="Play audio">🔊</button>`:''}</div>
   ${isOrderQ(q)?orderAnsHTML(q):''}<p class="ja sent">${sent}</p><p class="mut sm en">${esc(q.complete_sentence_en)}</p>
   <div class="achip"><span class="badge ok">正解 ${esc(q.answer)}</span><span class="aw">${F(q,'answer_word')}</span><span class="mut sm">${esc(q.answer_romaji)}</span></div>
-  ${ex?`<p class="anote">${esc(ex.answer_note)}</p>
+  ${ex?`<p class="anote">${esc(stripW(ex.answer_note,q.answer_word))}</p>
    <div class="others${isLongQ(q)?' usage':''}"><span class="lbl">Other choices</span>${ex.others.map(o=>{const cn=(q.choice_notes||{})[o.key]||null;
      const fake=cn?/not a real word|wrong reading|does not connect|not natural|not a (common|natural|correct)/.test(cn.note)&&!cn.example_ja:o.fake;
-     const mean=cn?(cn.meaning_en&&cn.meaning_en.trim()!==String(q.choices[o.key]).trim()?cn.meaning_en:''):(o.form?o.form+' ':'')+o.note, form=cn&&cn.form?`<span class="of">${esc(cn.form)}</span> `:'';
+     const mean=stripW(cn?(cn.meaning_en&&cn.meaning_en.trim()!==String(q.choices[o.key]).trim()?cn.meaning_en:''):(o.form?o.form+' ':'')+o.note,q.choices[o.key],cn&&cn.reading), form=cn&&cn.form?`<span class="of">${esc(cn.form)}</span> `:'';
      return `<div class="orow${fake?' fake':''}"><span class="badge">${esc(o.key)}</span><div class="obody"><div class="oline"><span class="ow">${choiceHTML(q,o.key,true)}</span>${mean?`<span class="on2">${form}${esc(mean)}</span>`:''}${cn&&cn.note&&!/^\s*wrong\s*$/i.test(cn.note)?`<span class="onote">${esc(cn.note)}</span>`:''}</div>
       ${cn&&cn.example_ja?`<div class="oex"><span class="rei">例</span><div><div class="ja">${furi&&cn.example_ja_ruby?cn.example_ja_ruby:esc(cn.example_ja)}</div><div class="oen">${esc(cn.example_en)}</div></div></div>`:''}</div></div>`}).join('')}</div>
    ${ex.tip?`<p class="tip">💡 <b>Tip</b> ${esc(ex.tip)}</p>`:''}`:`<p class="anote">${esc(q.explanation_en)}</p>`}
@@ -297,6 +297,10 @@ document.addEventListener('click',e=>{const w=e.target.closest&&e.target.closest
   if(wsheet&&wsheet.classList.contains('show')&&!e.target.closest('.wsheet'))closeWord()},true);
 document.addEventListener('toggle',e=>{const d=e.target;if(d.classList&&d.classList.contains('wlist')&&d.open)renderWL(d)},true);
 window.addEventListener('hashchange',closeWord);
+// strip a leading "WORD: " / "WORD (reading) — " that repeats the headword
+function stripW(t,...ws){if(!t)return t;const E=x=>x.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
+  for(const w of ws.filter(Boolean).sort((a,b)=>b.length-a.length))for(const c of [w,w.replace(/な$/,'')]){const m=t.match(new RegExp('^'+E(c)+'な?\\s*(?:[（(][^)）]{0,30}[)）])?\\s*[:：—–=\\-]\\s*'));if(m&&t.length>m[0].length)return t.slice(m[0].length)}
+  return t}
 function guideHTML(q,answered,open){const g=q.reading_guide;if(!g)return'';
   const ks=g.key_sentences.map(k=>`<li><p class="ja">${furi&&k.ja_ruby?k.ja_ruby:esc(k.ja)}</p><p class="en">${esc(k.en)}</p><p class="why">→ ${esc(k.why)}</p></li>`).join('');
   const tr=Object.entries(g.choice_traps).map(([c,t])=>`<li><span class="ck">${esc(c)}</span><div><b class="trap">${esc(t.trap)}</b> <span class="cj">${esc(q.choices[c]||'')}</span><p>${esc(t.evidence)}</p></div></li>`).join('');
