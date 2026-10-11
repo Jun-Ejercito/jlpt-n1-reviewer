@@ -640,3 +640,4 @@ html{--pfs:17px}html[data-ts=s]{--pfs:15px}html[data-ts=l]{--pfs:19px}
 
 /* v39 furigana toggle: CSS only, space kept so nothing jumps */
 html.nofuri rt{visibility:hidden}html:not(.nofuri) .offuri{display:none}
+.mnc{padding:4px 14px}.mnc .mnemo{border:0;background:none;padding:6px 0;margin:0}

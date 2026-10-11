@@ -1,6 +1,6 @@
 (function(){
 'use strict';
-const APP_VERSION='v39';
+const APP_VERSION='v40';
 const SECTIONS=['文字・語彙','文法','読解'];
 const SEC_INFO={'文字・語彙':{en:'Kanji & Vocabulary',glyph:'字'},'文法':{en:'Grammar',glyph:'文'},'読解':{en:'Reading',glyph:'読'}};
 const IC=(d,extra='')=>`<svg class="ico" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"${extra}>${d}</svg>`;
@@ -371,7 +371,7 @@ function kanjiDetail(c){
   const x=K.find(k=>k.kanji===c);if(!x){app.innerHTML='<div class="card">Kanji not found.</div>';return}
   markKanji(c);const words=V.filter(v=>(v.kanji||[]).includes(c));
   app.innerHTML=`<div class="card kb"><div class="khead"><div class="kbig">${esc(x.kanji)}</div><div><div class="kmean">${esc(x.meaning_en)}</div>${kBadges(x)}</div></div>${kStats(x)}</div>
-   ${x.mnemonic?`<details class="card mnd"><summary>🧠 Memory story</summary>${storyHTML(c)}</details>`:''}<div class="card">${sampleWords(c,0)}</div>${simOf(c).length?`<h2 class="sec-t">Look-alike kanji 似ている漢字</h2>${simOf(c).map(g=>simCard(g,true,c)).join('')}`:''}`;
+   ${x.mnemonic?`<div class="card mnc">${storyHTML(c)}</div>`:''}<div class="card">${sampleWords(c,0)}</div>${simOf(c).length?`<h2 class="sec-t">Look-alike kanji 似ている漢字</h2>${simOf(c).map(g=>simCard(g,true,c)).join('')}`:''}`;
   wireSim(app);
 }
 
@@ -410,7 +410,7 @@ function deck(kind,focus){
       <div class="foot">${x.kanji&&x.kanji.length?`<span class="lbl">漢字</span>${x.kanji.map(c=>`<a class="chip" href="#kanji/${encodeURIComponent(c)}">${esc(c)}</a>`).join('')}`:''}
       <span class="lbl">From</span><span class="mut">${(x.source_question_ids||[]).map(i=>'Q'+i).join(', ')}</span></div>`
     :`<div class="khead"><div class="kbig">${esc(x.kanji)}</div><div><div class="kmean">${esc(x.meaning_en)}</div>${kBadges(x)}</div></div>${kStats(x)}
-      ${sampleWords(x.kanji,4)}`;
+      ${storyHTML(x.kanji)}${sampleWords(x.kanji,4)}`;
     if(!isV)wireSamples($('#fbk'));
     fc.querySelectorAll('a').forEach(a=>{a.onclick=e=>e.stopPropagation();a.onpointerdown=e=>e.stopPropagation()});
     $('#ls').innerHTML=filt.slice(0,300).map((y,i)=>`<div class="li${i===idx?' cur':''}" data-i="${i}">${isV?`<b>${F(y,'word')}</b> ${RD(y)} — ${esc(y.meaning_en)} ${tag(y)}`:`<b>${esc(y.kanji)}</b> ${esc(y.meaning_en)}`}</div>`).join('');
@@ -433,11 +433,11 @@ function deck(kind,focus){
   stage.addEventListener('touchstart',e=>{if(e.touches.length!==1){g=null;return}if(e.target.closest('a,button'))return;dragStart(e.touches[0].clientX,e.touches[0].clientY)},{passive:true});
   stage.addEventListener('touchmove',e=>{if(g)dragMove(e.touches[0].clientX,e.touches[0].clientY,e)},{passive:false});
   stage.addEventListener('touchend',dragEnd);stage.addEventListener('touchcancel',()=>{g=null;reset()});
-  stage.addEventListener('pointerdown',e=>{if(e.pointerType==='touch'||e.button!==0||e.target.closest('a,button'))return;dragStart(e.clientX,e.clientY);try{stage.setPointerCapture(e.pointerId)}catch(_){}});
+  stage.addEventListener('pointerdown',e=>{if(e.pointerType==='touch'||e.button!==0||e.target.closest('a,button,.mnemo'))return;dragStart(e.clientX,e.clientY);try{stage.setPointerCapture(e.pointerId)}catch(_){}});
   stage.addEventListener('pointermove',e=>{if(e.pointerType!=='touch'&&g)dragMove(e.clientX,e.clientY,null)});
   stage.addEventListener('pointerup',e=>{if(e.pointerType!=='touch')dragEnd()});
   stage.addEventListener('pointercancel',e=>{if(e.pointerType!=='touch'){g=null;reset()}});
-  stage.addEventListener('click',e=>{if(suppressClick||e.target.closest('a,button'))return;flipped=!flipped;render()});
+  stage.addEventListener('click',e=>{if(suppressClick||e.target.closest('a,button,.mnemo'))return;flipped=!flipped;render()});
   $('#pv').onclick=()=>go(-1);$('#nx').onclick=()=>go(1);
   $('#sh').onclick=()=>{data=ORDER[kind]=shuffle(isV?V:K);idx=0;flipped=false;apply()};$('#s').oninput=()=>{idx=0;flipped=false;apply()};
   if(isV){$('#kn').onclick=()=>mark('know');$('#dk').onclick=()=>mark('dont');$('#ou').onclick=e=>{onlyUnknown=!onlyUnknown;const b=$('#ou');b.classList.toggle('active',onlyUnknown);b.setAttribute('aria-pressed',onlyUnknown);store.set('wordsFilter',onlyUnknown);idx=0;apply()}}
@@ -564,12 +564,12 @@ function frontHTML(it){const k=it.key,isW=k[0]==='w',t=it.type;
 function mnemo(cs){return cs.map(c=>{const x=KBY[c];if(!x)return'';return `<li><b class="ja">${esc(c)}</b> ${esc((x.meaning_en||'').split(';')[0])} — radical <b class="ja">${esc(x.radical||'?')}</b>${x.stroke_count?` · ${x.stroke_count} strokes`:''}${x.onyomi&&x.onyomi.length?` · 音 ${esc(x.onyomi.join('、'))}`:''}</li>`}).join('')}
 function backHTML(it){const k=it.key,isW=k[0]==='w',st=srsDB()[k]||{},leech=(st.lap||0)>=4,note=store.get('srsNote',{})[k]||'';
   const lb=leech?`<div class="leech"><b>🩹 Leech</b> — missed ${st.lap} times. ${(()=>{const cs=isW?kOfW(VBY[+k.slice(1)]):[k.slice(1)],withS=cs.filter(c=>KBY[c]&&KBY[c].mnemonic),rest=cs.filter(c=>!withS.includes(c));
-   return (isW?withS.map(c=>storyHTML(c)).join(''):withS.length?'<p class="sm">Re-read the memory story above and picture it vividly.</p>':'')+(rest.length?`Break it down:<ul>${mnemo(rest)}</ul>`:'')})()}<textarea id="mn" rows="2" placeholder="Write your own mnemonic…">${esc(note)}</textarea></div>`:'';
+   return (withS.length?'<p class="sm">Re-read the memory story above and picture it vividly.</p>':'')+(rest.length?`Break it down:<ul>${mnemo(rest)}</ul>`:'')})()}<textarea id="mn" rows="2" placeholder="Write your own mnemonic…">${esc(note)}</textarea></div>`:'';
   if(isW){const v=VBY[+k.slice(1)];
     return `<div class="sans"><div class="sbig ja">${furi&&v.word_ruby?v.word_ruby:esc(v.word)}</div><div class="srd">${esc(v.reading)} <button class="say" data-t="${esc(v.word)}" aria-label="Say word">🔊</button></div>
      <div class="smean">${esc(v.meaning_en)}</div><p class="mut sm">${esc(v.part_of_speech||'')}</p>
      ${v.example_ja?`<div class="sex"><div class="ja">${furi&&v.example_ja_ruby?v.example_ja_ruby:esc(v.example_ja)} <button class="say" data-t="${esc(v.example_ja)}" aria-label="Say example">🔊</button></div><div class="mut sm">${esc(v.example_en)}</div></div>`:''}
-     <div class="slinks">${kOfW(v).map(c=>`<a class="chip ja" href="#kanji/${encodeURIComponent(c)}">${esc(c)}</a>`).join('')}<a class="sm" href="#vocab/${encodeURIComponent(v.word)}">Open card →</a></div>${lb}</div>`}
+     <div class="slinks">${kOfW(v).map(c=>`<a class="chip ja" href="#kanji/${encodeURIComponent(c)}">${esc(c)}</a>`).join('')}<a class="sm" href="#vocab/${encodeURIComponent(v.word)}">Open card →</a></div>${kOfW(v).filter(c=>KBY[c].mnemonic).map(c=>storyHTML(c)).join('')}${lb}</div>`}
   const c=k.slice(1),x=KBY[c],g=simGroup(c),sw=V.filter(v=>(v.kanji||[]).includes(c)).slice(0,3);
   return `<div class="sans"><div class="sbig kj">${esc(c)}</div><div class="smean">${esc(x.meaning_en)}</div>
    <div class="kread"><span class="lbl">音</span> ${esc((x.onyomi||[]).join('、')||'—')}</div><div class="kread"><span class="lbl">訓</span> ${kunHTML(x.kunyomi)}</div>
