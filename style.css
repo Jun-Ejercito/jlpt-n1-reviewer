@@ -559,7 +559,7 @@ mark.ks.on{background:color-mix(in srgb,#f5d76e 38%,transparent);border-radius:3
 
 /* v31 reading width + text size */
 html{--pfs:17px}html[data-ts=s]{--pfs:15px}html[data-ts=l]{--pfs:19px}
-.passage .ptext{font-size:var(--pfs);line-height:2.05}html.nofuri .passage .ptext{line-height:1.85}
+.passage .ptext{font-size:var(--pfs);line-height:2.05}
 .qcardq .q{font-size:calc(var(--pfs) * 1.02)}.choice .cv{font-size:calc(var(--pfs) * .95)}
 .qtop{display:flex;align-items:center;gap:10px}
 .aa{flex:none;font:600 15px/1 var(--serif);color:var(--indigo);background:var(--card);border:1px solid var(--line);border-radius:99px;padding:5px 10px;cursor:pointer;display:inline-flex;align-items:baseline;gap:1px}
@@ -637,3 +637,6 @@ html{--pfs:17px}html[data-ts=s]{--pfs:15px}html[data-ts=l]{--pfs:19px}
 .sdone .td-a{justify-content:center;flex-wrap:wrap;margin-top:16px;width:100%}
 .today .td-a .btn{white-space:normal}
 .sdone .dck{font-family:system-ui,-apple-system,"Segoe UI",sans-serif;font-size:.95em}
+
+/* v39 furigana toggle: CSS only, space kept so nothing jumps */
+html.nofuri rt{visibility:hidden}html:not(.nofuri) .offuri{display:none}

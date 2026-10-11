@@ -1,6 +1,6 @@
 (function(){
 'use strict';
-const APP_VERSION='v38';
+const APP_VERSION='v39';
 const SECTIONS=['文字・語彙','文法','読解'];
 const SEC_INFO={'文字・語彙':{en:'Kanji & Vocabulary',glyph:'字'},'文法':{en:'Grammar',glyph:'文'},'読解':{en:'Reading',glyph:'読'}};
 const IC=(d,extra='')=>`<svg class="ico" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"${extra}>${d}</svg>`;
@@ -39,10 +39,11 @@ const dayKey=(d=new Date())=>`${d.getFullYear()}-${String(d.getMonth()+1).padSta
   store.set('schema',2);
 })();
 
-let furi=store.get('furigana',true);
+let furiOn=store.get('furigana',true);const furi=true;// ruby always rendered; visibility toggled by html.nofuri (v39)
+const applyFuri=()=>document.documentElement.classList.toggle('nofuri',!furiOn);applyFuri();
 const F=(o,f)=>furi&&o[f+'_ruby']?o[f+'_ruby']:esc(o[f]);
 // reading shown beside a word only when furigana is off (ruby already carries it) and it adds info
-const RD=(o,cls='mut')=>(furi&&o.word_ruby&&/<ruby>/.test(o.word_ruby))||o.reading===o.word?'':`<span class="${cls}">${esc(o.reading)}</span>`;
+const RD=(o,cls='mut')=>o.reading===o.word?'':(o.word_ruby&&/<ruby>/.test(o.word_ruby))?`<span class="${cls} offuri">${esc(o.reading)}</span>`:`<span class="${cls}">${esc(o.reading)}</span>`;
 let audio=null;function play(src){if(!src)return;if(audio)audio.pause();audio=new Audio(src);audio.play().catch(()=>{})}
 
 /* ---- theme ---- */
@@ -92,9 +93,9 @@ function home(){
   <p class="ver">JLPT N1 Reviewer · ${APP_VERSION}</p>`;
   $('#gm').onclick=()=>{store.set('goal',Math.max(5,goal-5));home()};$('#gp').onclick=()=>{store.set('goal',Math.min(200,goal+5));home()};
   const o=store.get('quizOpts',{cat:'',shuffle:true,n:10,autoplay:false});
-  $('#qq').onclick=()=>{nav('quiz',()=>start(shuffle(Q),{...o,shuffle:true},false,10))};
+  $('#qq').onclick=()=>{nav('quiz',()=>start(smartPick(Q,10),{...o,shuffle:true},false,10))};
   $('#qm').onclick=()=>{nav('quiz',()=>start(shuffle(Q.filter(q=>missed.includes(q.id))),o,true))};
-  app.querySelectorAll('.seccard').forEach(b=>b.onclick=()=>{const sec=b.dataset.sec;store.set('quizOpts',{...o,cat:sec});nav('quiz',()=>start(shuffle(Q.filter(q=>secOf(q)===sec)),{...o,cat:sec,shuffle:true},false,o.n||10))});
+  app.querySelectorAll('.seccard').forEach(b=>b.onclick=()=>{const sec=b.dataset.sec;store.set('quizOpts',{...o,cat:sec});nav('quiz',()=>start(smartPick(Q.filter(q=>secOf(q)===sec),o.n||10),{...o,cat:sec,shuffle:true},false,o.n||10))});
   if(store.get('wordsFilter',null)===null)store.set('wordsFilter',false);
 }
 let pending=null;function nav(h,fn){pending=fn;if(location.hash==='#'+h)route();else location.hash=h}
@@ -116,7 +117,7 @@ function progress(){
    <p class="mut sm">Section stats are counted from this version onward; overall totals include earlier answers.</p></div>
   ${srsStatsHTML()}
   <button class="btn danger" id="reset">Reset all progress</button><p class="ver">App version ${APP_VERSION} · ${Q.length} questions · ${V.length} words · ${K.length} kanji</p>`;
-  $('#reset').onclick=()=>{if(confirm('Reset ALL quiz, word, kanji and streak progress? This cannot be undone.')){['missed','stats','vocabStatus','catStats','daily','kanjiViewed','last','srs','srsNew','srsLog','srsPri','srsNote','mnemo'].forEach(k=>localStorage.removeItem('n1_'+k));progress()}};
+  $('#reset').onclick=()=>{if(confirm('Reset ALL quiz, word, kanji and streak progress? This cannot be undone.')){['missed','stats','qAtt','vocabStatus','catStats','daily','kanjiViewed','last','srs','srsNew','srsLog','srsPri','srsNote','mnemo'].forEach(k=>localStorage.removeItem('n1_'+k));progress()}};
   wireBackup();
   if($('#pw'))$('#pw').onclick=()=>{const o=store.get('quizOpts',{});nav('quiz',()=>start(shuffle(Q.filter(q=>secOf(q)===weak.c)),{...o,cat:weak.c},false))};
 }
@@ -128,13 +129,21 @@ function quizSetup(){S=null;
   app.innerHTML=`<h1 class="pt">Quiz 問題</h1><div class="card form">
   <label><span class="lbl">Section</span><select id="cat"><option value="">All (${Q.length})</option>${cats.map(c=>`<option ${c===o.cat?'selected':''} value="${esc(c)}">${esc(c)} (${Q.filter(q=>secOf(q)===c).length})</option>`).join('')}</select></label>
   <label><span class="lbl">Number of questions</span><input id="n" type="number" min="1" max="${Q.length}" value="${o.n}"></label>
-  <label class="sw"><input type="checkbox" id="shuf" ${o.shuffle?'checked':''}><span></span> Shuffle questions</label>
+  <label class="sw"><input type="checkbox" id="shuf" ${o.shuffle?'checked':''}><span></span> Shuffle questions <small class="mut">· Mix: 60% least-tried</small></label>
   <label class="sw"><input type="checkbox" id="auto" ${o.autoplay?'checked':''}><span></span> Autoplay audio after answering</label>
   <div class="row"><button class="btn primary big" id="go">Start quiz</button><button class="btn ghost big" id="rm" ${missed.length?'':'disabled'}>↺ Review missed only (${missed.length})</button></div></div>`;
   const opts=()=>{const x={cat:$('#cat').value,shuffle:$('#shuf').checked,n:Math.max(1,+$('#n').value||10),autoplay:$('#auto').checked};store.set('quizOpts',x);return x};
-  $('#go').onclick=()=>{const x=opts();let p=Q.filter(q=>!x.cat||secOf(q)===x.cat);if(x.shuffle)p=shuffle(p);start(p,x,false,x.n)};
+  $('#go').onclick=()=>{const x=opts();let p=Q.filter(q=>!x.cat||secOf(q)===x.cat);if(x.shuffle)p=smartPick(p,x.n);start(p,x,false,x.n)};
   $('#rm').onclick=()=>{const x=opts();let p=Q.filter(q=>missed.includes(q.id));if(x.shuffle)p=shuffle(p);start(p,x,true)};
 }
+// v39: ~60% of a random quiz comes from the least-attempted questions (passage groups = one unit, min member count)
+function smartPick(list,limit){const att=store.get('qAtt',{}),units=[],seen=new Set();
+  for(const q of list){const g=q.passage_group;if(!g){units.push([q]);continue}if(seen.has(g))continue;seen.add(g);units.push(Q.filter(x=>x.passage_group===g).sort((a,b)=>a.id-b.id))}
+  const tot=units.reduce((a,u)=>a+u.length,0);if(!(limit>0)||tot<=limit)return shuffle(units).flat();
+  const quota=Math.round(limit*.6),sc=units.map(u=>({u,a:Math.min(...u.map(q=>att[q.id]||0)),r:Math.random()})).sort((x,y)=>x.a-y.a||x.r-y.r);
+  const pick=[];let c=0;while(sc.length&&c<quota){const x=sc.shift();pick.push(x.u);c+=x.u.length}
+  for(const x of shuffle(sc)){if(c>=limit)break;pick.push(x.u);c+=x.u.length}
+  return shuffle(pick).flat()}
 function start(list,opts,missedMode,limit){if(!list.length){alert('No questions match.');return}
   // passage groups: a group is always taken whole (members from the full bank, id order) and counts as one unit;
   // with a size limit we add whole units until the limit is reached (may slightly exceed it, never splits a group)
@@ -175,14 +184,13 @@ function showQ(){S.ans={};const[st,n]=S.steps[S.si];S.i=st;const qs=S.list.slice
   <div class="choices${isLongQ(q)?' usage long':''}">${Object.keys(q.choices).map(k=>`<button class="choice" data-k="${esc(k)}" data-j="${j}"><span class="ck">${esc(k)}</span><span class="cv">${choiceHTML(q,k,false)}</span></button>`).join('')}</div><div class="fbw"></div></div>`).join('')}
   <div id="nxw"></div>`;
   app.querySelectorAll('.choice').forEach(b=>b.onclick=()=>answer(b.dataset.k,+b.dataset.j));
-  document.documentElement.classList.toggle('nofuri',!furi);
   const aa=app.querySelector('.aa');if(aa)aa.onclick=()=>{const o=['s','m','l'],t=o[(o.indexOf(store.get('ts','m'))+1)%3];store.set('ts',t);document.documentElement.dataset.ts=t;aa.querySelector('i').textContent=t.toUpperCase()};
 }
 function answer(k,j=0){
   if(S.ans[j]!=null)return;
   const q=S.list[S.i+j],ok=k===String(q.answer);S.ans[j]=k;
   let missed=store.get('missed',[]),st=store.get('stats',{answered:0,correct:0}),cs=store.get('catStats',{});
-  st.answered++;cs[q.category]=cs[q.category]||{a:0,c:0};cs[q.category].a++;
+  st.answered++;{const qa=store.get('qAtt',{});qa[q.id]=(qa[q.id]||0)+1;store.set('qAtt',qa)}cs[q.category]=cs[q.category]||{a:0,c:0};cs[q.category].a++;
   if(ok){S.score++;st.correct++;cs[q.category].c++;if(S.missedMode)missed=missed.filter(x=>x!==q.id)}else{S.wrong.push({q,k});if(!missed.includes(q.id))missed.push(q.id)}
   if(!ok)srsMiss(q);store.set('missed',missed);store.set('stats',st);store.set('catStats',cs);logActivity();
   renderAnswered(j,true);
@@ -458,9 +466,9 @@ const TABS=[['home',ICONS.home,'Home'],['quiz',ICONS.quiz,'Quiz'],['vocab',ICONS
 function header(){const h=$('header'),root=(cur||'home').split('/')[0],showBack=NAV.d>0||root!=='home';
   const dark=document.documentElement.dataset.theme==='dark';
   h.innerHTML=`${showBack?`<button class="hb icon" id="hbk" aria-label="Back">${ICONS.back}</button>`:''}<a href="#home" class="brand"><span class="hanko">N1</span><span class="bt">JLPT N1 Reviewer</span></a>
-   <div class="hbtns"><button class="hb ${furi?'on':''}" id="hf" aria-pressed="${furi}" aria-label="Furigana ${furi?'on':'off'}" title="Furigana"><span class="lg">ふりがな</span><span class="ic">あ</span></button><button class="hb icon" id="hd" aria-label="Toggle dark mode">${dark?ICONS.sun:ICONS.moon}</button></div>`;
+   <div class="hbtns"><button class="hb ${furiOn?'on':''}" id="hf" aria-pressed="${furiOn}" aria-label="Furigana ${furiOn?'on':'off'}" title="Furigana"><span class="lg">ふりがな</span><span class="ic">あ</span></button><button class="hb icon" id="hd" aria-label="Toggle dark mode">${dark?ICONS.sun:ICONS.moon}</button></div>`;
   if($('#hbk'))$('#hbk').onclick=goBack;
-  $('#hf').onclick=()=>{furi=!furi;store.set('furigana',furi);header();rerender()};
+  $('#hf').onclick=()=>{furiOn=!furiOn;store.set('furigana',furiOn);applyFuri();const b=$('#hf');b.classList.toggle('on',furiOn);b.setAttribute('aria-pressed',furiOn);b.setAttribute('aria-label','Furigana '+(furiOn?'on':'off'))};
   $('#hd').onclick=()=>{store.set('theme',document.documentElement.dataset.theme==='dark'?'light':'dark');applyTheme();header()};
   const tabRoot=(root==='kanjicards'||root==='similar')?'kanji':(root==='tips'||root==='study'||root==='studyguide')?'home':root;
   $('#tabs').innerHTML=TABS.map(([k,i,l])=>`<a href="#${k}" data-tab="${k}" class="tab${tabRoot===k?' on':''}" ${tabRoot===k?'aria-current="page"':''}><span class="ti">${i}</span><span>${l}</span></a>`).join('');
@@ -635,6 +643,6 @@ function studyGuide(){app.innerHTML=`<div class="ph"><h1 class="pt">How to study
  <a class="btn primary full" href="#study/mixed">▶ Start today's session</a>`}
 
 window.addEventListener('hashchange',route);
-window.__n1={nav:()=>NAV,ss:()=>SS,state:()=>S,start:(ids)=>start(Q.filter(q=>ids.includes(q.id)),store.get("quizOpts",{}),false)};
+window.__n1q=Q;window.__n1={pick:smartPick,nav:()=>NAV,ss:()=>SS,state:()=>S,start:(ids)=>start(Q.filter(q=>ids.includes(q.id)),store.get("quizOpts",{}),false)};
 loadSess();route();
 })();
