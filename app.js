@@ -1,6 +1,6 @@
 (function(){
 'use strict';
-const APP_VERSION='v35';
+const APP_VERSION='v36';
 const SECTIONS=['文字・語彙','文法','読解'];
 const SEC_INFO={'文字・語彙':{en:'Kanji & Vocabulary',glyph:'字'},'文法':{en:'Grammar',glyph:'文'},'読解':{en:'Reading',glyph:'読'}};
 const IC=(d,extra='')=>`<svg class="ico" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"${extra}>${d}</svg>`;
@@ -483,7 +483,7 @@ const KSET=new Set(K.map(x=>x.kanji)),KBY=Object.fromEntries(K.map(x=>[x.kanji,x
 const kOfW=v=>(v.kanji||[]).filter(c=>KSET.has(c));
 const hira=s=>String(s||'').replace(/[\u30a1-\u30f6]/g,c=>String.fromCharCode(c.charCodeAt(0)-96)).replace(/[\s　・.]/g,'');
 const say=t=>{try{if(!window.speechSynthesis||!t)return;speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(t);u.lang='ja-JP';u.rate=.9;speechSynthesis.speak(u)}catch(e){}};
-const srsDB=()=>store.get('srs',{}),srsCfg=()=>Object.assign({nw:10,nk:5},store.get('srsCfg',{}));
+const srsDB=()=>store.get('srs',{}),srsCfg=()=>{const c=store.get('srsCfg',{});return {ss:[10,20,30,50].includes(c.ss)?c.ss:20}};
 const simGroup=c=>SIM.find(g=>g.kanji.includes(c)&&g.kanji.length>=2);
 const sampleV=c=>V.find(v=>(v.kanji||[]).includes(c)&&v.word.length>1)||V.find(v=>(v.kanji||[]).includes(c));
 function sched(st,g){st=Object.assign({ef:2.5,iv:0,reps:0,lap:0,seen:0},st||{});const t=dn();let iv;
@@ -497,15 +497,16 @@ function newToday(){const n=store.get('srsNew',{})[dn()]||{w:0,k:0};return n}
 function buildQueue(mode){const db=srsDB(),t=dn(),cfg=srsCfg(),nt=newToday(),wantW=mode!=='kanji',wantK=mode!=='words';
   const due=Object.keys(db).filter(k=>db[k].d<=t&&(k[0]==='w'?wantW:wantK)&&(k[0]==='w'?VBY[+k.slice(1)]:KBY[k.slice(1)])).sort((a,b)=>db[a].d-db[b].d);
   const pri=store.get('srsPri',[]).filter(k=>!db[k]&&VBY[+k.slice(1)]),priSet=new Set(pri);
-  const nw=wantW?[...pri.slice(0,15),...V.map(v=>'w'+v.id).filter(k=>!db[k]&&!priSet.has(k)).slice(0,Math.max(0,cfg.nw-nt.w))]:[];
+  const nw=wantW?[...pri.slice(0,15),...V.map(v=>'w'+v.id).filter(k=>!db[k]&&!priSet.has(k))]:[];
   const kWanted=[];if(wantK){const seen=new Set();for(const k of [...due,...nw])if(k[0]==='w')for(const c of kOfW(VBY[+k.slice(1)]))if(!db['k'+c]&&!seen.has(c)){seen.add(c);kWanted.push('k'+c)}
     for(const v of V)for(const c of kOfW(v))if(!db['k'+c]&&!seen.has(c)){seen.add(c);kWanted.push('k'+c)}}
-  const nk=kWanted.slice(0,Math.max(0,cfg.nk-nt.k));
+  const nk=kWanted;
   // interleave: each word followed by its (queued) kanji
   const weave=(words,kan)=>{const pool=new Set(kan),out=[];let n=0;for(const w of words){out.push(w);for(const c of kOfW(VBY[+w.slice(1)]))if(pool.has('k'+c)){pool.delete('k'+c);out.push('k'+c)}
      if(++n%3===0&&pool.size&&mode==='mixed'){const f=[...pool][0];pool.delete(f);out.push(f)}}return out.concat([...pool])};
   const dueW=due.filter(k=>k[0]==='w'),dueK=due.filter(k=>k[0]==='k');
-  return {items:[...weave(dueW,dueK),...weave(nw,nk)],due:due.length,nw:nw.length,nk:nk.length,pri:Math.min(15,pri.length)}}
+  const batch=weave(nw,nk).slice(0,cfg.ss),bw=batch.filter(k=>k[0]==='w').length;
+  return {items:[...weave(dueW,dueK),...batch],due:due.length,nw:bw,nk:batch.length-bw,avail:nw.length+nk.length,pri:Math.min(15,pri.length)}}
 function wordTypes(v){const t=['wr','mw','ty'];if(v.example_ja&&v.example_ja.includes(v.word))t.splice(2,0,'cz');return t}
 function kanjiTypes(c){const t=['km'];if(sampleV(c))t.push('kw');if(simGroup(c)&&sampleV(c))t.push('ks');return t}
 function pickType(key,st){const ts=key[0]==='w'?wordTypes(VBY[+key.slice(1)]):kanjiTypes(key.slice(1));if(!st||!st.seen)return ts[0];return ts[(st.seen+key.length)%ts.length]}
@@ -515,20 +516,22 @@ function studyHome(){const q=buildQueue('mixed'),qw=buildQueue('words'),qk=build
   ${todayCard(q,false)}
   <div class="card stmodes"><button class="btn primary full" id="sm">▶ Mixed session <small>${q.items.length} cards</small></button>
    <div class="two"><button class="btn" id="sw">語 Words only <small>${qw.items.length}</small></button><button class="btn" id="sk">漢 Kanji only <small>${qk.items.length}</small></button></div></div>
-  <div class="card"><h3>Daily new cards</h3>${[['nw','New words'],['nk','New kanji']].map(([k,l])=>`<div class="lim"><span>${l}</span><button class="btn sm ghost" data-k="${k}" data-d="-1">−</button><b>${cfg[k]}</b><button class="btn sm ghost" data-k="${k}" data-d="1">＋</button></div>`).join('')}
+  <div class="card"><h3>Session size</h3><p class="mut sm">New cards per session — no daily limit. When a session ends, tap “Keep going” for the next batch.</p><div class="lim ssz">${[10,20,30,50].map(n=>`<button class="btn sm${cfg.ss===n?' primary':' ghost'}" data-n="${n}">${n}</button>`).join('')}</div>
    <p class="mut sm">Reviews always come first and are never capped. Words you miss in the quiz are added as priority cards.</p></div>`;
   $('#sm').onclick=()=>location.hash='study/mixed';$('#sw').onclick=()=>location.hash='study/words';$('#sk').onclick=()=>location.hash='study/kanji';
-  app.querySelectorAll('.lim button').forEach(b=>b.onclick=()=>{const c=srsCfg();c[b.dataset.k]=Math.max(0,Math.min(50,c[b.dataset.k]+(+b.dataset.d)*(b.dataset.k==='nw'?5:1)));store.set('srsCfg',c);studyHome()})}
+  app.querySelectorAll('.ssz button').forEach(b=>b.onclick=()=>{store.set('srsCfg',{ss:+b.dataset.n});studyHome()})}
 function todayCard(q,cta=true){const mins=Math.max(1,Math.ceil((q.due*10+(q.nw+q.nk)*25)/60)),sk=streak();
   return `<div class="card today"><div class="td-h"><span class="td-k">今日</span><div><b>Today's study</b><small class="mut">spaced repetition · active recall</small></div></div>
-   <div class="td-n"><div><b>${q.due}</b><small>due</small></div><div><b>${q.nw+q.nk}</b><small>new</small></div><div><b>${sk}🔥</b><small>streak</small></div><div><b>~${q.items.length?mins:0}</b><small>min</small></div></div>
+   <div class="td-n"><div><b>${q.due}</b><small>due</small></div><div><b>${q.avail}</b><small>new avail.</small></div><div><b>${sk}🔥</b><small>streak</small></div><div><b>~${q.items.length?mins:0}</b><small>min</small></div></div>
    ${q.pri?`<p class="sm td-p">🎯 ${q.pri} word${q.pri>1?'s':''} from quiz mistakes queued</p>`:''}
    ${cta?`<div class="td-a"><a class="btn primary" id="tdgo" href="#study/mixed">${q.items.length?'▶ Start':'✓ All done — study more'}</a><a class="btn ghost" href="#study">Options</a></div>`:''}</div>`}
 function studyStart(mode){const q=buildQueue(mode);SS={mode,items:q.items.slice(),i:0,done:0,again:{},res:{1:0,2:0,3:0,4:0}};if(!SS.items.length)return studyDone();studyCard()}
 function studyDone(){const r=SS?SS.res:{1:0,2:0,3:0,4:0},n=r[1]+r[2]+r[3]+r[4];
   app.innerHTML=`<div class="card sdone"><div class="dseal" aria-hidden="true">${n?'済':'<span class="dck">✓</span>'}</div><div class="dpill">${n?'お疲れさま':'今日は完了'}</div><h2>${n?`Session complete · ${n} cards`:'Nothing due right now'}</h2>
-   ${n?`<p class="mut">Again ${r[1]} · Hard ${r[2]} · Good ${r[3]} · Easy ${r[4]}</p>`:'<p class="mut">All reviews are done and today\'s new-card limit is used. Come back tomorrow, or raise the daily limit.</p>'}
-   <div class="td-a"><a class="btn primary" href="#home">Home</a><a class="btn" href="#study">Study options</a></div></div>`}
+   ${n?`<p class="mut">Again ${r[1]} · Hard ${r[2]} · Good ${r[3]} · Easy ${r[4]}</p>`:'<p class="mut">Every card has been seen and no reviews are due. Come back later for reviews.</p>'}
+   ${(()=>{const nq=buildQueue(SS?SS.mode:'mixed');return nq.items.length?`<p class="sm">${nq.due?nq.due+' due · ':''}${nq.avail} new cards still available</p><div class="td-a"><button class="btn primary" id="kgo">Keep going → next ${Math.min(nq.items.length,nq.due+srsCfg().ss)}</button></div>`:''})()}
+   <div class="td-a"><a class="btn${n?'':' primary'}" href="#home">Home</a><a class="btn" href="#study">Study options</a></div></div>`;
+  const kg=$('#kgo');if(kg)kg.onclick=()=>studyStart(SS?SS.mode:'mixed')}
 function frontHTML(it){const k=it.key,isW=k[0]==='w',t=it.type;
   if(isW){const v=VBY[+k.slice(1)];
     if(t==='wr')return `<p class="sp">Read it — recall the <b>reading</b> and <b>meaning</b></p><div class="sbig ja">${esc(v.word)}</div>`;
@@ -616,7 +619,7 @@ function studyGuide(){app.innerHTML=`<div class="ph"><h1 class="pt">How to study
  <div class="card guidec"><h3>Why this works</h3><p><b>Active recall</b> — trying to pull the answer out of memory <i>before</i> you see it strengthens memory far more than re-reading. Every card asks you to produce something: a reading, a meaning, a word, the right kanji.</p>
  <p><b>Spaced repetition</b> — each card comes back just as you're about to forget it. Good answers push it further out (1d → 3d → 8d → 3 weeks…); Again brings it back today. A few minutes a day beats hours of cramming.</p>
  <p><b>Variety</b> — the same word is tested in different ways (read it, write it from English, fill a blank, type the kana), and kanji are shown right after the words that use them, so knowledge connects instead of staying isolated.</p></div>
- <div class="card guidec"><h3>Daily routine · ~15 min</h3><ol><li><b>Reviews first</b> — clear everything due. Don't skip days; reviews pile up.</li><li><b>New cards</b> — default 10 words + 5 kanji. Lower it if reviews take more than 15 min.</li><li><b>Quiz mistakes</b> — words from questions you miss are queued automatically as priority cards.</li><li>Finish with a short quiz or one 読解 passage to see words in context.</li></ol></div>
+ <div class="card guidec"><h3>Daily routine · ~15 min</h3><ol><li><b>Reviews first</b> — clear everything due. Don't skip days; reviews pile up.</li><li><b>New cards</b> — no daily limit. They come in batches (session size, default 20); tap “Keep going” for more. Remember: every new card means reviews in the coming days, so add more only if your reviews stay under ~15 min.</li><li><b>Quiz mistakes</b> — words from questions you miss are queued automatically as priority cards.</li><li>Finish with a short quiz or one 読解 passage to see words in context.</li></ol></div>
  <div class="card guidec"><h3>Grading honestly</h3><ul><li><b>Again</b> — you didn't recall it (or only after seeing it).</li><li><b>Hard</b> — recalled with real effort or partly wrong.</li><li><b>Good</b> — recalled after a moment's thought. Most answers.</li><li><b>Easy</b> — instant, effortless.</li></ul><p class="mut sm">Swipe right = Good, left = Again. Say the word out loud — 🔊 plays it.</p></div>
  <div class="card guidec"><h3>Tips</h3><ul><li>Say readings aloud and picture the kanji before revealing.</li><li>Cards missed 4+ times become <b>leeches</b>: read the kanji breakdown and write your own mnemonic in the box.</li><li>Look-alike kanji cards train you to spot the difference — study the 👀 note.</li><li>Back up your progress from Progress → Export backup now and then.</li></ul></div>
  <a class="btn primary full" href="#study/mixed">▶ Start today's session</a>`}
