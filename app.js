@@ -1,6 +1,6 @@
 (function(){
 'use strict';
-const APP_VERSION='v29';
+const APP_VERSION='v30';
 const SECTIONS=['文字・語彙','文法','読解'];
 const SEC_INFO={'文字・語彙':{en:'Kanji & Vocabulary',glyph:'字'},'文法':{en:'Grammar',glyph:'文'},'読解':{en:'Reading',glyph:'読'}};
 const IC=(d,extra='')=>`<svg class="ico" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"${extra}>${d}</svg>`;
@@ -146,7 +146,8 @@ const BLANK=/_{2,}|（[\s　]*）/g;
 const isOrderQ=q=>/並べ替え/.test(q.category)&&Array.isArray(q.correct_order),isLongQ=q=>isUsageQ(q)||/内容理解|統合理解|情報検索/.test(q.category)||Object.values(q.choices).some(c=>c.length>14);
 function passageHTML(q,open){if(!q.passage&&!q.passage_title)return'';const t=q.passage_title?(furi&&q.passage_title_ruby?q.passage_title_ruby:esc(q.passage_title)):'';
   if(!q.passage)return `<p class="ptitle">📄 ${t}</p>`;
-  return `<details class="passage"${open||(S&&S.passOpen)?' open':''}><summary>📄 ${t||'Passage 本文'}</summary><div class="ptext ja">${(q.passage_ks?(furi?q.passage_ks_ruby:q.passage_ks):furi&&q.passage_ruby?q.passage_ruby:esc(q.passage)).replace(/\[(\d+)\]/g,'<b class="blank num">［$1］</b>')}</div></details>`}
+  const P=q.passage_w?q:q.pref?Q.find(x=>x.id===q.pref):null;
+  return `<details class="passage"${open||(S&&S.passOpen)?' open':''}><summary>📄 ${t||'Passage 本文'}</summary>${P&&P.wl?`<details class="wlist" data-p="${P.id}"><summary>📖 Word list <span class="mut">· ${P.wl.length} words</span></summary><div class="wlb"></div></details>`:''}<div class="ptext ja">${(P?(furi?P.passage_w_ruby:P.passage_w):furi&&q.passage_ruby?q.passage_ruby:esc(q.passage)).replace(/\[(\d+)\]/g,'<b class="blank num">［$1］</b>')}</div></details>`}
 function orderQHTML(q){let i=0;const body=F(q,'question').replace(/_{3,}|★/g,m=>m==='★'?'<b class="slot star">★</b>':'<b class="slot"></b>'.repeat(Math.max(1,Math.round(m.length/5))));
   return `<p class="q">${body}</p><p class="qhint">Arrange the four parts in order — choose the one that goes in ★</p>`}
 function orderAnsHTML(q){let si;const sl=q.question.match(/_{3,}|★/g)||[];si=sl.indexOf('★');if(si<0||String(q.correct_order[si])!==String(q.answer))si=q.correct_order.map(String).indexOf(String(q.answer));
@@ -159,7 +160,7 @@ function questionHTML(q){
     return `<p class="q">${(t[0]+'<span class="tested">'+t[1]+'</span>'+t[2]).replace(BLANK,'<b class="blank">（＿＿）</b>')}</p><p class="qhint">Choose the correct kanji for the underlined word</p>`}
   if(isReadingQ(q)&&!furi&&q.complete_sentence_hl&&q.question.includes(q.answer_word)){const i=q.question.indexOf(q.answer_word);
     return `<p class="q">${esc(q.question.slice(0,i))}<span class="tested">${esc(q.answer_word)}</span>${esc(q.question.slice(i+q.answer_word.length))}</p><p class="qhint">Choose the correct reading of the underlined word</p>`}
-  const body=(furi&&isReadingQ(q)&&q.question_ruby_hide?q.question_ruby_hide:F(q,'question')).replace(BLANK,'<b class="blank">（＿＿）</b>').replace(/\[(\d+)\]/g,'<b class="blank num">［$1］</b>');
+  const body=(q.question_w?(furi?q.question_w_ruby:q.question_w):furi&&isReadingQ(q)&&q.question_ruby_hide?q.question_ruby_hide:F(q,'question')).replace(BLANK,'<b class="blank">（＿＿）</b>').replace(/\[(\d+)\]/g,'<b class="blank num">［$1］</b>');
   return `<p class="q">${body}</p>${isReadingQ(q)?'<p class="qhint">Choose the correct reading of the underlined word</p>':''}`}
 function choiceHTML(q,k,answered){if(isUsageQ(q)&&q.choices_hl&&q.choices_hl[k])return hlHTML(q.choices_hl[k],q.choices_hl_ruby&&q.choices_hl_ruby[k]);const r=q.choices_ruby&&q.choices_ruby[k];return furi&&r&&(answered||!isKanjiQ(q))?r:esc(q.choices[k])}
 function stepLabel(){const[st,n]=S.steps[S.si];return n>1?`Q${st+1}–${st+n}`:`Q${st+1}`}
@@ -264,6 +265,35 @@ function wireSim(root,single){root.querySelectorAll('.simrow').forEach(b=>b.oncl
   if(single&&o)root.querySelectorAll('.simg.open').forEach(x=>{if(x!==c)setSimOpen(x,false)});setSimOpen(c,o)})}
 const TIPS=window.TIPS||{sections:[],hints:{}};
 function tipKey(q){return Object.keys(TIPS.hints).find(k=>q.category.includes(k))}
+// ---- tap-a-word (v30): glossary is lazy-loaded on first use
+let glossP=null;function loadGloss(){return glossP||(glossP=new Promise((ok,no)=>{if(window.GLOSS)return ok(window.GLOSS);const sc=document.createElement('script');sc.src='glossary.js?v=30';sc.onload=()=>ok(window.GLOSS);sc.onerror=()=>{glossP=null;no()};document.head.appendChild(sc)}))}
+const surfOf=el=>{const c=el.cloneNode(true);c.querySelectorAll('rt,rp').forEach(r=>r.remove());return c.textContent.trim()};
+let wsheet=null,wcur=null;
+function closeWord(){if(wsheet)wsheet.classList.remove('show');if(wcur)wcur.classList.remove('on');wcur=null}
+function showWord(el){loadGloss().then(G=>{const g=G[+el.dataset.g];if(!g)return;
+  if(wcur)wcur.classList.remove('on');wcur=el;el.classList.add('on');
+  if(!wsheet){wsheet=document.createElement('div');wsheet.className='wsheet';wsheet.setAttribute('role','dialog');document.body.appendChild(wsheet)}
+  const [lem,lr,pos,gl,vw,rare]=g,surf=el.dataset.s||surfOf(el),sr=el.dataset.r||lr,isG=pos==='grammar';
+  wsheet.innerHTML=`<button class="wx" aria-label="Close">×</button>
+   <div class="wh"><span class="ws ja">${esc(surf)}</span>${sr&&sr!==surf?`<span class="wr">${esc(sr)}</span>`:''}</div>
+   ${lem!==surf||lr!==sr?`<div class="wl ja"><span class="mut">${isG?'pattern':'dictionary form'}</span> <b>${esc(lem)}</b>${lr&&lr!==lem?` 【${esc(lr)}】`:''}</div>`:''}
+   <div class="wp"><span class="pill sub">${esc(pos)}</span>${vw?'<span class="pill n1">★ N1 bank</span>':''}${rare?'<span class="pill rare">less common</span>':''}</div>
+   <p class="wg">${esc(gl)}</p>${vw?`<a class="btn sm wcard" href="#vocab/${encodeURIComponent(vw)}">Open card →</a>`:''}`;
+  wsheet.querySelector('.wx').onclick=closeWord;const a=wsheet.querySelector('.wcard');if(a)a.onclick=()=>closeWord();
+  requestAnimationFrame(()=>wsheet.classList.add('show'))}).catch(()=>{})}
+function renderWL(box){const pid=+box.dataset.p,P=Q.find(x=>x.id===pid);if(!P)return;
+  loadGloss().then(G=>{const ko=store.get('wlKanji',false),hf=store.get('wlHard',true);
+   let ids=P.wl.slice();if(ko)ids=ids.filter(i=>/[\u3400-\u9fff々]/.test(G[i][0]));
+   if(hf){const rk=i=>G[i][5]?0:G[i][4]?1:2;ids=ids.map((i,n)=>[i,n]).sort((a,b)=>rk(a[0])-rk(b[0])||a[1]-b[1]).map(a=>a[0])}
+   box.querySelector('.wlb').innerHTML=`<div class="wlc"><label><input type="checkbox" class="wk"${ko?' checked':''}> Kanji words only</label><label><input type="checkbox" class="wh2"${hf?' checked':''}> Hard words first</label></div>
+   <ul class="wll">${ids.map(i=>{const [w,r,p,g,vw,rare]=G[i];return `<li class="wli${vw?' n1':rare?' rare':''}" data-g="${i}" data-s="${esc(w)}" data-r="${esc(r)}"><span class="wlw ja">${esc(w)}</span><span class="wlr">${r&&r!==w?esc(r):''}</span><span class="wlg">${esc(g)}</span>${vw?'<i class="mk">★</i>':rare?'<i class="mk">◆</i>':''}</li>`}).join('')}</ul>
+   <p class="mut sm wlk">★ in your N1 word bank · ◆ less common word · tap a row for details</p>`;
+   box.querySelector('.wk').onchange=e=>{store.set('wlKanji',e.target.checked);renderWL(box)};box.querySelector('.wh2').onchange=e=>{store.set('wlHard',e.target.checked);renderWL(box)}})}
+document.addEventListener('click',e=>{const w=e.target.closest&&e.target.closest('.ptext .w,.q .w,.wli');
+  if(w){e.preventDefault();showWord(w);return}
+  if(wsheet&&wsheet.classList.contains('show')&&!e.target.closest('.wsheet'))closeWord()},true);
+document.addEventListener('toggle',e=>{const d=e.target;if(d.classList&&d.classList.contains('wlist')&&d.open)renderWL(d)},true);
+window.addEventListener('hashchange',closeWord);
 function guideHTML(q,answered,open){const g=q.reading_guide;if(!g)return'';
   const ks=g.key_sentences.map(k=>`<li><p class="ja">${furi&&k.ja_ruby?k.ja_ruby:esc(k.ja)}</p><p class="en">${esc(k.en)}</p><p class="why">→ ${esc(k.why)}</p></li>`).join('');
   const tr=Object.entries(g.choice_traps).map(([c,t])=>`<li><span class="ck">${esc(c)}</span><div><b class="trap">${esc(t.trap)}</b> <span class="cj">${esc(q.choices[c]||'')}</span><p>${esc(t.evidence)}</p></div></li>`).join('');
