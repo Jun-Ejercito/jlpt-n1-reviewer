@@ -1,6 +1,6 @@
 (function(){
 'use strict';
-const APP_VERSION='v42';
+const APP_VERSION='v43';
 const SECTIONS=['文字・語彙','文法','読解'];
 const SEC_INFO={'文字・語彙':{en:'Kanji & Vocabulary',glyph:'字'},'文法':{en:'Grammar',glyph:'文'},'読解':{en:'Reading',glyph:'読'}};
 const IC=(d,extra='')=>`<svg class="ico" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"${extra}>${d}</svg>`;
@@ -184,14 +184,13 @@ function questionHTML(q){
 function choiceHTML(q,k,answered){if(isUsageQ(q)&&q.choices_hl&&q.choices_hl[k])return hlHTML(q.choices_hl[k],q.choices_hl_ruby&&q.choices_hl_ruby[k]);const r=q.choices_ruby&&q.choices_ruby[k];return furi&&r&&(answered||!isKanjiQ(q))?r:esc(q.choices[k])}
 function stepLabel(){const[st,n]=S.steps[S.si];return n>1?`Q${st+1}–${st+n}`:`Q${st+1}`}
 function showQ(){S.ans={};const[st,n]=S.steps[S.si];S.i=st;const qs=S.list.slice(st,st+n),q0=qs[0];
-  app.innerHTML=`<div class="qtop"><div class="qprog"><div style="width:${S.si*100/S.steps.length}%"></div></div><span class="mut sm">${S.si+1}/${S.steps.length}${n>1?` · ${stepLabel()}`:''}</span><button class="aa qend" id="qend" aria-label="End quiz" title="End quiz">✕</button><button class="aa" aria-label="Text size" title="Text size">A<small>a</small><i>${({s:'S',m:'M',l:'L'})[store.get('ts','m')]||'M'}</i></button></div>
+  app.innerHTML=`<div class="qtop"><div class="qprog"><div style="width:${S.si*100/S.steps.length}%"></div></div><span class="mut sm">${S.si+1}/${S.steps.length}${n>1?` · ${stepLabel()}`:''}</span><button class="aa qend" id="qend" aria-label="End quiz" title="End quiz">✕</button>${aaBtn()}</div>
   ${n>1?`<div class="card qcardq gpass"><div class="chips"><span class="pill">${esc(secOf(q0))}</span><span class="pill sub">${esc(q0.category)}</span><span class="pill">${n} questions</span>${S.missedMode?'<span class="pill red">review</span>':''}</div>${passageHTML(q0,true)}${q0.reading_guide?'':techHTML(q0)}</div>`:''}
   ${qs.map((q,j)=>`<div class="gq" id="gq${j}"><div class="card qcardq">${n>1?`<div class="chips"><span class="pill gnum">${j+1}/${n}</span></div>`:`<div class="chips"><span class="pill">${esc(secOf(q))}</span><span class="pill sub">${esc(q.category)}</span>${S.missedMode?'<span class="pill red">review</span>':''}</div>${passageHTML(q)}${q.reading_guide?'':techHTML(q)}`}
   ${questionHTML(q)}${q.reading_guide?`<div class="gw">${guideHTML(q,false)}</div>`:''}</div>
   <div class="choices${isLongQ(q)?' usage long':''}">${corder(q).map(k=>`<button class="choice" data-k="${esc(k)}" data-j="${j}"><span class="ck">${esc(dk(q,k))}</span><span class="cv">${choiceHTML(q,k,false)}</span></button>`).join('')}</div><div class="fbw"></div></div>`).join('')}
   <div id="nxw"></div>`;
   app.querySelectorAll('.choice').forEach(b=>b.onclick=()=>answer(b.dataset.k,+b.dataset.j));
-  const aa=app.querySelector('.aa');if(aa)aa.onclick=()=>{const o=['s','m','l'],t=o[(o.indexOf(store.get('ts','m'))+1)%3];store.set('ts',t);document.documentElement.dataset.ts=t;aa.querySelector('i').textContent=t.toUpperCase()};
 }
 function answer(k,j=0){
   if(S.ans[j]!=null)return;
@@ -286,6 +285,11 @@ function wireSim(root,single){root.querySelectorAll('.simrow').forEach(b=>b.oncl
 const TIPS=window.TIPS||{sections:[],hints:{}};
 function tipKey(q){return Object.keys(TIPS.hints).find(k=>q.category.includes(k))}
 document.documentElement.dataset.ts=store.get('ts','m');
+// v43 text size: one delegated handler (v41's ✕ End button also has class .aa and was stealing the old querySelector('.aa') hookup)
+const TS=['s','m','l','xl'],aaBtn=()=>{const t=store.get('ts','m');return `<button class="aa aats" type="button" aria-label="Text size: ${t.toUpperCase()} (tap to change)" title="Text size">A<small>a</small><i>${t.toUpperCase()}</i></button>`};
+document.addEventListener('click',e=>{const b=e.target.closest&&e.target.closest('.aats');if(!b)return;e.preventDefault();
+  const t=TS[(TS.indexOf(store.get('ts','m'))+1)%TS.length];store.set('ts',t);document.documentElement.dataset.ts=t;
+  document.querySelectorAll('.aats').forEach(x=>{x.querySelector('i').textContent=t.toUpperCase();x.setAttribute('aria-label','Text size: '+t.toUpperCase()+' (tap to change)')})});
 // ---- tap-a-word (v30): glossary is lazy-loaded on first use
 let glossP=null;function loadGloss(){return glossP||(glossP=new Promise((ok,no)=>{if(window.GLOSS)return ok(window.GLOSS);const sc=document.createElement('script');sc.src='glossary.js?v=30';sc.onload=()=>ok(window.GLOSS);sc.onerror=()=>{glossP=null;no()};document.head.appendChild(sc)}))}
 const surfOf=el=>{const c=el.cloneNode(true);c.querySelectorAll('rt,rp').forEach(r=>r.remove());return c.textContent.trim()};
@@ -596,7 +600,7 @@ function backHTML(it){const k=it.key,isW=k[0]==='w',st=srsDB()[k]||{},leech=(st.
 function studyCard(){const it0=SS.items[SS.i];if(!it0)return studyDone();
   const it=typeof it0==='string'?{key:it0}:it0;SS.items[SS.i]=it;const db=srsDB();if(!it.type)it.type=pickType(it.key,db[it.key]);
   const st=db[it.key],isNew=!st,tot=SS.items.length;
-  app.innerHTML=`<div class="qtop"><div class="qprog"><div style="width:${SS.i*100/tot}%"></div></div><span class="mut sm">${SS.i+1}/${tot}</span></div>
+  app.innerHTML=`<div class="qtop"><div class="qprog"><div style="width:${SS.i*100/tot}%"></div></div><span class="mut sm">${SS.i+1}/${tot}</span>${aaBtn()}</div>
   <div class="scard" id="sc"><div class="stag"><span class="pill${it.key[0]==='w'?'':' sub'}">${it.key[0]==='w'?'語 word':'漢 kanji'}</span>${isNew?'<span class="pill n">new</span>':''}${st&&st.lap>=4?'<span class="pill red">leech</span>':''}${it.re?'<span class="pill sub">again</span>':''}</div>
    <div class="sfront">${frontHTML(it)}</div><div class="sback"></div></div>
   <div class="stbar" id="sbar"><button class="btn primary full" id="rv">Show answer <small class="mut">space</small></button></div>`;

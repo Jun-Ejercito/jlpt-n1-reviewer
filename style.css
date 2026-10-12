@@ -558,7 +558,7 @@ mark.ks.on{background:color-mix(in srgb,#f5d76e 38%,transparent);border-radius:3
 .wlk{margin:6px 0 10px}
 
 /* v31 reading width + text size */
-html{--pfs:17px}html[data-ts=s]{--pfs:15px}html[data-ts=l]{--pfs:19px}
+html{--pfs:17px}html[data-ts=s]{--pfs:15px}html[data-ts=l]{--pfs:19px}html[data-ts=xl]{--pfs:22px}
 .passage .ptext{font-size:var(--pfs);line-height:2.05}
 .qcardq .q{font-size:calc(var(--pfs) * 1.02)}.choice .cv{font-size:calc(var(--pfs) * .95)}
 .qtop{display:flex;align-items:center;gap:10px}
@@ -641,3 +641,9 @@ html{--pfs:17px}html[data-ts=s]{--pfs:15px}html[data-ts=l]{--pfs:19px}
 /* v39 furigana toggle: CSS only, space kept so nothing jumps */
 html.nofuri rt{visibility:hidden}html:not(.nofuri) .offuri{display:none}
 .mnc{padding:4px 14px}.mnc .mnemo{border:0;background:none;padding:6px 0;margin:0}
+
+/* v43 text size applies to every quiz/study/card surface (children are em-based) */
+.gq,.gpass,.scard,.sans,.sback,#fc,.kb,.mnc{font-size:var(--pfs)}
+.qcardq .q{font-size:calc(var(--pfs) * 1.02)}.choice .cv{font-size:calc(var(--pfs) * .95)}
+.aats{min-width:44px;min-height:44px;justify-content:center;align-items:center;touch-action:manipulation;-webkit-tap-highlight-color:transparent}
+.qend{min-width:44px;min-height:44px;justify-content:center;align-items:center;touch-action:manipulation}
