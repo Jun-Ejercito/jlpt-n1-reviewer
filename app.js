@@ -1,6 +1,6 @@
 (function(){
 'use strict';
-const APP_VERSION='v48';
+const APP_VERSION='v49';
 const SECTIONS=['文字・語彙','文法','読解'];
 const SEC_INFO={'文字・語彙':{en:'Kanji & Vocabulary',glyph:'字'},'文法':{en:'Grammar',glyph:'文'},'読解':{en:'Reading',glyph:'読'}};
 const IC=(d,extra='')=>`<svg class="ico" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"${extra}>${d}</svg>`;
@@ -184,7 +184,7 @@ function questionHTML(q){
     return `<p class="q">${esc(q.question.slice(0,i))}<span class="tested">${esc(q.answer_word)}</span>${esc(q.question.slice(i+q.answer_word.length))}</p><p class="qhint">Choose the correct reading of the underlined word</p>`}
   const body=(q.question_w?(furi?q.question_w_ruby:q.question_w):furi&&isReadingQ(q)&&q.question_ruby_hide?q.question_ruby_hide:F(q,'question')).replace(BLANK,'<b class="blank">（＿＿）</b>').replace(/\[(\d+)\]/g,'<b class="blank num">［$1］</b>');
   return `<p class="q">${body}</p>${isReadingQ(q)?'<p class="qhint">Choose the correct reading of the underlined word</p>':''}`}
-function choiceHTML(q,k,answered){if(isUsageQ(q)&&q.choices_hl&&q.choices_hl[k])return hlHTML(q.choices_hl[k],q.choices_hl_ruby&&q.choices_hl_ruby[k]);const r=q.choices_ruby&&q.choices_ruby[k];return furi&&r&&(answered||!isKanjiQ(q))?r:esc(q.choices[k])}
+function choiceHTML(q,k,answered){if(answered&&isUsageQ(q)&&q.choices_hl_w&&q.choices_hl_w[k])return hlHTML(q.choices_hl[k],q.choices_hl_w[k]);if(answered&&q.choices_w&&q.choices_w[k])return q.choices_w[k];if(isUsageQ(q)&&q.choices_hl&&q.choices_hl[k])return hlHTML(q.choices_hl[k],q.choices_hl_ruby&&q.choices_hl_ruby[k]);const r=q.choices_ruby&&q.choices_ruby[k];return furi&&r&&(answered||!isKanjiQ(q))?r:esc(q.choices[k])}
 function stepLabel(){const[st,n]=S.steps[S.si];return n>1?`Q${st+1}–${st+n}`:`Q${st+1}`}
 function showQ(){S.ans={};const[st,n]=S.steps[S.si];S.i=st;const qs=S.list.slice(st,st+n),q0=qs[0];
   app.innerHTML=`<div class="qtop">${fmBtns()}<div class="qprog"><div style="width:${S.si*100/S.steps.length}%"></div></div><span class="mut sm">${S.si+1}/${S.steps.length}${n>1?` · ${stepLabel()}`:''}</span><button class="aa qend" id="qend" aria-label="End quiz" title="End quiz">✕</button>${aaBtn()}</div>
@@ -207,7 +207,7 @@ function answer(k,j=0){
 }
 function renderAnswered(j,anim){
   const q=S.list[S.i+j],k=S.ans[j],ok=k===String(q.answer),box=$('#gq'+j),[st,n]=S.steps[S.si];
-  box.querySelectorAll('.choice').forEach(b=>{b.disabled=true;b.querySelector('.cv').innerHTML=choiceHTML(q,b.dataset.k,true);
+  box.querySelectorAll('.choice').forEach(b=>{b.classList.add('dis');b.setAttribute('aria-disabled','true');b.querySelector('.cv').innerHTML=choiceHTML(q,b.dataset.k,true);
     if(b.dataset.k===String(q.answer)){b.classList.add('ok');if(anim&&ok)b.classList.add('pulse')}else if(b.dataset.k===k){b.classList.add('bad');if(anim)b.classList.add('shake')}});
   const hl=q.complete_sentence_hl?(furi&&q.complete_sentence_hl_ruby?q.complete_sentence_hl_ruby:q.complete_sentence_hl.map(esc)):null;
   const sent=hl?`${hl[0]}<mark class="hl">${hl[1]}</mark>${hl[2]}`:F(q,'complete_sentence');
@@ -294,7 +294,7 @@ document.addEventListener('click',e=>{const b=e.target.closest&&e.target.closest
   const t=TS[(TS.indexOf(store.get('ts','m'))+1)%TS.length];store.set('ts',t);document.documentElement.dataset.ts=t;
   document.querySelectorAll('.aats').forEach(x=>{x.querySelector('i').textContent=t.toUpperCase();x.setAttribute('aria-label','Text size: '+t.toUpperCase()+' (tap to change)')})});
 // ---- tap-a-word (v30): glossary is lazy-loaded on first use
-let glossP=null;function loadGloss(){return glossP||(glossP=new Promise((ok,no)=>{if(window.GLOSS)return ok(window.GLOSS);const sc=document.createElement('script');sc.src='glossary.js?v=30';sc.onload=()=>ok(window.GLOSS);sc.onerror=()=>{glossP=null;no()};document.head.appendChild(sc)}))}
+let glossP=null;function loadGloss(){return glossP||(glossP=new Promise((ok,no)=>{if(window.GLOSS)return ok(window.GLOSS);const sc=document.createElement('script');sc.src='glossary.js?v=49';sc.onload=()=>ok(window.GLOSS);sc.onerror=()=>{glossP=null;no()};document.head.appendChild(sc)}))}
 const surfOf=el=>{const c=el.cloneNode(true);c.querySelectorAll('rt,rp').forEach(r=>r.remove());return c.textContent.trim()};
 let wsheet=null,wcur=null;
 function closeWord(){closeWordRaw();ovDrop()}
@@ -318,7 +318,7 @@ function renderWL(box){const pid=+box.dataset.p,P=Q.find(x=>x.id===pid);if(!P)re
    <ul class="wll">${ids.map(i=>{const [w,r,p,g,vw,rare]=G[i];return `<li class="wli${vw?' n1':rare?' rare':''}" data-g="${i}" data-s="${esc(w)}" data-r="${esc(r)}"><span class="wlw ja">${esc(w)}</span><span class="wlr">${r&&r!==w?esc(r):''}</span><span class="wlg">${esc(g)}</span>${vw?'<i class="mk">★</i>':rare?'<i class="mk">◆</i>':''}</li>`}).join('')}</ul>
    <p class="mut sm wlk">★ in your N1 word bank · ◆ less common word · tap a row for details</p>`;
    box.querySelector('.wk').onchange=e=>{store.set('wlKanji',e.target.checked);renderWL(box)};box.querySelector('.wh2').onchange=e=>{store.set('wlHard',e.target.checked);renderWL(box)}})}
-document.addEventListener('click',e=>{const w=e.target.closest&&e.target.closest('.ptext .w,.q .w,.wli');
+document.addEventListener('click',e=>{const w=e.target.closest&&e.target.closest('#app .w[data-g],.wli');
   if(w){e.preventDefault();showWord(w);return}
   if(wsheet&&wsheet.classList.contains('show')&&!e.target.closest('.wsheet,#hbk'))closeWord()},true);
 document.addEventListener('toggle',e=>{const d=e.target;if(d.classList&&d.classList.contains('wlist')&&d.open)renderWL(d)},true);

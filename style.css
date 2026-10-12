@@ -773,3 +773,9 @@ html.focusm .qtop{top:0}
 html.focusm .toast{bottom:calc(80px + env(safe-area-inset-bottom))}
 .hq .btn{white-space:nowrap;gap:6px;font-size:15px;padding:10px 12px}
 .hq #qqs small{display:none}
+/* v49 tap-a-word everywhere */
+#app .w[data-g]{cursor:pointer;border-radius:3px;transition:background .15s;-webkit-tap-highlight-color:transparent}
+@media (hover:hover){#app .w[data-g]:hover{background:color-mix(in srgb,var(--indigo) 10%,transparent)}}
+#app .w[data-g].on{background:color-mix(in srgb,var(--indigo) 20%,transparent);box-shadow:0 0 0 2px color-mix(in srgb,var(--indigo) 20%,transparent)}
+.choice.dis{cursor:default}.choice.dis:hover{border-color:var(--line);box-shadow:none}.choice.dis:active{transform:none}
+.choice.dis:not(.ok):not(.bad){opacity:.6}
