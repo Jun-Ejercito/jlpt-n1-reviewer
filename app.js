@@ -1,6 +1,6 @@
 (function(){
 'use strict';
-const APP_VERSION='v47';
+const APP_VERSION='v48';
 const SECTIONS=['文字・語彙','文法','読解'];
 const SEC_INFO={'文字・語彙':{en:'Kanji & Vocabulary',glyph:'字'},'文法':{en:'Grammar',glyph:'文'},'読解':{en:'Reading',glyph:'読'}};
 const IC=(d,extra='')=>`<svg class="ico" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"${extra}>${d}</svg>`;
@@ -67,34 +67,37 @@ function home(){
   const d=new Date(),dateJa=`${d.getMonth()+1}月${d.getDate()}日（${'日月火水木金土'[d.getDay()]}）`;
   const lastName={quiz:'Quiz',vocab:'Words',kanji:'Kanji',kanjicards:'Kanji cards',similar:'Look-alike kanji',tips:'読解 Tips',progress:'Progress'}[(last||'').split('/')[0]];
   const sk=streak(),acc=pct(st.correct,st.answered);
-  app.innerHTML=`<section class="hero2">
-   <div class="hero-txt"><div class="hdate">${dateJa}</div><div class="greet">${greet}</div><h1 class="htitle">今日も一歩ずつ。</h1><p class="mut sm">One step at a time toward N1 · ${Q.length} questions · ${V.length} words · ${K.length} kanji</p>
-    ${last&&lastName?`<a class="btn primary pill-btn" href="#${esc(last)}">${ICONS.play} Continue · ${lastName}</a>`:`<a class="btn primary pill-btn" href="#quiz">${ICONS.play} Start studying</a>`}</div>
-   <div class="hero-ring">${ring(pct(today,goal),`${today}<span>/${goal}</span>`,'today',128)}
+  app.innerHTML=`<p class="hgreet mut">${dateJa} · ${greet}</p>
+  ${todayCard(buildQueue('mixed'))}
+  <div class="hq"><button class="btn ghost" id="qqs">${ICONS.bolt} Quick quiz <small class="mut">10 questions</small></button>${missed.length?`<button class="btn ghost" id="qms">${ICONS.redo} Review missed <small class="mut">${missed.length}</small></button>`:''}</div>
+  <details class="hsec"><summary>Today's goal & stats</summary><section class="hero2">
+   <div class="hero-txt"><h1 class="htitle">今日も一歩ずつ。</h1><p class="mut sm">One step at a time toward N1 · ${Q.length} questions · ${V.length} words · ${K.length} kanji</p>
+    ${last&&lastName?`<a class="btn ghost pill-btn" href="#${esc(last)}">${ICONS.play} Continue · ${lastName}</a>`:`<a class="btn ghost pill-btn" href="#quiz">${ICONS.play} Start studying</a>`}</div>
+   <div class="hero-ring">${ring(pct(today,goal),`${today}<span>/${goal}</span>`,'today',112)}
     <div class="goalctl"><button class="btn sm ghost" id="gm" aria-label="Lower daily goal">−</button><span class="mut sm">goal</span><button class="btn sm ghost" id="gp" aria-label="Raise daily goal">＋</button></div></div>
   </section>
-  ${todayCard(buildQueue('mixed'))}
   <div class="statrow">
    <div class="mini"><span class="mi">${ICONS.flame}</span><div><b>${sk}</b><small>day${sk===1?'':'s'} streak</small></div></div>
    <div class="mini"><span class="mi ind">${ICONS.progress}</span><div><b>${acc}%</b><small>accuracy · ${st.correct}/${st.answered}</small></div></div>
-  </div>
-  <h2 class="sec-t"><span>Sections</span><small>分野</small></h2>
+  </div></details>
+  <details class="hsec"><summary>Sections 分野</summary>
   <div class="secgrid">${SECTIONS.map((sec,i)=>{const n=Q.filter(q=>secOf(q)===sec).length,x=secStats(sec),p=x.a?pct(x.k,x.a):null;
     return `<button class="seccard s${i}" data-sec="${esc(sec)}"><span class="sg">${SEC_INFO[sec].glyph}</span><span class="stx"><b>${sec}</b><small>${SEC_INFO[sec].en}</small></span>
-     <span class="smeta"><span>${n} questions</span><span>${p===null?'not tried':p+'% · '+x.k+'/'+x.a}</span></span><span class="sbar"><i style="width:${p||0}%"></i></span></button>`}).join('')}</div>
-  <h2 class="sec-t"><span>Quick start</span><small>すぐに始める</small></h2>
+     <span class="smeta"><span>${n} questions</span><span>${p===null?'not tried':p+'% · '+x.k+'/'+x.a}</span></span><span class="sbar"><i style="width:${p||0}%"></i></span></button>`}).join('')}</div></details>
+  <details class="hsec"><summary>Shortcuts</summary>
   <div class="quick">
    <button class="qcard" id="qq"><span class="qi">${ICONS.bolt}</span><b>Quick quiz</b><small>10 random questions</small></button>
    <button class="qcard" id="qm" ${missed.length?'':'disabled'}><span class="qi">${ICONS.redo}</span><b>Review missed</b><small>${missed.length} question${missed.length===1?'':'s'}</small></button>
    <a class="qcard" href="#vocab"><span class="qi">語</span><b>Words</b><small>${unknown} to learn</small></a>
    <a class="qcard" href="#kanji"><span class="qi">漢</span><b>Kanji</b><small>${K.length} kanji · look-alikes</small></a>
-  </div>
-  <a class="card tipscard" href="#tips"><span class="qi">${ICONS.bulb}</span><div><b>読解 Tips</b><small class="mut">Workflow, question types, signal words, traps</small></div><span class="chev">${ICONS.chev}</span></a>
+   <a class="qcard" href="#similar"><span class="qi">似</span><b>Look-alikes</b><small>${SIM.length} groups</small></a>
+  </div></details>
+  <a class="hrow" href="#tips"><span>${ICONS.bulb}</span><b>読解 Tips</b><small class="mut">Workflow, question types, signal words, traps</small><span class="chev">${ICONS.chev}</span></a>
   <p class="ver">JLPT N1 Reviewer · ${APP_VERSION}</p>`;
   $('#gm').onclick=()=>{store.set('goal',Math.max(5,goal-5));home()};$('#gp').onclick=()=>{store.set('goal',Math.min(200,goal+5));home()};
   const o=store.get('quizOpts',{cat:'',shuffle:true,n:10,autoplay:false});
   $('#qq').onclick=()=>{nav('quiz/play',()=>start(smartPick(Q,10),{...o,shuffle:true},false,10))};
-  $('#qm').onclick=()=>{nav('quiz/play',()=>start(shuffle(Q.filter(q=>missed.includes(q.id))),o,true))};
+  $('#qm').onclick=()=>{nav('quiz/play',()=>start(shuffle(Q.filter(q=>missed.includes(q.id))),o,true))};$('#qqs').onclick=()=>$('#qq').click();if($('#qms'))$('#qms').onclick=()=>$('#qm').click();
   app.querySelectorAll('.seccard').forEach(b=>b.onclick=()=>{const sec=b.dataset.sec;store.set('quizOpts',{...o,cat:sec});nav('quiz/play',()=>start(smartPick(Q.filter(q=>secOf(q)===sec),o.n||10),{...o,cat:sec,shuffle:true},false,o.n||10))});
   if(store.get('wordsFilter',null)===null)store.set('wordsFilter',false);
 }
@@ -113,8 +116,8 @@ function progress(){
   <div class="totals">${[['Answered',st.answered],['Correct',st.correct],['Accuracy',pct(st.correct,st.answered)+'%'],['Words known',`${known}/${V.length}`],['Kanji viewed',`${kv.length}/${K.length}`],['Streak',streak()+'🔥']].map(([l,v])=>`<div class="card tot"><b>${v}</b><span>${l}</span></div>`).join('')}</div>
   ${weak&&weak.k/weak.a<1?`<div class="card callout">🎯 Weakest section: <b>${esc(weak.c)}</b> — ${pct(weak.k,weak.a)}% (${weak.k}/${weak.a}). <button class="btn sm primary" id="pw">Practice it</button></div>`:''}
   <div class="card"><h3>Last 7 days</h3><div class="chart">${days.map(x=>`<div class="bar-c"><span class="bv">${x.n||''}</span><div class="bar" style="height:${x.n?Math.max(6,x.n*100/mx):2}%"></div><span class="bl">${x.l}</span></div>`).join('')}</div></div>
-  <div class="card"><h3>Accuracy by section</h3>${rows.map(r=>`<div class="cat"><div class="cat-h"><span>${esc(r.c)}</span><span class="mut">${r.a?`${pct(r.k,r.a)}% · ${r.k}/${r.a}`:'not tried'}</span></div><div class="hbar"><div style="width:${r.a?pct(r.k,r.a):0}%;background:${r.a&&r.k/r.a<.6?'var(--accent)':'var(--indigo)'}"></div></div></div>`).join('')}
-   <p class="mut sm">Section stats are counted from this version onward; overall totals include earlier answers.</p></div>
+  <details class="card dsc"><summary><h3>Accuracy by section</h3></summary>${rows.map(r=>`<div class="cat"><div class="cat-h"><span>${esc(r.c)}</span><span class="mut">${r.a?`${pct(r.k,r.a)}% · ${r.k}/${r.a}`:'not tried'}</span></div><div class="hbar"><div style="width:${r.a?pct(r.k,r.a):0}%;background:${r.a&&r.k/r.a<.6?'var(--accent)':'var(--indigo)'}"></div></div></div>`).join('')}
+   <p class="mut sm">Section stats are counted from this version onward; overall totals include earlier answers.</p></details>
   ${srsStatsHTML()}
   <button class="btn danger" id="reset">Reset all progress</button><p class="ver">App version ${APP_VERSION} · ${Q.length} questions · ${V.length} words · ${K.length} kanji</p>`;
   $('#reset').onclick=()=>{if(confirm('Reset ALL quiz, word, kanji and streak progress? This cannot be undone.')){['missed','stats','qAtt','vocabStatus','catStats','daily','kanjiViewed','last','srs','srsNew','srsLog','srsPri','srsNote','mnemo'].forEach(k=>localStorage.removeItem('n1_'+k));progress()}};
@@ -184,9 +187,9 @@ function questionHTML(q){
 function choiceHTML(q,k,answered){if(isUsageQ(q)&&q.choices_hl&&q.choices_hl[k])return hlHTML(q.choices_hl[k],q.choices_hl_ruby&&q.choices_hl_ruby[k]);const r=q.choices_ruby&&q.choices_ruby[k];return furi&&r&&(answered||!isKanjiQ(q))?r:esc(q.choices[k])}
 function stepLabel(){const[st,n]=S.steps[S.si];return n>1?`Q${st+1}–${st+n}`:`Q${st+1}`}
 function showQ(){S.ans={};const[st,n]=S.steps[S.si];S.i=st;const qs=S.list.slice(st,st+n),q0=qs[0];
-  app.innerHTML=`<div class="qtop"><div class="qprog"><div style="width:${S.si*100/S.steps.length}%"></div></div><span class="mut sm">${S.si+1}/${S.steps.length}${n>1?` · ${stepLabel()}`:''}</span><button class="aa qend" id="qend" aria-label="End quiz" title="End quiz">✕</button>${aaBtn()}</div>
-  ${n>1?`<div class="card qcardq gpass"><div class="chips"><span class="pill">${esc(secOf(q0))}</span><span class="pill sub">${esc(q0.category)}</span><span class="pill">${n} questions</span>${S.missedMode?'<span class="pill red">review</span>':''}</div>${passageHTML(q0,true)}${q0.reading_guide?'':techHTML(q0)}</div>`:''}
-  ${qs.map((q,j)=>`<div class="gq" id="gq${j}"><div class="card qcardq">${n>1?`<div class="chips"><span class="pill gnum">${j+1}/${n}</span></div>`:`<div class="chips"><span class="pill">${esc(secOf(q))}</span><span class="pill sub">${esc(q.category)}</span>${S.missedMode?'<span class="pill red">review</span>':''}</div>${passageHTML(q)}${q.reading_guide?'':techHTML(q)}`}
+  app.innerHTML=`<div class="qtop">${fmBtns()}<div class="qprog"><div style="width:${S.si*100/S.steps.length}%"></div></div><span class="mut sm">${S.si+1}/${S.steps.length}${n>1?` · ${stepLabel()}`:''}</span><button class="aa qend" id="qend" aria-label="End quiz" title="End quiz">✕</button>${aaBtn()}</div>
+  ${n>1?`<div class="card qcardq gpass"><p class="qmeta">${esc(secOf(q0))} · ${esc(q0.category)} · ${n} questions${S.missedMode?' · review':''}</p>${passageHTML(q0,true)}${q0.reading_guide?'':techHTML(q0)}</div>`:''}
+  ${qs.map((q,j)=>`<div class="gq" id="gq${j}"><div class="card qcardq">${n>1?`<p class="qmeta">Question ${j+1}/${n}</p>`:`<p class="qmeta">${esc(secOf(q))} · ${esc(q.category)}${S.missedMode?' · review':''}</p>${passageHTML(q)}${q.reading_guide?'':techHTML(q)}`}
   ${questionHTML(q)}${q.reading_guide?`<div class="gw">${guideHTML(q,false)}</div>`:''}</div>
   <div class="choices${isLongQ(q)?' usage long':''}">${corder(q).map(k=>`<button class="choice" data-k="${esc(k)}" data-j="${j}"><span class="ck">${esc(dk(q,k))}</span><span class="cv">${choiceHTML(q,k,false)}</span></button>`).join('')}</div><div class="fbw"></div></div>`).join('')}
   <div id="nxw"></div>`;
@@ -217,11 +220,11 @@ function renderAnswered(j,anim){
   ${isOrderQ(q)?orderAnsHTML(q):''}<p class="ja sent">${sent}</p><p class="mut sm en">${esc(q.complete_sentence_en)}</p>
   <div class="achip"><span class="badge ok">正解 ${esc(dk(q,q.answer))}</span><span class="aw">${F(q,'answer_word')}</span><span class="mut sm">${esc(q.answer_romaji)}</span></div>
   ${ex?`<p class="anote">${esc(rmap(q,stripW(ex.answer_note,q.answer_word)))}</p>
-   <div class="others${isLongQ(q)?' usage':''}"><span class="lbl">Other choices</span>${ex.others.slice().sort((a,b)=>corder(q).indexOf(String(a.key))-corder(q).indexOf(String(b.key))).map(o=>{const cn=(q.choice_notes||{})[o.key]||null;
+   <details class="others dsc${isLongQ(q)?' usage':''}"><summary><span class="lbl">Other choices (${ex.others.length})</span></summary>${ex.others.slice().sort((a,b)=>corder(q).indexOf(String(a.key))-corder(q).indexOf(String(b.key))).map(o=>{const cn=(q.choice_notes||{})[o.key]||null;
      const fake=cn?/not a real word|wrong reading|does not connect|not natural|not a (common|natural|correct)/.test(cn.note)&&!cn.example_ja:o.fake;
      const mean=stripW(cn?(cn.meaning_en&&cn.meaning_en.trim()!==String(q.choices[o.key]).trim()?cn.meaning_en:''):(o.form?o.form+' ':'')+o.note,q.choices[o.key],cn&&cn.reading), form=cn&&cn.form?`<span class="of">${esc(cn.form)}</span> `:'';
      return `<div class="orow${fake?' fake':''}"><span class="badge">${esc(dk(q,o.key))}</span><div class="obody"><div class="oline"><span class="ow">${choiceHTML(q,o.key,true)}</span>${mean?`<span class="on2">${form}${esc(rmap(q,mean))}</span>`:''}${cn&&cn.note&&!/^\s*wrong\s*$/i.test(cn.note)?`<span class="onote">${esc(rmap(q,cn.note))}</span>`:''}</div>
-      ${cn&&cn.example_ja?`<div class="oex"><span class="rei">例</span><div><div class="ja">${furi&&cn.example_ja_ruby?cn.example_ja_ruby:esc(cn.example_ja)}</div><div class="oen">${esc(cn.example_en)}</div></div></div>`:''}</div></div>`}).join('')}</div>
+      ${cn&&cn.example_ja?`<div class="oex"><span class="rei">例</span><div><div class="ja">${furi&&cn.example_ja_ruby?cn.example_ja_ruby:esc(cn.example_ja)}</div><div class="oen">${esc(cn.example_en)}</div></div></div>`:''}</div></div>`}).join('')}</details>
    ${ex.tip?`<p class="tip">💡 <b>Tip</b> ${esc(rmap(q,ex.tip))}</p>`:''}`:`<p class="anote">${esc(rmap(q,q.explanation_en))}</p>`}
   <div class="ex tight"><span class="lbl">Example 例文</span><div class="ja">${F(q,'example_ja')}</div><div class="mut sm">${esc(q.example_en)}</div></div></div>`;
   if(q.audio)box.querySelector('.abtn').onclick=()=>play(q.audio);
@@ -480,6 +483,33 @@ function deck(kind,focus){
 let cur='',NAV={k:0,d:0},navCtr=+sessionStorage.getItem('n1_navk')||0;const SCR=(()=>{try{return JSON.parse(sessionStorage.getItem('n1_scr'))||{}}catch(e){return{}}})();
 function goBack(){if(OV||NAV.d>0)history.back();else if(cur!=='home')replaceTo('home')}
 function replaceTo(h){delete SCR[NAV.k];history.replaceState({k:NAV.k,d:NAV.d},'','#'+h);cur='';route()}
+// v48 settings sheet (one history step; Back closes it)
+let sheet=null;
+function closeSheetRaw(){if(sheet){sheet.classList.remove('show');const x=sheet;sheet=null;setTimeout(()=>x.remove(),200)}}
+function closeSheet(){closeSheetRaw();ovDrop()}
+function seg3(id,opts,curv){return `<div class="sseg" id="${id}">${opts.map(([v,l])=>`<button type="button" data-v="${v}" class="${String(v)===String(curv)?'on':''}">${l}</button>`).join('')}</div>`}
+function openSettings(){if(sheet)return;const qo=store.get('quizOpts',{}),cfg=srsCfg();
+  sheet=document.createElement('div');sheet.className='ssheet';sheet.setAttribute('role','dialog');sheet.setAttribute('aria-label','Settings');
+  sheet.innerHTML=`<div class="ssbg"></div><div class="sspanel"><div class="ssh"><b>Settings 設定</b><button class="hb icon" id="ssx" aria-label="Close">✕</button></div>
+   <label class="srow"><span>Furigana ふりがな</span><input type="checkbox" id="hf" ${furiOn?'checked':''}></label>
+   <div class="srow"><span>Theme</span>${seg3('sth',[['light','Light'],['dark','Dark'],['auto','Auto']],store.get('theme','auto'))}</div>
+   <div class="srow"><span>Text size</span>${seg3('sts',[['s','S'],['m','M'],['l','L'],['xl','XL']],store.get('ts','m'))}</div>
+   <label class="srow"><span>Shuffle answer choices</span><input type="checkbox" id="ssc" ${qo.sc!==false?'checked':''}></label>
+   <label class="srow"><span>Focus mode <small class="mut">hide bars in quiz &amp; study</small></span><input type="checkbox" id="sfm" ${store.get('focus',false)?'checked':''}></label>
+   <div class="srow"><span>Study session size</span>${seg3('sss',[[10,'10'],[20,'20'],[30,'30'],[50,'50']],cfg.ss)}</div>
+   <div class="slinks2"><a href="#studyguide">How to study →</a><a href="#progress">Backup &amp; restore →</a></div></div>`;
+  document.body.appendChild(sheet);requestAnimationFrame(()=>sheet&&sheet.classList.add('show'));ovOpen(closeSheetRaw);
+  const q=s=>sheet.querySelector(s);q('#ssx').onclick=closeSheet;q('.ssbg').onclick=closeSheet;
+  q('#hf').onchange=e=>{furiOn=e.target.checked;store.set('furigana',furiOn);applyFuri()};
+  const segw=(id,fn)=>q('#'+id).querySelectorAll('button').forEach(b=>b.onclick=()=>{q('#'+id).querySelectorAll('button').forEach(x=>x.classList.toggle('on',x===b));fn(b.dataset.v)});
+  segw('sth',v=>{store.set('theme',v);applyTheme()});
+  segw('sts',v=>{store.set('ts',v);document.documentElement.dataset.ts=v;document.querySelectorAll('.aats i').forEach(i=>i.textContent=v.toUpperCase())});
+  segw('sss',v=>{store.set('srsCfg',{ss:+v})});
+  q('#ssc').onchange=e=>store.set('quizOpts',{...store.get('quizOpts',{}),sc:e.target.checked});
+  q('#sfm').onchange=e=>{store.set('focus',e.target.checked);applyFocus()}}
+function applyFocus(){const on=store.get('focus',false)&&/^(quiz\/play|study\/)/.test(cur||'');document.documentElement.classList.toggle('focusm',on);document.querySelectorAll('.fmt').forEach(b=>b.setAttribute('aria-pressed',store.get('focus',false)))}
+const fmBtns=()=>`<button class="aa fonly fbk" type="button" aria-label="Back">←</button><button class="aa fmt" type="button" aria-pressed="${store.get('focus',false)}" aria-label="Focus mode" title="Focus mode">⛶</button>`;
+document.addEventListener('click',e=>{if(e.target.closest&&e.target.closest('.fbk')){goBack();return}const b=e.target.closest&&e.target.closest('.fmt');if(!b)return;store.set('focus',!store.get('focus',false));applyFocus()});
 // overlays (word popover, story editor) get one history entry so Back closes them first
 let OV=null,ignorePop=false;
 function ovOpen(close){if(OV){OV=close;return}OV=close;history.pushState({k:NAV.k,d:NAV.d,ov:1},'',location.href)}
@@ -499,13 +529,11 @@ function resumeQuiz(){if(S.done)return results(false);const a=S.ans||{};showQ();
 function resumeStudy(){if(SS.graded){SS.i++;SS.graded=false;SS.shown=false}const sh=SS.shown;SS.shown=false;studyCard();if(sh&&SS.items[SS.i])reveal(SS.items[SS.i])}
 document.addEventListener('click',e=>{if(e.target.closest&&e.target.closest('#qend')&&confirm('End this quiz? Answers so far are saved.')){S=null;saveSess();replaceTo('quiz')}});
 const TABS=[['home',ICONS.home,'Home'],['quiz',ICONS.quiz,'Quiz'],['vocab',ICONS.vocab,'Words'],['kanji',ICONS.kanji,'Kanji'],['progress',ICONS.progress,'Progress']];
+const TITLES={home:'JLPT N1',quiz:'Quiz',vocab:'Words',kanji:'Kanji',kanjicards:'Kanji cards',similar:'Look-alike',progress:'Progress',tips:'読解 Tips',study:'Study',studyguide:'How to study'};
 function header(){const h=$('header'),root=(cur||'home').split('/')[0],showBack=NAV.d>0||root!=='home';
-  const dark=document.documentElement.dataset.theme==='dark';
-  h.innerHTML=`${showBack?`<button class="hb icon" id="hbk" aria-label="Back">${ICONS.back}</button>`:''}<a href="#home" class="brand"><span class="hanko">N1</span><span class="bt">JLPT N1 Reviewer</span></a>
-   <div class="hbtns"><button class="hb ${furiOn?'on':''}" id="hf" aria-pressed="${furiOn}" aria-label="Furigana ${furiOn?'on':'off'}" title="Furigana"><span class="lg">ふりがな</span><span class="ic">あ</span></button><button class="hb icon" id="hd" aria-label="Toggle dark mode">${dark?ICONS.sun:ICONS.moon}</button></div>`;
-  if($('#hbk'))$('#hbk').onclick=goBack;
-  $('#hf').onclick=()=>{furiOn=!furiOn;store.set('furigana',furiOn);applyFuri();const b=$('#hf');b.classList.toggle('on',furiOn);b.setAttribute('aria-pressed',furiOn);b.setAttribute('aria-label','Furigana '+(furiOn?'on':'off'))};
-  $('#hd').onclick=()=>{store.set('theme',document.documentElement.dataset.theme==='dark'?'light':'dark');applyTheme();header()};
+  h.innerHTML=`${showBack?`<button class="hb icon" id="hbk" aria-label="Back">${ICONS.back}</button>`:'<span class="hbsp"></span>'}<a href="#home" class="htl">${esc(TITLES[root]||'JLPT N1')}</a>
+   <button class="hb icon" id="hs" aria-label="Settings" title="Settings">⚙</button>`;
+  if($('#hbk'))$('#hbk').onclick=goBack;$('#hs').onclick=openSettings;
   const tabRoot=(root==='kanjicards'||root==='similar')?'kanji':(root==='tips'||root==='study'||root==='studyguide')?'home':root;
   $('#tabs').innerHTML=TABS.map(([k,i,l])=>`<a href="#${k==='kanji'&&store.get('kanjiMode','grid')==='cards'?'kanjicards':k}" data-tab="${k}" class="tab${tabRoot===k?' on':''}" ${tabRoot===k?'aria-current="page"':''}><span class="ti">${i}</span><span>${l}</span></a>`).join('');
   $('#tabs').querySelectorAll('[data-tab]').forEach(a=>a.onclick=()=>{const t=a.dataset.tab;   // entering a tab fresh → new random order
@@ -518,7 +546,7 @@ function route(){const h=location.hash.slice(1)||'home';
   snap();const prev=NAV,st=history.state;
   if(st&&st.k!=null)NAV={k:st.k,d:st.d||0};else{NAV={k:++navCtr,d:cur?prev.d+1:0};history.replaceState(NAV,'');sessionStorage.setItem('n1_navk',navCtr)}
   const fresh=!!pending||!SCR[NAV.k];
-  cur=h;if(h!=='home')store.set('last',h);header();if(audio)audio.pause();
+  cur=h;if(h!=='home')store.set('last',h);header();applyFocus();document.documentElement.dataset.r=h.split('/')[0];if(audio)audio.pause();
   const [p,arg]=h.split('/');const a=arg&&decodeURIComponent(arg);
   if(p==='quiz'){if(a==='play'){if(pending){const f=pending;pending=null;if(f()===false)return history.back()}else if(S)resumeQuiz();else{pending=null;return replaceTo('quiz')}}else{pending=null;quizSetup()}}else render(p,a);
   const sv=fresh?null:SCR[NAV.k];if(sv&&sv.open){const ds=app.querySelectorAll('details');sv.open.forEach(i=>{if(ds[i])ds[i].open=true})}
@@ -615,7 +643,7 @@ function backHTML(it){const k=it.key,isW=k[0]==='w',st=srsDB()[k]||{},leech=(st.
 function studyCard(){const it0=SS.items[SS.i];if(!it0)return studyDone();
   const it=typeof it0==='string'?{key:it0}:it0;SS.items[SS.i]=it;const db=srsDB();if(!it.type)it.type=pickType(it.key,db[it.key]);
   const st=db[it.key],isNew=!st,tot=SS.items.length;
-  app.innerHTML=`<div class="qtop"><div class="qprog"><div style="width:${SS.i*100/tot}%"></div></div><span class="mut sm">${SS.i+1}/${tot}</span>${aaBtn()}</div>
+  app.innerHTML=`<div class="qtop">${fmBtns()}<div class="qprog"><div style="width:${SS.i*100/tot}%"></div></div><span class="mut sm">${SS.i+1}/${tot}</span>${aaBtn()}</div>
   <div class="scard" id="sc"><div class="stag"><span class="pill${it.key[0]==='w'?'':' sub'}">${it.key[0]==='w'?'語 word':'漢 kanji'}</span>${isNew?'<span class="pill n">new</span>':''}${st&&st.lap>=4?'<span class="pill red">leech</span>':''}${it.re?'<span class="pill sub">again</span>':''}</div>
    <div class="sfront">${frontHTML(it)}</div><div class="sback"></div></div>
   <div class="stbar" id="sbar"><div class="frow"><button class="btn knw" id="knw" type="button">I know this ✓</button><button class="btn primary" id="rv">Show answer</button></div></div>`;

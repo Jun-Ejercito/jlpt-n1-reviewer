@@ -703,3 +703,73 @@ html.nofuri rt{visibility:hidden}html:not(.nofuri) .offuri{display:none}
 .sgk .mnemo{margin-top:10px}
 .sgnote summary{cursor:pointer;color:var(--mut);font-size:.82em;margin-top:6px}
 .sgk .mdist{display:none}
+
+/* ================= v48 calm UI ================= */
+/* 3) restrained colour: indigo/gold → neutral ink; vermilion only for primary + wrong/again; green only for correct */
+:root{--indigo:#4a4f5c;--indigo-soft:#eceae6;--gold:#6f6a60}
+[data-theme=dark]{--indigo:#c9c6bf;--indigo-soft:#2a2b30;--gold:#b7b2a8}
+.pill.on,.pill.kun,.pill.red,.pill.n1,.pill.rare,.pill.n,.pill.sub{background:var(--bg2);color:var(--ink);border:0}
+.chip,.slinks .chip{border:1px solid var(--line);color:var(--ink);background:transparent}
+.lv,.lv-N5,.lv-N4,.lv-N3,.lv-N2,.lv-N1,.lv-other,[data-theme=dark] .lv-N5,[data-theme=dark] .lv-N4,[data-theme=dark] .lv-N3,[data-theme=dark] .lv-N2,[data-theme=dark] .lv-N1{background:var(--bg2)!important;color:var(--mut)!important}
+.spk{background:var(--bg2)!important;color:var(--ink)!important;box-shadow:none!important}
+.stp,.sgp,.sgby b{color:var(--ink)}.sgby b{font-weight:700}
+.mpc.res{border-color:var(--line)}.mpc.res b{color:var(--ink)}.mh{color:var(--ink)}
+.mnemo{border-color:var(--line);background:transparent}
+.gbtn.g4,.gbtn.g2{background:color-mix(in srgb,var(--ink) 6%,var(--card));color:var(--ink)}
+.knw{background:color-mix(in srgb,var(--ink) 7%,var(--card));color:var(--ink)}
+.sdone .dseal{background:var(--ink);color:var(--bg);box-shadow:none}.sdone .dpill{color:var(--mut);background:var(--bg2)}
+.td-k{background:var(--bg2)!important;color:var(--ink)!important}
+.sg{background:var(--bg2)!important;color:var(--ink)!important}
+.ws .ja,.wsheet .wr{color:inherit}
+/* 5) quieter labels */
+.qmeta{margin:0 0 8px;font-size:.78em;color:var(--mut);letter-spacing:.01em}
+/* 4) fewer boxes: flatter cards, hairline separation */
+.card{box-shadow:none}
+.gq .card.qcardq,.gpass.card{border:0;background:transparent;padding-left:2px;padding-right:2px}
+.fb.card{border:0;border-top:1px solid var(--line);border-radius:0;background:transparent;box-shadow:none;padding-left:2px;padding-right:2px}
+.fb.is-ok,.fb.is-bad{background:transparent}
+.choice{box-shadow:none}
+.ex.tight{border:0;background:transparent;padding-left:0}
+html[data-r=progress] .card,html[data-r=study] .card:not(.today),html[data-r=kanji] .card:not(.kb),html[data-r=tips] .card{border:0;border-top:1px solid var(--line);border-radius:0;background:transparent;padding-left:2px;padding-right:2px}
+.dsc>summary{cursor:pointer;list-style:none;display:flex;align-items:center;gap:6px;padding:8px 0}.dsc>summary::-webkit-details-marker{display:none}
+.dsc>summary::after{content:'▾';color:var(--mut);font-size:.8em;transition:transform .2s}.dsc[open]>summary::after{transform:rotate(180deg)}
+.dsc>summary h3{margin:0}
+/* 2) calm home */
+.hgreet{margin:4px 2px 10px;font-size:.85em}
+.hq{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0 6px}.hq .btn{flex:1;min-height:44px;justify-content:center}
+.hsec{border-top:1px solid var(--line);padding:2px 2px}.hsec>summary{cursor:pointer;list-style:none;padding:12px 0;font-weight:600;display:flex;justify-content:space-between}
+.hsec>summary::-webkit-details-marker{display:none}.hsec>summary::after{content:'▾';color:var(--mut);transition:transform .2s}.hsec[open]>summary::after{transform:rotate(180deg)}
+.hsec .hero2{margin-top:0;box-shadow:none;background:transparent;border:0;padding:0}
+.hrow{display:flex;align-items:center;gap:10px;padding:14px 2px;border-top:1px solid var(--line);border-bottom:1px solid var(--line);color:var(--ink);text-decoration:none}.hrow small{flex:1}
+.hrow svg{width:18px;height:18px}
+/* 7) header: back · title · gear */
+header{display:flex;align-items:center;gap:8px}
+.htl{flex:1;font-family:var(--serif);font-weight:600;font-size:1.05em;color:var(--ink);text-decoration:none;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hbsp{width:40px;flex:none}
+#hs{font-size:1.15em}
+.ssheet{position:fixed;inset:0;z-index:80;pointer-events:none}
+.ssbg{position:absolute;inset:0;background:rgba(0,0,0,.35);opacity:0;transition:opacity .2s}
+.sspanel{position:absolute;left:0;right:0;bottom:0;max-height:88vh;overflow:auto;background:var(--card);color:var(--ink);border-radius:20px 20px 0 0;padding:10px 18px calc(18px + env(safe-area-inset-bottom));transform:translateY(100%);transition:transform .22s ease;font-size:15px}
+@media (min-width:600px){.sspanel{left:50%;right:auto;width:440px;margin-left:-220px}}
+.ssheet.show{pointer-events:auto}.ssheet.show .ssbg{opacity:1}.ssheet.show .sspanel{transform:none}
+@media (prefers-reduced-motion:reduce){.ssbg,.sspanel{transition:none}}
+.ssh{display:flex;justify-content:space-between;align-items:center;padding:4px 0 8px}
+.srow{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 0;border-top:1px solid var(--line);min-height:44px}
+.srow small{display:block;font-size:.78em}
+.srow input[type=checkbox]{appearance:none;-webkit-appearance:none;width:44px;height:26px;border-radius:99px;background:var(--bg2);position:relative;flex:none;cursor:pointer;transition:background .15s;border:1px solid var(--line)}
+.srow input[type=checkbox]::after{content:'';position:absolute;top:2px;left:2px;width:20px;height:20px;border-radius:50%;background:var(--card);box-shadow:0 1px 3px rgba(0,0,0,.25);transition:transform .15s}
+.srow input[type=checkbox]:checked{background:var(--accent)}.srow input[type=checkbox]:checked::after{transform:translateX(18px)}
+.sseg{display:flex;background:var(--bg2);border-radius:10px;padding:2px;flex:none}
+.sseg button{font:inherit;font-size:.85em;border:0;background:none;color:var(--mut);padding:6px 10px;border-radius:8px;min-height:34px;min-width:36px;cursor:pointer}
+.sseg button.on{background:var(--card);color:var(--ink);font-weight:600;box-shadow:0 1px 2px rgba(0,0,0,.12)}
+.slinks2{display:flex;justify-content:space-between;gap:10px;padding:14px 0 4px;border-top:1px solid var(--line)}.slinks2 a{color:var(--ink)}
+/* 6) focus mode */
+.fonly{display:none}html.focusm .fonly{display:inline-flex}
+.fmt{min-width:44px;min-height:44px;justify-content:center;align-items:center}.fmt[aria-pressed=true]{background:var(--bg2)}
+html.focusm header,html.focusm #tabs{display:none!important}
+html.focusm main,html.focusm #app{padding-top:max(8px,env(safe-area-inset-top))}
+html.focusm .stbar{bottom:calc(10px + env(safe-area-inset-bottom))}
+html.focusm .qtop{top:0}
+html.focusm .toast{bottom:calc(80px + env(safe-area-inset-bottom))}
+.hq .btn{white-space:nowrap;gap:6px;font-size:15px;padding:10px 12px}
+.hq #qqs small{display:none}
