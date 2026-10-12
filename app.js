@@ -1,6 +1,6 @@
 (function(){
 'use strict';
-const APP_VERSION='v44';
+const APP_VERSION='v45';
 const SECTIONS=['文字・語彙','文法','読解'];
 const SEC_INFO={'文字・語彙':{en:'Kanji & Vocabulary',glyph:'字'},'文法':{en:'Grammar',glyph:'文'},'読解':{en:'Reading',glyph:'読'}};
 const IC=(d,extra='')=>`<svg class="ico" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"${extra}>${d}</svg>`;
@@ -603,7 +603,8 @@ function studyCard(){const it0=SS.items[SS.i];if(!it0)return studyDone();
   app.innerHTML=`<div class="qtop"><div class="qprog"><div style="width:${SS.i*100/tot}%"></div></div><span class="mut sm">${SS.i+1}/${tot}</span>${aaBtn()}</div>
   <div class="scard" id="sc"><div class="stag"><span class="pill${it.key[0]==='w'?'':' sub'}">${it.key[0]==='w'?'語 word':'漢 kanji'}</span>${isNew?'<span class="pill n">new</span>':''}${st&&st.lap>=4?'<span class="pill red">leech</span>':''}${it.re?'<span class="pill sub">again</span>':''}</div>
    <div class="sfront">${frontHTML(it)}</div><div class="sback"></div></div>
-  <div class="stbar" id="sbar"><button class="btn primary full" id="rv">Show answer <small class="mut">space</small></button></div>`;
+  <div class="stbar" id="sbar"><div class="frow"><button class="btn knw" id="knw" type="button">I know this ✓</button><button class="btn primary" id="rv">Show answer</button></div></div>`;
+  $('#knw').onclick=()=>knowIt(SS.items[SS.i]);
   $('#rv').onclick=()=>reveal(it);
   const ty=$('#ty');if(ty){const v=VBY[+it.key.slice(1)],ok=()=>hira(ty.value)===hira(v.reading);let comp=false;ty.focus();
     ty.addEventListener('compositionstart',()=>comp=true);ty.addEventListener('compositionend',()=>{comp=false;if(ok())reveal(it,true)});
@@ -631,7 +632,16 @@ function grade(it,g){if(!SS||SS.graded)return;SS.graded=true;const db=srsDB(),wa
   const sc=$('#sc');const next=()=>{SS.i++;SS.shown=false;SS.graded=false;studyCard();window.scrollTo(0,0)};
   if(sc&&!reduced()){sc.classList.add(g===1?'out-l':'out-r');setTimeout(next,180)}else next()}
 document.addEventListener('keydown',e=>{if(!SS||!(cur||'').startsWith('study/')||e.target.tagName==='INPUT'||e.target.tagName==='TEXTAREA')return;
-  if(!SS.shown&&(e.key===' '||e.key==='Enter')){e.preventDefault();const it=SS.items[SS.i];if(it&&!$('#ty')&&!$('.kopt'))reveal(it)}else if(SS.shown&&/^[1-4]$/.test(e.key))grade(SS.items[SS.i],+e.key)});
+  if(!SS.shown&&(e.key===' '||e.key==='Enter')){e.preventDefault();const it=SS.items[SS.i];if(it&&!$('#ty')&&!$('.kopt'))reveal(it)}else if(SS.shown&&/^[1-4]$/.test(e.key))grade(SS.items[SS.i],+e.key);else if(!SS.shown&&/^[kK]$/.test(e.key)&&SS.items[SS.i])knowIt(SS.items[SS.i])});
+// v45: "I know this" — new card → first interval 21d (high ease) as a one-time check; review card → Easy. Undo restores everything.
+function knowIt(it){if(!SS||SS.graded||!it)return;const keys=['srs','srsNew','srsLog','srsPri'],snap={};keys.forEach(k=>snap[k]=localStorage.getItem('n1_'+k));
+  const ss={i:SS.i,res:{...SS.res},again:{...SS.again},items:SS.items.slice()},was=srsDB()[it.key],isNew=!was||!(was.iv>=1);
+  grade(it,4);if(isNew){const db=srsDB(),t=dn(),st=db[it.key];Object.assign(st,{ef:2.8,iv:21,d:t+21,known:1});db[it.key]=st;store.set('srs',db)}
+  toast(`Marked as known · ${isNew?'back in 21 days':'Easy'}`,'Undo',()=>{keys.forEach(k=>snap[k]==null?localStorage.removeItem('n1_'+k):localStorage.setItem('n1_'+k,snap[k]));
+    if(!SS)return;Object.assign(SS,ss,{shown:false,graded:false});if((cur||'').startsWith('study/'))studyCard()})}
+function toast(msg,act,fn){let t=document.querySelector('.toast');if(t)t.remove();t=document.createElement('div');t.className='toast';t.setAttribute('role','status');
+  t.innerHTML=`<span>${esc(msg)}</span>${act?`<button type="button">${esc(act)}</button>`:''}`;document.body.appendChild(t);requestAnimationFrame(()=>t.classList.add('show'));
+  const kill=()=>{t.classList.remove('show');setTimeout(()=>t.remove(),250)};const tm=setTimeout(kill,4000);if(act)t.querySelector('button').onclick=()=>{clearTimeout(tm);kill();fn()}}
 function storyHTML(c){const x=KBY[c],m=x&&x.mnemonic;if(!m)return'';const own=store.get('mnemo',{})[c];
   return `<div class="mnemo" data-c="${esc(c)}"><div class="mh"><b>🧠 Memory story</b><button class="mned" aria-label="Write my own story" title="Write my own">✏️</button></div>
    <div class="mparts">${m.parts.map(p=>`<span class="mpc"><b class="ja">${esc(p.part)}</b><small>${esc(p.meaning)}</small></span>`).join('<i>+</i>')}${m.parts.length===1&&m.parts[0].part===c?'':`<i>→</i><span class="mpc res"><b class="ja">${esc(c)}</b><small>${esc((x.meaning_en||'').split(';')[0])}</small></span>`}</div>

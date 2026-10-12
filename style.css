@@ -663,3 +663,13 @@ html.nofuri rt{visibility:hidden}html:not(.nofuri) .offuri{display:none}
 .swtip{margin:6px 0 0;text-align:center;font-size:.75em;color:var(--mut);opacity:.75;transition:opacity .6s}.swtip.gone{opacity:0}
 .stbar #rv{min-height:48px;border-radius:14px;box-shadow:none}
 .gbtn{height:48px;padding:0 2px;line-height:1.15}.stbar #rv{height:48px}
+
+/* v45 know-it + toast */
+.frow{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.45fr);gap:6px}
+.frow .btn{height:48px;min-height:48px;border-radius:14px;box-shadow:none;padding:0 8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;touch-action:manipulation}
+.knw{border:0;background:color-mix(in srgb,var(--ok) 14%,var(--card));color:color-mix(in srgb,var(--ok) 72%,var(--ink));font-weight:600;font-size:.9em}
+.knw:active,.frow #rv:active{transform:scale(.97)}
+.toast{position:fixed;left:50%;bottom:calc(150px + env(safe-area-inset-bottom));transform:translate(-50%,10px);opacity:0;z-index:60;display:flex;align-items:center;gap:12px;
+ background:var(--ink);color:var(--bg);border-radius:99px;padding:8px 8px 8px 16px;font-size:.88em;box-shadow:0 8px 24px rgba(0,0,0,.25);transition:opacity .2s,transform .2s;max-width:calc(100vw - 24px);white-space:nowrap}
+.toast.show{opacity:1;transform:translate(-50%,0)}.toast button{font:inherit;font-weight:700;border:0;border-radius:99px;padding:6px 12px;background:color-mix(in srgb,var(--bg) 18%,transparent);color:var(--bg);cursor:pointer}
+@media (prefers-reduced-motion:reduce){.toast{transition:none}}
