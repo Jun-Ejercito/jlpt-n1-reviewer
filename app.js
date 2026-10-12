@@ -1,6 +1,6 @@
 (function(){
 'use strict';
-const APP_VERSION='v49';
+const APP_VERSION='v50';
 const SECTIONS=['文字・語彙','文法','読解'];
 const SEC_INFO={'文字・語彙':{en:'Kanji & Vocabulary',glyph:'字'},'文法':{en:'Grammar',glyph:'文'},'読解':{en:'Reading',glyph:'読'}};
 const IC=(d,extra='')=>`<svg class="ico" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"${extra}>${d}</svg>`;
@@ -616,7 +616,7 @@ function studyDone(){const r=SS?SS.res:{1:0,2:0,3:0,4:0},n=r[1]+r[2]+r[3]+r[4];
   const kg=$('#kgo');if(kg)kg.onclick=()=>studyStart(SS?SS.mode:'mixed')}
 function frontHTML(it){const k=it.key,isW=k[0]==='w',t=it.type;
   if(isW){const v=VBY[+k.slice(1)];
-    if(t==='wr')return `<p class="sp">Read it — recall the <b>reading</b> and <b>meaning</b></p><div class="sbig ja">${esc(v.word)}</div>`;
+    if(t==='wr')return `<p class="sp">Read it — recall the <b>reading</b> and <b>meaning</b></p><div class="sbig ja">${esc(v.word)}</div><p class="pkh mut sm">Tap the card to peek</p><div class="speek" id="pk" hidden aria-live="polite"><p class="pkr ja">${esc(v.reading)}</p>${v.example_ja?`<p class="pkx ja">${furi&&v.example_ja_ruby?v.example_ja_ruby:esc(v.example_ja)}</p><p class="pke mut sm">${esc(v.example_en||'')}</p>`:''}</div>`;
     if(t==='mw')return `<p class="sp">Recall the <b>Japanese word</b></p><div class="smean">${esc(v.meaning_en)}</div><p class="mut sm">${esc(v.part_of_speech||'')}</p>`;
     if(t==='cz')return `<p class="sp">Fill the blank — recall the <b>word</b></p><div class="scloze ja">${esc(v.example_ja).replace(esc(v.word),'<b class="blank">＿＿＿</b>')}</div><p class="mut sm">${esc(v.example_en)}</p>`;
     return `<p class="sp">Type the <b>reading</b> in kana</p><div class="sbig ja">${esc(v.word)}</div><div class="tyw"><input id="ty" lang="ja" inputmode="text" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="ひらがなで…"><button class="btn primary" id="tyc">Check</button></div>`}
@@ -648,13 +648,18 @@ function studyCard(){const it0=SS.items[SS.i];if(!it0)return studyDone();
    <div class="sfront">${frontHTML(it)}</div><div class="sback"></div></div>
   <div class="stbar" id="sbar"><div class="frow"><button class="btn knw" id="knw" type="button">I know this ✓</button><button class="btn primary" id="rv">Show answer</button></div></div>`;
   $('#knw').onclick=()=>knowIt(SS.items[SS.i]);
+  if(it.type==='wr')$('#sc').addEventListener('click',e=>{if(SS.shown||e.target.closest('a,button,input,.say,rt'))return;togglePeek()});
   $('#rv').onclick=()=>reveal(it);
   const ty=$('#ty');if(ty){const v=VBY[+it.key.slice(1)],ok=()=>hira(ty.value)===hira(v.reading);let comp=false;ty.focus();
     ty.addEventListener('compositionstart',()=>comp=true);ty.addEventListener('compositionend',()=>{comp=false;if(ok())reveal(it,true)});
     ty.oninput=e=>{if(!comp&&!e.isComposing&&ok())reveal(it,true)};$('#tyc').onclick=()=>reveal(it,ok());
     ty.onkeydown=e=>{if(e.key==='Enter'&&!e.isComposing){e.preventDefault();reveal(it,ok())}}}
   app.querySelectorAll('.kopt').forEach(b=>b.onclick=()=>{const right=b.dataset.c===it.key.slice(1);app.querySelectorAll('.kopt').forEach(o=>{o.disabled=true;if(o.dataset.c===it.key.slice(1))o.classList.add('ok');else if(o===b)o.classList.add('bad')});setTimeout(()=>reveal(it,right),reduced()?0:450)})}
-function reveal(it,auto){if(SS.shown)return;SS.shown=true;const db=srsDB(),st=db[it.key];
+// v50 peek (word→reading/meaning front): tap blank card area toggles reading + example; one history step; never grades
+function peekRaw(){const p=document.getElementById('pk');if(p){p.hidden=true;const sc=document.getElementById('sc');if(sc)sc.classList.remove('peeking')}}
+function closePeek(){const p=document.getElementById('pk');if(p&&!p.hidden){peekRaw();ovDrop()}}
+function togglePeek(){const p=document.getElementById('pk');if(!p)return;if(p.hidden){p.hidden=false;$('#sc').classList.add('peeking');ovOpen(peekRaw)}else closePeek()}
+function reveal(it,auto){if(SS.shown)return;closePeek();SS.shown=true;const db=srsDB(),st=db[it.key];
   const sc=$('#sc');sc.classList.add('revealed');sc.querySelector('.sback').innerHTML=(auto===true?'<p class="verd ok">✓ Correct</p>':auto===false?'<p class="verd bad">✕ Not quite</p>':'')+backHTML(it);
   const sug=auto===true?3:auto===false?1:0;
   $('#sbar').innerHTML=`<div class="grades">${[[1,'Again'],[2,'Hard'],[3,'Good'],[4,'Easy']].map(([g,l])=>`<button class="gbtn g${g}${sug===g?' sug':''}" data-g="${g}"><b>${l}</b><small>${ivLabel(sched(st,g).iv)}</small></button>`).join('')}</div>${SS.tip?'<p class="swtip" aria-hidden="true">Tip: swipe → Good · ← Again</p>':''}`;
@@ -677,7 +682,8 @@ function grade(it,g){if(!SS||SS.graded)return;SS.graded=true;const db=srsDB(),wa
 document.addEventListener('keydown',e=>{if(!SS||!(cur||'').startsWith('study/')||e.target.tagName==='INPUT'||e.target.tagName==='TEXTAREA')return;
   if(!SS.shown&&(e.key===' '||e.key==='Enter')){e.preventDefault();const it=SS.items[SS.i];if(it&&!$('#ty')&&!$('.kopt'))reveal(it)}else if(SS.shown&&/^[1-4]$/.test(e.key))grade(SS.items[SS.i],+e.key);else if(!SS.shown&&/^[kK]$/.test(e.key)&&SS.items[SS.i])knowIt(SS.items[SS.i])});
 // v45: "I know this" — new card → first interval 21d (high ease) as a one-time check; review card → Easy. Undo restores everything.
-function knowIt(it){if(!SS||SS.graded||!it)return;const keys=['srs','srsNew','srsLog','srsPri'],snap={};keys.forEach(k=>snap[k]=localStorage.getItem('n1_'+k));
+function knowIt(it_){closePeek();return knowIt0(it_)}
+function knowIt0(it){if(!SS||SS.graded||!it)return;const keys=['srs','srsNew','srsLog','srsPri'],snap={};keys.forEach(k=>snap[k]=localStorage.getItem('n1_'+k));
   const ss={i:SS.i,res:{...SS.res},again:{...SS.again},items:SS.items.slice()},was=srsDB()[it.key],isNew=!was||!(was.iv>=1);
   grade(it,4);if(isNew){const db=srsDB(),t=dn(),st=db[it.key];Object.assign(st,{ef:2.8,iv:21,d:t+21,known:1});db[it.key]=st;store.set('srs',db)}
   toast(`Marked as known · ${isNew?'back in 21 days':'Easy'}`,'Undo',()=>{keys.forEach(k=>snap[k]==null?localStorage.removeItem('n1_'+k):localStorage.setItem('n1_'+k,snap[k]));

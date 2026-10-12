@@ -779,3 +779,11 @@ html.focusm .toast{bottom:calc(80px + env(safe-area-inset-bottom))}
 #app .w[data-g].on{background:color-mix(in srgb,var(--indigo) 20%,transparent);box-shadow:0 0 0 2px color-mix(in srgb,var(--indigo) 20%,transparent)}
 .choice.dis{cursor:default}.choice.dis:hover{border-color:var(--line);box-shadow:none}.choice.dis:active{transform:none}
 .choice.dis:not(.ok):not(.bad){opacity:.6}
+/* v50 peek */
+.scard .pkh{margin:.4em 0 0;opacity:.7;transition:opacity .2s}.scard.peeking .pkh,.scard.revealed .pkh{display:none}
+.speek{margin:14px auto 0;padding:12px 2px 0;border-top:1px solid var(--line);max-width:34em;text-align:center;animation:pkin .18s ease-out}
+.speek .pkr{font-size:calc(var(--pfs,17px)*1.2);margin:0 0 8px;letter-spacing:.04em}
+.speek .pkx{margin:0 0 4px;line-height:2;font-size:var(--pfs,17px)}.speek .pke{margin:0}
+.scard.revealed .speek{display:none}
+@keyframes pkin{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion:reduce){.speek{animation:none}}
