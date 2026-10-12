@@ -1,6 +1,6 @@
 (function(){
 'use strict';
-const APP_VERSION='v45';
+const APP_VERSION='v46';
 const SECTIONS=['文字・語彙','文法','読解'];
 const SEC_INFO={'文字・語彙':{en:'Kanji & Vocabulary',glyph:'字'},'文法':{en:'Grammar',glyph:'文'},'読解':{en:'Reading',glyph:'読'}};
 const IC=(d,extra='')=>`<svg class="ico" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"${extra}>${d}</svg>`;
@@ -340,22 +340,26 @@ function techHTML(q){const k=tipKey(q);if(!k)return'';return `<details class="te
 function tipsView(){app.innerHTML=`<div class="ph"><h1 class="pt">読解 Tips 解き方</h1></div><div class="card tintro"><p>${TIPS.intro||''}</p></div>
   ${TIPS.sections.map((s,i)=>`<details class="card tsec"${i===0?' open':''}><summary>${esc(s.title)}</summary><div class="tbody">${s.html}</div></details>`).join('')}
   <a class="btn primary full" href="#quiz">Practice 読解 →</a>`}
-function similarView(){const st=VS[cur]||{};
+// v46: look-alike groups as a grid; order reshuffles on each fresh entry, kept per history entry (Back restores it)
+const SIMO=(()=>{try{return JSON.parse(sessionStorage.getItem('n1_simo'))||{}}catch(e){return{}}})();
+const saveSimo=()=>{try{const ks=Object.keys(SIMO);if(ks.length>50)delete SIMO[ks[0]];sessionStorage.setItem('n1_simo',JSON.stringify(SIMO))}catch(e){}};
+function similarView(){const st=VS[cur]||{};if(!SIMO[NAV.k]){SIMO[NAV.k]=shuffle(SIM.map(g=>g.id));saveSimo()}
   app.innerHTML=`<div class="ph"><h1 class="pt">Look-alike 似た漢字</h1>${seg('sim')}</div>
-  <div class="search"><input type="search" id="s" placeholder="Search kanji or meaning…" value="${esc(st.q||'')}"><span class="mut sm" id="cnt"></span></div><div class="spidx" id="spi"></div><div id="sl" class="siml"></div>`;
+  <div class="search"><input type="search" id="s" placeholder="Search kanji or meaning…" value="${esc(st.q||'')}"><span class="mut sm" id="cnt"></span></div><div class="sgbar"><span class="mut sm">Order shuffles each visit</span><button class="btn sm ghost" id="ssh" aria-label="Shuffle order">↻ Shuffle</button></div><div id="sl" class="sgrid"></div>`;
   $('#tg').onclick=()=>{store.set('kanjiMode','grid');location.hash='kanji'};$('#tc').onclick=()=>{store.set('kanjiMode','cards');location.hash='kanjicards'};
-  const draw=()=>{const t=$('#s').value.trim().toLowerCase();const f=SIM.filter(g=>!t||[g.shared_part||'',g.shared_label||'',g.part_meaning||'',g.part_expect||'',g.difference,...g.members.flatMap(m=>[m.kanji,m.meaning_en,m.sample.word,m.sample.reading,...m.onyomi,...m.kunyomi])].join(' ').toLowerCase().includes(t));
+  const draw=()=>{const t=$('#s').value.trim().toLowerCase(),ord=SIMO[NAV.k],by=Object.fromEntries(SIM.map(g=>[g.id,g]));
+    const f=ord.map(i=>by[i]).filter(Boolean).filter(g=>!t||[g.shared_part||'',g.shared_label||'',g.part_meaning||'',g.part_expect||'',g.difference,...g.members.flatMap(m=>[m.kanji,m.meaning_en,m.sample.word,m.sample.reading,...m.onyomi,...m.kunyomi])].join(' ').toLowerCase().includes(t));
     $('#cnt').textContent=`${f.length} groups`;
-    const parts=[];f.forEach(g=>{if(g.shared_part&&!parts.some(p=>p.p===g.shared_part))parts.push({p:g.shared_part,id:g.id})});
-    $('#spi').innerHTML=parts.map(x=>`<button class="spc" data-g="${x.id}">${esc(x.p)}</button>`).join('');
-    $('#sl').innerHTML=f.map(g=>simCard(g,false)).join('');wireSim($('#sl'),true);
-    $('#spi').querySelectorAll('.spc').forEach(b=>b.onclick=()=>{const L=$('#sl'),el=L.querySelector(`.simg[data-g="${b.dataset.g}"]`);if(!el)return;
-      $('#spi').querySelectorAll('.spc').forEach(x=>x.classList.toggle('on',x===b));b.scrollIntoView({block:'nearest',inline:'center'});
-      L.classList.add('noanim');L.querySelectorAll('.simg.open').forEach(x=>{if(x!==el)setSimOpen(x,false)});setSimOpen(el,true);void L.offsetHeight;
-      const hh=($('header')?$('header').offsetHeight:0)+$('#spi').offsetHeight+10;
-      window.scrollTo(0,Math.max(0,el.getBoundingClientRect().top+window.scrollY-hh));
-      requestAnimationFrame(()=>L.classList.remove('noanim'));el.classList.add('flash');setTimeout(()=>el.classList.remove('flash'),900)})};
+    $('#sl').innerHTML=f.map(g=>{const tile=g.part_display||g.shared_part||g.kanji[0];return `<a class="stile" href="#similar/${g.id}"><span class="stp ja">${esc(tile)}</span><span class="stm">${esc(g.part_meaning||g.shared_label||'')}</span><span class="stk ja">${g.members.map(m=>esc(m.kanji)).join('')}</span></a>`}).join('')};
+  $('#ssh').onclick=()=>{SIMO[NAV.k]=shuffle(SIM.map(g=>g.id));saveSimo();draw()};
   $('#s').oninput=draw;draw()}
+function simDetail(id){const g=SIM.find(x=>String(x.id)===String(id));if(!g){app.innerHTML='<div class="card">Group not found.</div>';return}
+  const tile=g.part_display||g.shared_part||g.kanji[0],sto=g.members.filter(m=>KBY[m.kanji]&&KBY[m.kanji].mnemonic);
+  app.innerHTML=`<div class="card simdet"><div class="sdh"><span class="spk">${esc(tile)}</span><div><b>${esc(g.shared_label||tile)}</b>${g.part_meaning?`<div class="srmean">${esc(g.part_meaning)}</div>`:''}</div></div>
+   ${g.part_expect?`<p class="srx">${esc(g.part_expect)}</p>`:''}
+   ${simCard(g,true).replace(/^<div class="card simg open"[^>]*>[\s\S]*?<div class="simx">/,'<div class="simg open nested"><div class="simx">')}</div>
+   ${sto.length?`<h2 class="sec-t">Memory stories</h2>${sto.map(m=>`<div class="card mnc">${storyHTML(m.kanji)}</div>`).join('')}`:''}`;
+}
 const LEVELS=['all','N5','N4','N3','N2','N1','other'];
 const lvl=x=>x.jlpt?'N'+x.jlpt:'other';
 const gradeTxt=g=>g==null?'Non-jōyō':g<=6?'Grade '+g:g===8?'Jōyō (secondary)':'Jinmeiyō';
@@ -509,7 +513,7 @@ function route(){const h=location.hash.slice(1)||'home';
   const sv=fresh?null:SCR[NAV.k];if(sv&&sv.open){const ds=app.querySelectorAll('details');sv.open.forEach(i=>{if(ds[i])ds[i].open=true})}
   const y=sv?sv.y:(p==='quiz'||p==='study'?0:(VS[h]||{}).y||0);window.scrollTo(0,y);requestAnimationFrame(()=>window.scrollTo(0,y));saveSess();
 }
-function render(p,a){if(p==='vocab')deck('vocab',a);else if(p==='kanji'){if(a)kanjiDetail(a);else kanjiGrid()}else if(p==='kanjicards')deck('kanji',a);else if(p==='similar')similarView();else if(p==='tips')tipsView();else if(p==='study'){if(a){if(SS&&SS.mode===a&&SS.items&&SS.i<SS.items.length)resumeStudy();else studyStart(a)}else studyHome()}else if(p==='studyguide')studyGuide();else if(p==='progress')progress();else home()}
+function render(p,a){if(p==='vocab')deck('vocab',a);else if(p==='kanji'){if(a)kanjiDetail(a);else kanjiGrid()}else if(p==='kanjicards')deck('kanji',a);else if(p==='similar'){if(a)simDetail(a);else similarView()}else if(p==='tips')tipsView();else if(p==='study'){if(a){if(SS&&SS.mode===a&&SS.items&&SS.i<SS.items.length)resumeStudy();else studyStart(a)}else studyHome()}else if(p==='studyguide')studyGuide();else if(p==='progress')progress();else home()}
 function rerender(){const y=window.scrollY;
   if(S&&!S.done&&document.querySelector('.choice')){const a=S.ans||{};showQ();for(const j in a){S.ans[j]=a[j];renderAnswered(+j,false)}}
   else if(S&&S.done)results(false);
