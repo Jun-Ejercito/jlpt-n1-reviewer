@@ -1,6 +1,6 @@
 (function(){
 'use strict';
-const APP_VERSION='v50';
+const APP_VERSION='v51';
 const SECTIONS=['文字・語彙','文法','読解'];
 const SEC_INFO={'文字・語彙':{en:'Kanji & Vocabulary',glyph:'字'},'文法':{en:'Grammar',glyph:'文'},'読解':{en:'Reading',glyph:'読'}};
 const IC=(d,extra='')=>`<svg class="ico" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"${extra}>${d}</svg>`;
@@ -197,7 +197,7 @@ function showQ(){S.ans={};const[st,n]=S.steps[S.si];S.i=st;const qs=S.list.slice
 }
 function answer(k,j=0){
   if(S.ans[j]!=null)return;
-  const q=S.list[S.i+j],ok=k===String(q.answer);S.ans[j]=k;
+  const q=S.list[S.i+j],ok=k===String(q.answer);S.ans[j]=k;S.past=S.past||{};S.past[S.si]={...S.ans};
   let missed=store.get('missed',[]),st=store.get('stats',{answered:0,correct:0}),cs=store.get('catStats',{});
   st.answered++;{const qa=store.get('qAtt',{});qa[q.id]=(qa[q.id]||0)+1;store.set('qAtt',qa)}cs[q.category]=cs[q.category]||{a:0,c:0};cs[q.category].a++;
   if(ok){S.score++;st.correct++;cs[q.category].c++;if(S.missedMode)missed=missed.filter(x=>x!==q.id)}else{S.wrong.push({q,k});if(!missed.includes(q.id))missed.push(q.id)}
@@ -289,7 +289,10 @@ const TIPS=window.TIPS||{sections:[],hints:{}};
 function tipKey(q){return Object.keys(TIPS.hints).find(k=>q.category.includes(k))}
 document.documentElement.dataset.ts=store.get('ts','m');
 // v43 text size: one delegated handler (v41's ✕ End button also has class .aa and was stealing the old querySelector('.aa') hookup)
-const TS=['s','m','l','xl'],aaBtn=()=>{const t=store.get('ts','m');return `<button class="aa aats" type="button" aria-label="Text size: ${t.toUpperCase()} (tap to change)" title="Text size">A<small>a</small><i>${t.toUpperCase()}</i></button>`};
+const fuBtn=()=>`<button class="aa fubtn" type="button" aria-pressed="${furiOn}" aria-label="Furigana ${furiOn?'on':'off'} (tap to toggle)" title="Furigana"><span class="fk">あ</span><span class="fK">亜</span></button>`;
+document.addEventListener('click',e=>{const b=e.target.closest&&e.target.closest('.fubtn');if(!b)return;e.preventDefault();furiOn=!furiOn;store.set('furigana',furiOn);applyFuri();
+  document.querySelectorAll('.fubtn').forEach(x=>{x.setAttribute('aria-pressed',furiOn);x.setAttribute('aria-label','Furigana '+(furiOn?'on':'off')+' (tap to toggle)')});const hf=document.getElementById('hf');if(hf)hf.checked=furiOn});
+const TS=['s','m','l','xl'],aaBtn=()=>{const t=store.get('ts','m');return fuBtn()+`<button class="aa aats" type="button" aria-label="Text size: ${t.toUpperCase()} (tap to change)" title="Text size">A<small>a</small><i>${t.toUpperCase()}</i></button>`};
 document.addEventListener('click',e=>{const b=e.target.closest&&e.target.closest('.aats');if(!b)return;e.preventDefault();
   const t=TS[(TS.indexOf(store.get('ts','m'))+1)%TS.length];store.set('ts',t);document.documentElement.dataset.ts=t;
   document.querySelectorAll('.aats').forEach(x=>{x.querySelector('i').textContent=t.toUpperCase();x.setAttribute('aria-label','Text size: '+t.toUpperCase()+' (tap to change)')})});
@@ -519,7 +522,7 @@ window.addEventListener('popstate',e=>{if(ignorePop){ignorePop=false;return}if(O
 document.addEventListener('click',e=>{if(!OV)return;const a=e.target.closest&&e.target.closest('a[href^="#"]');if(!a)return;e.preventDefault();e.stopPropagation();
   const f=OV;OV=null;f();history.replaceState(null,'',a.getAttribute('href'));route()},true);
 const QBY=Object.fromEntries(Q.map(q=>[q.id,q]));
-function saveSess(){try{sessionStorage.setItem('n1_S',S?JSON.stringify({...S,list:S.list.map(q=>q.id),wrong:S.wrong.map(w=>({q:w.q.id,k:w.k}))}):'');sessionStorage.setItem('n1_SS',SS?JSON.stringify(SS):'');sessionStorage.setItem('n1_scr',JSON.stringify(SCR))}catch(e){}}
+function saveSess(){try{sessionStorage.setItem('n1_S',S?JSON.stringify({...S,...(S.view!=null?{si:S.view,ans:(S.past||{})[S.view]||{},view:null}:{}),list:S.list.map(q=>q.id),wrong:S.wrong.map(w=>({q:w.q.id,k:w.k}))}):'');sessionStorage.setItem('n1_SS',SS?JSON.stringify({...SS,view:null}):'');sessionStorage.setItem('n1_scr',JSON.stringify(SCR))}catch(e){}}
 function loadSess(){try{const a=sessionStorage.getItem('n1_S');if(a){const o=JSON.parse(a);o.list=o.list.map(i=>QBY[i]).filter(Boolean);o.wrong=o.wrong.map(w=>({q:QBY[w.q],k:w.k})).filter(w=>w.q);S=o}
   const b=sessionStorage.getItem('n1_SS');if(b)SS=JSON.parse(b)}catch(e){}}
 function snap(){if(!cur)return;const si=document.querySelector('#s');VS[cur]=Object.assign(VS[cur]||{},{q:si?si.value:'',y:window.scrollY});
@@ -542,7 +545,7 @@ function header(){const h=$('header'),root=(cur||'home').split('/')[0],showBack=
 }
 const inQuiz=()=>S&&!S.done&&(cur||'').startsWith('quiz')&&document.querySelector('.choice');
 let skip=false;
-function route(){const h=location.hash.slice(1)||'home';
+function route(){if(S&&S.view!=null){S.si=S.view;S.ans={...((S.past||{})[S.view]||{})};S.view=null}if(SS&&SS.view!=null)SS.view=null;const h=location.hash.slice(1)||'home';
   snap();const prev=NAV,st=history.state;
   if(st&&st.k!=null)NAV={k:st.k,d:st.d||0};else{NAV={k:++navCtr,d:cur?prev.d+1:0};history.replaceState(NAV,'');sessionStorage.setItem('n1_navk',navCtr)}
   const fresh=!!pending||!SCR[NAV.k];
@@ -616,7 +619,7 @@ function studyDone(){const r=SS?SS.res:{1:0,2:0,3:0,4:0},n=r[1]+r[2]+r[3]+r[4];
   const kg=$('#kgo');if(kg)kg.onclick=()=>studyStart(SS?SS.mode:'mixed')}
 function frontHTML(it){const k=it.key,isW=k[0]==='w',t=it.type;
   if(isW){const v=VBY[+k.slice(1)];
-    if(t==='wr')return `<p class="sp">Read it — recall the <b>reading</b> and <b>meaning</b></p><div class="sbig ja">${esc(v.word)}</div><p class="pkh mut sm">Tap the card to peek</p><div class="speek" id="pk" hidden aria-live="polite"><p class="pkr ja">${esc(v.reading)}</p>${v.example_ja?`<p class="pkx ja">${furi&&v.example_ja_ruby?v.example_ja_ruby:esc(v.example_ja)}</p><p class="pke mut sm">${esc(v.example_en||'')}</p>`:''}</div>`;
+    if(t==='wr')return `<p class="sp">Read it — recall the <b>reading</b> and <b>meaning</b></p><div class="sbig ja">${esc(v.word)}</div><p class="pkh mut sm">Tap the card to peek</p><div class="speek" id="pk" hidden aria-live="polite"><p class="pkr"><span class="ja">${esc(v.reading)}</span><span class="pkm"> · ${esc(v.meaning_en)}</span></p>${v.example_ja?`<p class="pkx ja">${furi&&v.example_ja_ruby?v.example_ja_ruby:esc(v.example_ja)}</p><p class="pke mut sm">${esc(v.example_en||'')}</p>`:''}</div>`;
     if(t==='mw')return `<p class="sp">Recall the <b>Japanese word</b></p><div class="smean">${esc(v.meaning_en)}</div><p class="mut sm">${esc(v.part_of_speech||'')}</p>`;
     if(t==='cz')return `<p class="sp">Fill the blank — recall the <b>word</b></p><div class="scloze ja">${esc(v.example_ja).replace(esc(v.word),'<b class="blank">＿＿＿</b>')}</div><p class="mut sm">${esc(v.example_en)}</p>`;
     return `<p class="sp">Type the <b>reading</b> in kana</p><div class="sbig ja">${esc(v.word)}</div><div class="tyw"><input id="ty" lang="ja" inputmode="text" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="ひらがなで…"><button class="btn primary" id="tyc">Check</button></div>`}
@@ -662,24 +665,22 @@ function togglePeek(){const p=document.getElementById('pk');if(!p)return;if(p.hi
 function reveal(it,auto){if(SS.shown)return;closePeek();SS.shown=true;const db=srsDB(),st=db[it.key];
   const sc=$('#sc');sc.classList.add('revealed');sc.querySelector('.sback').innerHTML=(auto===true?'<p class="verd ok">✓ Correct</p>':auto===false?'<p class="verd bad">✕ Not quite</p>':'')+backHTML(it);
   const sug=auto===true?3:auto===false?1:0;
-  $('#sbar').innerHTML=`<div class="grades">${[[1,'Again'],[2,'Hard'],[3,'Good'],[4,'Easy']].map(([g,l])=>`<button class="gbtn g${g}${sug===g?' sug':''}" data-g="${g}"><b>${l}</b><small>${ivLabel(sched(st,g).iv)}</small></button>`).join('')}</div>${SS.tip?'<p class="swtip" aria-hidden="true">Tip: swipe → Good · ← Again</p>':''}`;
+  $('#sbar').innerHTML=`<div class="grades">${[[1,'Again'],[2,'Hard'],[3,'Good'],[4,'Easy']].map(([g,l])=>`<button class="gbtn g${g}${sug===g?' sug':''}" data-g="${g}"><b>${l}</b><small>${ivLabel(sched(st,g).iv)}</small></button>`).join('')}</div>${SS.tip?'<p class="swtip" aria-hidden="true">Tip: swipe ← next (skip) · → previous card</p>':''}`;
   if(SS.tip){SS.tip=false;setTimeout(()=>{const t=document.querySelector('.swtip');if(t)t.classList.add('gone')},3500)}
   app.querySelectorAll('.gbtn').forEach(b=>b.onclick=()=>grade(it,+b.dataset.g));
   app.querySelectorAll('.say').forEach(b=>b.onclick=e=>{e.stopPropagation();say(b.dataset.t)});
   const mn=$('#mn');if(mn)mn.onchange=()=>{const n=store.get('srsNote',{});n[it.key]=mn.value;store.set('srsNote',n)};
   if(it.key[0]==='w'&&store.get('srsSpeak',false))say(VBY[+it.key.slice(1)].word);
-  let x0=null,y0=0;sc.ontouchstart=e=>{x0=e.touches[0].clientX;y0=e.touches[0].clientY};
-  sc.ontouchmove=e=>{if(x0==null)return;const dx=e.touches[0].clientX-x0;if(Math.abs(dx)>Math.abs(e.touches[0].clientY-y0)&&!reduced())sc.style.transform=`translateX(${dx*.5}px) rotate(${dx/40}deg)`};
-  sc.ontouchend=e=>{if(x0==null)return;const dx=e.changedTouches[0].clientX-x0,dy=e.changedTouches[0].clientY-y0;x0=null;sc.style.transform='';if(Math.abs(dx)>80&&Math.abs(dx)>Math.abs(dy)*1.5)grade(it,dx>0?3:1)}}
+}
 function grade(it,g){if(!SS||SS.graded)return;SS.graded=true;const db=srsDB(),was=db[it.key];db[it.key]=sched(was,g);store.set('srs',db);
   if(!was){const n=store.get('srsNew',{}),d=dn();n[d]=n[d]||{w:0,k:0};n[d][it.key[0]]++;for(const k in n)if(+k<d-30)delete n[k];store.set('srsNew',n);
     if(it.key[0]==='w')store.set('srsPri',store.get('srsPri',[]).filter(k=>k!==it.key))}
   const lg=store.get('srsLog',{}),d=dn();lg[d]=lg[d]||{r:0,ok:0,n:0};if(was&&was.iv>=1){lg[d].r++;if(g>1)lg[d].ok++}else lg[d].n++;store.set('srsLog',lg);
-  logActivity();SS.res[g]++;
+  logActivity();SS.res[g]++;it.g=g;
   if(g===1&&(SS.again[it.key]||0)<3){SS.again[it.key]=(SS.again[it.key]||0)+1;SS.items.splice(Math.min(SS.items.length,SS.i+5),0,{key:it.key,re:true})}
   const sc=$('#sc');const next=()=>{SS.i++;SS.shown=false;SS.graded=false;studyCard();window.scrollTo(0,0)};
   if(sc&&!reduced()){sc.classList.add(g===1?'out-l':'out-r');setTimeout(next,180)}else next()}
-document.addEventListener('keydown',e=>{if(!SS||!(cur||'').startsWith('study/')||e.target.tagName==='INPUT'||e.target.tagName==='TEXTAREA')return;
+document.addEventListener('keydown',e=>{if(!SS||SS.view!=null||!(cur||'').startsWith('study/')||e.target.tagName==='INPUT'||e.target.tagName==='TEXTAREA')return;
   if(!SS.shown&&(e.key===' '||e.key==='Enter')){e.preventDefault();const it=SS.items[SS.i];if(it&&!$('#ty')&&!$('.kopt'))reveal(it)}else if(SS.shown&&/^[1-4]$/.test(e.key))grade(SS.items[SS.i],+e.key);else if(!SS.shown&&/^[kK]$/.test(e.key)&&SS.items[SS.i])knowIt(SS.items[SS.i])});
 // v45: "I know this" — new card → first interval 21d (high ease) as a one-time check; review card → Easy. Undo restores everything.
 function knowIt(it_){closePeek();return knowIt0(it_)}
@@ -687,7 +688,7 @@ function knowIt0(it){if(!SS||SS.graded||!it)return;const keys=['srs','srsNew','s
   const ss={i:SS.i,res:{...SS.res},again:{...SS.again},items:SS.items.slice()},was=srsDB()[it.key],isNew=!was||!(was.iv>=1);
   grade(it,4);if(isNew){const db=srsDB(),t=dn(),st=db[it.key];Object.assign(st,{ef:2.8,iv:21,d:t+21,known:1});db[it.key]=st;store.set('srs',db)}
   toast(`Marked as known · ${isNew?'back in 21 days':'Easy'}`,'Undo',()=>{keys.forEach(k=>snap[k]==null?localStorage.removeItem('n1_'+k):localStorage.setItem('n1_'+k,snap[k]));
-    if(!SS)return;Object.assign(SS,ss,{shown:false,graded:false});if((cur||'').startsWith('study/'))studyCard()})}
+    delete it.g;if(!SS)return;Object.assign(SS,ss,{shown:false,graded:false});if((cur||'').startsWith('study/'))studyCard()})}
 function toast(msg,act,fn){let t=document.querySelector('.toast');if(t)t.remove();t=document.createElement('div');t.className='toast';t.setAttribute('role','status');
   t.innerHTML=`<span>${esc(msg)}</span>${act?`<button type="button">${esc(act)}</button>`:''}`;document.body.appendChild(t);requestAnimationFrame(()=>t.classList.add('show'));
   const kill=()=>{t.classList.remove('show');setTimeout(()=>t.remove(),250)};const tm=setTimeout(kill,4000);if(act)t.querySelector('button').onclick=()=>{clearTimeout(tm);kill();fn()}}
@@ -719,12 +720,59 @@ function studyGuide(){app.innerHTML=`<div class="ph"><h1 class="pt">How to study
  <div class="card guidec"><h3>Why this works</h3><p><b>Active recall</b> — trying to pull the answer out of memory <i>before</i> you see it strengthens memory far more than re-reading. Every card asks you to produce something: a reading, a meaning, a word, the right kanji.</p>
  <p><b>Spaced repetition</b> — each card comes back just as you're about to forget it. Good answers push it further out (1d → 3d → 8d → 3 weeks…); Again brings it back today. A few minutes a day beats hours of cramming.</p>
  <p><b>Variety</b> — the same word is tested in different ways (read it, write it from English, fill a blank, type the kana), and kanji are shown right after the words that use them, so knowledge connects instead of staying isolated.</p></div>
- <div class="card guidec"><h3>Daily routine · ~15 min</h3><ol><li><b>Reviews first</b> — clear everything due. Don't skip days; reviews pile up.</li><li><b>New cards</b> — no daily limit. They come in batches (session size, default 20); tap “Keep going” for more. Remember: every new card means reviews in the coming days, so add more only if your reviews stay under ~15 min.</li><li><b>Quiz mistakes</b> — words from questions you miss are queued automatically as priority cards.</li><li>Finish with a short quiz or one 読解 passage to see words in context.</li><li><b>Shortcuts</b> — on the answer side, swipe right = Good, swipe left = Again; on a keyboard, Space shows the answer and 1–4 grade.</li></ol></div>
+ <div class="card guidec"><h3>Daily routine · ~15 min</h3><ol><li><b>Reviews first</b> — clear everything due. Don't skip days; reviews pile up.</li><li><b>New cards</b> — no daily limit. They come in batches (session size, default 20); tap “Keep going” for more. Remember: every new card means reviews in the coming days, so add more only if your reviews stay under ~15 min.</li><li><b>Quiz mistakes</b> — words from questions you miss are queued automatically as priority cards.</li><li>Finish with a short quiz or one 読解 passage to see words in context.</li><li><b>Shortcuts</b> — swipe left = next (an unanswered card is skipped and comes back later, no grade), swipe right = look at the previous card (read-only); tap the card front to peek at the reading and an example; on a keyboard, Space shows the answer and 1–4 grade.</li></ol></div>
  <div class="card guidec"><h3>Grading honestly</h3><ul><li><b>Again</b> — you didn't recall it (or only after seeing it).</li><li><b>Hard</b> — recalled with real effort or partly wrong.</li><li><b>Good</b> — recalled after a moment's thought. Most answers.</li><li><b>Easy</b> — instant, effortless.</li></ul><p class="mut sm">Swipe right = Good, left = Again. Say the word out loud — 🔊 plays it.</p></div>
  <div class="card guidec"><h3>Tips</h3><ul><li>Say readings aloud and picture the kanji before revealing.</li><li>Cards missed 4+ times become <b>leeches</b>: read the kanji breakdown and write your own mnemonic in the box.</li><li>Look-alike kanji cards train you to spot the difference — study the 👀 note.</li><li>Back up your progress from Progress → Export backup now and then.</li></ul></div>
  <a class="btn primary full" href="#study/mixed">▶ Start today's session</a>`}
 
 window.addEventListener('hashchange',route);
 window.__n1q=Q;window.__sim=SIM;window.__simDiff=simDiff;window.__n1={pick:smartPick,nav:()=>NAV,ss:()=>SS,state:()=>S,start:(ids)=>nav('quiz/play',()=>start(Q.filter(q=>ids.includes(q.id)),store.get("quizOpts",{}),false))};
+// ---- v51 swipe: ← next, → previous on Study and Quiz (play) screens. Ignores left-edge (system back), vertical scrolls, h-scrollable areas, inputs.
+const SWX=24,SWT=60;
+function hScrollable(t){for(let n=t;n&&n!==app&&n.nodeType===1;n=n.parentElement){const o=getComputedStyle(n).overflowX;if((o==='auto'||o==='scroll')&&n.scrollWidth>n.clientWidth+2)return true}return false}
+function swEl(){return (cur||'').startsWith('study/')?$('#sc'):(cur||'')==='quiz/play'?app:null}
+let SW=null;
+document.addEventListener('touchstart',e=>{SW=null;if(e.touches.length!==1||!swEl())return;const t=e.touches[0];
+  if(t.clientX<SWX||!e.target.closest('#app')||e.target.closest('input,textarea,select,.kopts,.wsheet,.ssheet,.toast')||hScrollable(e.target))return;
+  if(document.querySelector('.wsheet.show,.ssheet'))return;SW={x:t.clientX,y:t.clientY,lock:null,el:swEl()}},{passive:true});
+document.addEventListener('touchmove',e=>{if(!SW)return;const t=e.touches[0],dx=t.clientX-SW.x,dy=t.clientY-SW.y;
+  if(!SW.lock&&(Math.abs(dx)>10||Math.abs(dy)>10))SW.lock=Math.abs(dx)>Math.abs(dy)*1.6?'x':'y';
+  if(SW.lock==='x'&&!reduced()&&SW.el){SW.el.style.transition='none';SW.el.style.transform=`translateX(${dx*.3}px)`}},{passive:true});
+document.addEventListener('touchend',e=>{if(!SW)return;const s=SW;SW=null;const t=e.changedTouches[0],dx=t.clientX-s.x,dy=t.clientY-s.y;
+  if(s.el){s.el.style.transition='';s.el.style.transform=''}
+  if(s.lock!=='x'||Math.abs(dx)<SWT||Math.abs(dx)<Math.abs(dy)*1.6)return;swipeGo(dx<0?'next':'prev')},{passive:true});
+document.addEventListener('touchcancel',()=>{if(SW&&SW.el){SW.el.style.transform=''}SW=null},{passive:true});
+function slideIn(el,dir){if(!el||reduced())return;el.classList.remove('sin-l','sin-r');void el.offsetWidth;el.classList.add(dir==='next'?'sin-r':'sin-l')}
+function swipeGo(dir){const r=cur||'';
+  if(r.startsWith('study/')&&SS)return studySwipe(dir);
+  if(r==='quiz/play'&&S)return quizSwipe(dir)}
+window.__swipe=swipeGo;
+// Study: next on current = defer (no grading) to the end of the queue; prev = read-only view of earlier graded cards
+function studySwipe(dir){if(typeof closePeek==='function')closePeek();
+  if(SS.view!=null){if(dir==='prev'){if(SS.view>0){SS.view--;studyView(dir)}else nudge()}else{SS.view++;if(SS.view>=SS.i){SS.view=null;studyCard();slideIn($('#sc'),dir)}else studyView(dir)}return}
+  if(dir==='prev'){if(SS.i>0){SS.view=SS.i-1;studyView(dir)}else nudge();return}
+  if(SS.graded)return;const rest=SS.items.length-SS.i;if(rest<=1){nudge();toast('Last card in this batch');return}
+  const it=SS.items.splice(SS.i,1)[0];SS.items.push(typeof it==='string'?{key:it}:it);SS.shown=false;studyCard();slideIn($('#sc'),dir);toast('Skipped · it comes back later')}
+function nudge(){const el=swEl();if(!el||reduced())return;el.classList.remove('nudge');void el.offsetWidth;el.classList.add('nudge')}
+const GNAME={1:'Again',2:'Hard',3:'Good',4:'Easy'};
+function studyView(dir){const it0=SS.items[SS.view],it=typeof it0==='string'?{key:it0}:it0,tot=SS.items.length;
+  app.innerHTML=`<div class="qtop">${fmBtns()}<div class="qprog"><div style="width:${SS.i*100/tot}%"></div></div><span class="mut sm">${SS.view+1}/${tot}</span>${aaBtn()}</div>
+  <div class="scard revealed ro" id="sc"><div class="stag"><span class="pill${it.key[0]==='w'?'':' sub'}">${it.key[0]==='w'?'語 word':'漢 kanji'}</span><span class="pill sub">earlier card</span></div>
+   <div class="sback">${backHTML(it)}</div></div>
+  <div class="stbar" id="sbar"><div class="frow rov"><span class="mut sm">${it.g?`Graded: <b>${GNAME[it.g]||'—'}</b>`:'Not graded'}</span><button class="btn primary" id="rtc" type="button">Back to current →</button></div></div>`;
+  $('#rtc').onclick=()=>{SS.view=null;studyCard();slideIn($('#sc'),'next')};
+  app.querySelectorAll('.say').forEach(b=>b.onclick=e=>{e.stopPropagation();say(b.dataset.t)});
+  slideIn($('#sc'),dir);window.scrollTo(0,0)}
+// Quiz: next = Next button once the step is answered; prev = read-only view of earlier steps
+function quizSwipe(dir){
+  if(dir==='next'){if(S.view!=null){const t=S.si+1;if(t>=S.view){const c=S.view;S.view=null;S.si=c;showQ();restoreStep(c);slideIn(app,dir);window.scrollTo(0,0)}else{S.si=t;viewStep();slideIn(app,dir)}return}
+    const nx=$('#nx');if(nx){nx.click();slideIn(app,dir)}else nudge();return}
+  const base=S.view!=null?S.si:S.si;if(base<=0){nudge();return}
+  if(S.view==null)S.view=S.si;S.si=base-1;viewStep();slideIn(app,dir)}
+function restoreStep(si){const p=(S.past||{})[si];if(!p)return;S.ans={...p};Object.keys(p).forEach(j=>renderAnswered(+j,false))}
+function viewStep(){showQ();restoreStep(S.si);const w=$('#nxw');if(w)w.innerHTML=`<div class="nextbar rov"><span class="mut sm">Earlier question · read-only</span><button class="btn primary" id="rtq" type="button">Back to current →</button></div>`;
+  app.querySelectorAll('.choice').forEach(b=>{b.classList.add('dis');b.setAttribute('aria-disabled','true');b.onclick=null});
+  const r=$('#rtq');if(r)r.onclick=()=>{const c=S.view;S.view=null;S.si=c;showQ();restoreStep(c);slideIn(app,'next');window.scrollTo(0,0)};window.scrollTo(0,0)}
 loadSess();route();
 })();
+

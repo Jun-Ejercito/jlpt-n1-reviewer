@@ -787,3 +787,19 @@ html.focusm .toast{bottom:calc(80px + env(safe-area-inset-bottom))}
 .scard.revealed .speek{display:none}
 @keyframes pkin{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:none}}
 @media (prefers-reduced-motion:reduce){.speek{animation:none}}
+/* v51 */
+.speek .pkr{display:flex;flex-wrap:wrap;justify-content:center;align-items:baseline;gap:0 .2em}
+.speek .pkm{font-size:calc(var(--pfs,17px)*.72);color:var(--mut,#888);font-family:var(--sans,system-ui),sans-serif;letter-spacing:0}
+.fubtn{position:relative;display:inline-flex;flex-direction:column;align-items:center;justify-content:center;line-height:1;gap:1px;padding:0}
+.fubtn .fk{font-size:10px;opacity:.9;transition:opacity .15s,transform .15s}.fubtn .fK{font-size:15px;font-family:var(--serif,serif)}
+.fubtn[aria-pressed="true"]{color:var(--ink)}
+.fubtn[aria-pressed="false"] .fk{opacity:.25;transform:translateY(2px) scale(.85)}
+.fubtn[aria-pressed="false"]::after{content:"";position:absolute;left:9px;right:9px;top:50%;height:1.5px;background:currentColor;opacity:.55;transform:rotate(-35deg)}
+.sin-r{animation:sinr .22s ease-out}.sin-l{animation:sinl .22s ease-out}
+@keyframes sinr{from{opacity:.3;transform:translateX(28px)}to{opacity:1;transform:none}}
+@keyframes sinl{from{opacity:.3;transform:translateX(-28px)}to{opacity:1;transform:none}}
+.nudge{animation:nudge .28s ease}@keyframes nudge{0%,100%{transform:none}30%{transform:translateX(-8px)}60%{transform:translateX(6px)}}
+.rov{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.scard.ro{opacity:.96}
+@media (prefers-reduced-motion:reduce){.sin-r,.sin-l,.nudge{animation:none}}
+.fubtn{min-width:44px;min-height:44px;padding:0 8px}
