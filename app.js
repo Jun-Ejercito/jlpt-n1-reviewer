@@ -1,6 +1,6 @@
 (function(){
 'use strict';
-const APP_VERSION='v43';
+const APP_VERSION='v44';
 const SECTIONS=['文字・語彙','文法','読解'];
 const SEC_INFO={'文字・語彙':{en:'Kanji & Vocabulary',glyph:'字'},'文法':{en:'Grammar',glyph:'文'},'読解':{en:'Reading',glyph:'読'}};
 const IC=(d,extra='')=>`<svg class="ico" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"${extra}>${d}</svg>`;
@@ -564,7 +564,7 @@ function todayCard(q,cta=true){const mins=Math.max(1,Math.ceil((q.due*10+(q.nw+q
    <div class="td-n"><div><b>${q.due}</b><small>due</small></div><div><b>${q.avail}</b><small>new avail.</small></div><div><b>${sk}🔥</b><small>streak</small></div><div><b>~${q.items.length?mins:0}</b><small>min</small></div></div>
    ${q.pri?`<p class="sm td-p">🎯 ${q.pri} word${q.pri>1?'s':''} from quiz mistakes queued</p>`:''}
    ${cta?`<div class="td-a"><a class="btn primary" id="tdgo" href="#study/mixed">${q.items.length?'▶ Start':'✓ All done — study more'}</a><a class="btn ghost" href="#study">Options</a></div>`:''}</div>`}
-function studyStart(mode){const q=buildQueue(mode);SS={mode,items:q.items.slice(),i:0,done:0,again:{},res:{1:0,2:0,3:0,4:0}};if(!SS.items.length)return studyDone();studyCard()}
+function studyStart(mode){const q=buildQueue(mode);const tn=store.get('swTips',0);if(tn<3)store.set('swTips',tn+1);SS={tip:tn<3,mode,items:q.items.slice(),i:0,done:0,again:{},res:{1:0,2:0,3:0,4:0}};if(!SS.items.length)return studyDone();studyCard()}
 function studyDone(){const r=SS?SS.res:{1:0,2:0,3:0,4:0},n=r[1]+r[2]+r[3]+r[4];
   app.innerHTML=`<div class="card sdone"><div class="dseal" aria-hidden="true">${n?'済':'<span class="dck">✓</span>'}</div><div class="dpill">${n?'お疲れさま':'今日は完了'}</div><h2>${n?`Session complete · ${n} cards`:'Nothing due right now'}</h2>
    ${n?`<p class="mut">Again ${r[1]} · Hard ${r[2]} · Good ${r[3]} · Easy ${r[4]}</p>`:'<p class="mut">Every card has been seen and no reviews are due. Come back later for reviews.</p>'}
@@ -613,7 +613,8 @@ function studyCard(){const it0=SS.items[SS.i];if(!it0)return studyDone();
 function reveal(it,auto){if(SS.shown)return;SS.shown=true;const db=srsDB(),st=db[it.key];
   const sc=$('#sc');sc.classList.add('revealed');sc.querySelector('.sback').innerHTML=(auto===true?'<p class="verd ok">✓ Correct</p>':auto===false?'<p class="verd bad">✕ Not quite</p>':'')+backHTML(it);
   const sug=auto===true?3:auto===false?1:0;
-  $('#sbar').innerHTML=`<div class="grades">${[[1,'Again'],[2,'Hard'],[3,'Good'],[4,'Easy']].map(([g,l])=>`<button class="gbtn g${g}${sug===g?' sug':''}" data-g="${g}"><b>${l}</b><small>${ivLabel(sched(st,g).iv)}</small></button>`).join('')}</div><p class="swh mut sm">swipe → Good · ← Again · keys 1–4</p>`;
+  $('#sbar').innerHTML=`<div class="grades">${[[1,'Again'],[2,'Hard'],[3,'Good'],[4,'Easy']].map(([g,l])=>`<button class="gbtn g${g}${sug===g?' sug':''}" data-g="${g}"><b>${l}</b><small>${ivLabel(sched(st,g).iv)}</small></button>`).join('')}</div>${SS.tip?'<p class="swtip" aria-hidden="true">Tip: swipe → Good · ← Again</p>':''}`;
+  if(SS.tip){SS.tip=false;setTimeout(()=>{const t=document.querySelector('.swtip');if(t)t.classList.add('gone')},3500)}
   app.querySelectorAll('.gbtn').forEach(b=>b.onclick=()=>grade(it,+b.dataset.g));
   app.querySelectorAll('.say').forEach(b=>b.onclick=e=>{e.stopPropagation();say(b.dataset.t)});
   const mn=$('#mn');if(mn)mn.onchange=()=>{const n=store.get('srsNote',{});n[it.key]=mn.value;store.set('srsNote',n)};
@@ -659,7 +660,7 @@ function studyGuide(){app.innerHTML=`<div class="ph"><h1 class="pt">How to study
  <div class="card guidec"><h3>Why this works</h3><p><b>Active recall</b> — trying to pull the answer out of memory <i>before</i> you see it strengthens memory far more than re-reading. Every card asks you to produce something: a reading, a meaning, a word, the right kanji.</p>
  <p><b>Spaced repetition</b> — each card comes back just as you're about to forget it. Good answers push it further out (1d → 3d → 8d → 3 weeks…); Again brings it back today. A few minutes a day beats hours of cramming.</p>
  <p><b>Variety</b> — the same word is tested in different ways (read it, write it from English, fill a blank, type the kana), and kanji are shown right after the words that use them, so knowledge connects instead of staying isolated.</p></div>
- <div class="card guidec"><h3>Daily routine · ~15 min</h3><ol><li><b>Reviews first</b> — clear everything due. Don't skip days; reviews pile up.</li><li><b>New cards</b> — no daily limit. They come in batches (session size, default 20); tap “Keep going” for more. Remember: every new card means reviews in the coming days, so add more only if your reviews stay under ~15 min.</li><li><b>Quiz mistakes</b> — words from questions you miss are queued automatically as priority cards.</li><li>Finish with a short quiz or one 読解 passage to see words in context.</li></ol></div>
+ <div class="card guidec"><h3>Daily routine · ~15 min</h3><ol><li><b>Reviews first</b> — clear everything due. Don't skip days; reviews pile up.</li><li><b>New cards</b> — no daily limit. They come in batches (session size, default 20); tap “Keep going” for more. Remember: every new card means reviews in the coming days, so add more only if your reviews stay under ~15 min.</li><li><b>Quiz mistakes</b> — words from questions you miss are queued automatically as priority cards.</li><li>Finish with a short quiz or one 読解 passage to see words in context.</li><li><b>Shortcuts</b> — on the answer side, swipe right = Good, swipe left = Again; on a keyboard, Space shows the answer and 1–4 grade.</li></ol></div>
  <div class="card guidec"><h3>Grading honestly</h3><ul><li><b>Again</b> — you didn't recall it (or only after seeing it).</li><li><b>Hard</b> — recalled with real effort or partly wrong.</li><li><b>Good</b> — recalled after a moment's thought. Most answers.</li><li><b>Easy</b> — instant, effortless.</li></ul><p class="mut sm">Swipe right = Good, left = Again. Say the word out loud — 🔊 plays it.</p></div>
  <div class="card guidec"><h3>Tips</h3><ul><li>Say readings aloud and picture the kanji before revealing.</li><li>Cards missed 4+ times become <b>leeches</b>: read the kanji breakdown and write your own mnemonic in the box.</li><li>Look-alike kanji cards train you to spot the difference — study the 👀 note.</li><li>Back up your progress from Progress → Export backup now and then.</li></ul></div>
  <a class="btn primary full" href="#study/mixed">▶ Start today's session</a>`}
