@@ -1,6 +1,6 @@
 (function(){
 'use strict';
-const APP_VERSION='v51';
+const APP_VERSION='v52';
 const SECTIONS=['文字・語彙','文法','読解'];
 const SEC_INFO={'文字・語彙':{en:'Kanji & Vocabulary',glyph:'字'},'文法':{en:'Grammar',glyph:'文'},'読解':{en:'Reading',glyph:'読'}};
 const IC=(d,extra='')=>`<svg class="ico" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"${extra}>${d}</svg>`;
@@ -156,7 +156,7 @@ function start(list,opts,missedMode,limit){if(!list.length){alert('No questions 
   let take=units;if(limit>0){take=[];let c=0;for(const u of units){if(c>=limit)break;take.push(u);c+=u.length}}
   const flat=[],steps=[];take.forEach(u=>{steps.push([flat.length,u.length]);flat.push(...u)});
   const sc=store.get('quizOpts',{}).sc!==false,perm={};if(sc)flat.forEach(q=>{if(!isOrderQ(q))perm[q.id]=shuffle(Object.keys(q.choices))});
-  S={list:flat,steps,si:0,opts,missedMode,i:0,score:0,wrong:[],ans:{},perm};showQ()}
+  S={sid:Date.now()+''+Math.random(),list:flat,steps,si:0,opts,missedMode,i:0,score:0,wrong:[],ans:{},perm};showQ()}
 // v42: shuffled choice order lives in S.perm[qid] (original keys in display order); labels follow position
 const corder=q=>(S&&S.perm&&S.perm[q.id])||Object.keys(q.choices);
 function dk(q,k){const p=S&&S.perm&&S.perm[q.id];if(!p)return String(k);const i=p.indexOf(String(k));return i<0?String(k):Object.keys(q.choices)[i]}
@@ -264,6 +264,8 @@ function kStats(x){return `<div class="kstats"><div class="st"><span class="lbl"
    <div class="st"><span class="lbl">部首 Radical</span><div class="sv">${esc(x.radical)} <small class="mut">#${x.radical_number}</small></div></div></div>`}
 function markKanji(c){const kv=store.get('kanjiViewed',[]);if(!kv.includes(c)){kv.push(c);store.set('kanjiViewed',kv)}}
 const VS={},ORDER={vocab:null,kanji:null};
+// v52: deck order/index/hint saved per history entry so Back restores exactly that screen (shared state let a later Words visit overwrite it)
+const DECKS=(()=>{try{return JSON.parse(sessionStorage.getItem('n1_decks'))||{}}catch(e){return{}}})();
 const seg=(g)=>`<div class="seg"><button class="${g===true?'on':''}" id="tg">Grid</button><button class="${g===false?'on':''}" id="tc">Cards</button><button class="${g==='sim'?'on':''}" id="ts">Look-alike</button></div>`;
 const wireSeg=()=>{const t=$('#ts');if(t)t.onclick=()=>{location.hash='similar'}};
 const simOf=c=>SIM.filter(g=>g.kanji.includes(c));
@@ -410,10 +412,13 @@ function kanjiDetail(c){
 
 /* ---------- Flashcard deck (words & kanji) ---------- */
 function deck(kind,focus){
-  const isV=kind==='vocab';if(!ORDER[kind])ORDER[kind]=shuffle(isV?V:K);let data=ORDER[kind];const savedIdx=VS[cur]&&VS[cur].idx;let filt=data,idx=0,flipped=false,onlyUnknown=isV&&store.get('wordsFilter',false);
+  const isV=kind==='vocab',src=isV?V:K,dkk=NAV.k,ent=DECKS[dkk]&&DECKS[dkk].kind===kind?DECKS[dkk]:null;
+  if(ent){const o=ent.o.map(i=>src[i]).filter(Boolean);if(o.length===src.length)ORDER[kind]=o}
+  if(!ORDER[kind])ORDER[kind]=shuffle(src);let data=ORDER[kind];const savedIdx=ent?ent.idx:VS[cur]&&VS[cur].idx;
+  const pos=new Map(src.map((x,i)=>[x,i])),saveOrd=()=>{DECKS[dkk]={kind,o:data.map(x=>pos.get(x)),idx:(DECKS[dkk]||{}).idx||0,hint:(DECKS[dkk]||{}).hint};const ks=Object.keys(DECKS);if(ks.length>30)delete DECKS[ks[0]]};let filt=data,idx=0,flipped=false,onlyUnknown=isV&&store.get('wordsFilter',false);
   const ICON={filter:'<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 6h16M7 12h10M10 18h4"/></svg>',
     shuffle:'<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 3h5v5M4 20 21 3M21 16v5h-5M15 15l6 6M4 4l5 5"/></svg>'};
-  const showHint=!store.get('hintSeen_'+kind,false);
+  const showHint=ent&&ent.hint!=null?ent.hint:!store.get('hintSeen_'+kind,false);if(!ent||ent.o.length!==src.length)saveOrd();DECKS[dkk].hint=showHint;
   app.innerHTML=`<div class="ph deck-ph"><h1 class="pt">${isV?'Words 語彙':'Kanji 漢字'}</h1>${isV?'':seg(false)}<a class="btn sm primary stbtn" href="#study/${isV?'words':'kanji'}">▶ Study</a></div>
   <div class="toolbar"><div class="search"><input type="search" id="s" placeholder="Search ${isV?'words':'kanji'}…" aria-label="Search ${isV?'word, reading, romaji, meaning':'kanji, reading, meaning'}"><span class="mut sm" id="cnt"></span></div>
    ${isV?`<button class="ibtn${onlyUnknown?' active':''}" id="ou" aria-pressed="${onlyUnknown}" aria-label="Show only words not marked Know" title="Only not-known words">${ICON.filter}<i class="dot"></i></button>`:''}
@@ -431,7 +436,8 @@ function deck(kind,focus){
   const vsKey=cur;
   function tag(x){if(!isV)return'';const s=vs()[x.id];return s==='know'?'<span class="tag k">Know</span>':s==='dont'?'<span class="tag u">Don\'t know</span>':''}
   function render(){
-    VS[vsKey]=Object.assign(VS[vsKey]||{},{idx});
+    if(OV){const f=OV;ovDrop();f()}  // v52: card re-render removes an open story editor/popover, so drop its history step too
+    VS[vsKey]=Object.assign(VS[vsKey]||{},{idx});if(DECKS[dkk])DECKS[dkk].idx=idx;
     $('#cnt').textContent=filt.length?`${idx+1}/${filt.length}`:'0';if($('#lbn'))$('#lbn').textContent=`(${filt.length})`;
     const x=filt[idx],fc=$('#fc');fc.classList.toggle('flipped',flipped);
     if(!x){$('#ff').innerHTML='<span class="mut">No cards</span>';$('#fbk').innerHTML='';$('#ls').innerHTML='';return}
@@ -472,7 +478,7 @@ function deck(kind,focus){
   stage.addEventListener('pointercancel',e=>{if(e.pointerType!=='touch'){g=null;reset()}});
   stage.addEventListener('click',e=>{if(suppressClick||e.target.closest('a,button,.mnemo'))return;flipped=!flipped;render()});
   $('#pv').onclick=()=>go(-1);$('#nx').onclick=()=>go(1);
-  $('#sh').onclick=()=>{data=ORDER[kind]=shuffle(isV?V:K);idx=0;flipped=false;apply()};$('#s').oninput=()=>{idx=0;flipped=false;apply()};
+  $('#sh').onclick=()=>{data=ORDER[kind]=shuffle(isV?V:K);saveOrd();idx=0;flipped=false;apply()};$('#s').oninput=()=>{idx=0;flipped=false;apply()};
   if(isV){$('#kn').onclick=()=>mark('know');$('#dk').onclick=()=>mark('dont');$('#ou').onclick=e=>{onlyUnknown=!onlyUnknown;const b=$('#ou');b.classList.toggle('active',onlyUnknown);b.setAttribute('aria-pressed',onlyUnknown);store.set('wordsFilter',onlyUnknown);idx=0;apply()}}
   else{$('#lvb').querySelectorAll('.lvf').forEach(b=>b.onclick=()=>{store.set('kanjiLevel',b.dataset.l);$('#lvb').querySelectorAll('.lvf').forEach(x=>x.classList.toggle('on',x===b));idx=0;flipped=false;apply()})}
   if(!isV){$('#tg').onclick=()=>{store.set('kanjiMode','grid');location.hash='kanji'};wireSeg()}
@@ -485,7 +491,7 @@ function deck(kind,focus){
 /* ---------- Shell: header, tabs, routing ---------- */
 let cur='',NAV={k:0,d:0},navCtr=+sessionStorage.getItem('n1_navk')||0;const SCR=(()=>{try{return JSON.parse(sessionStorage.getItem('n1_scr'))||{}}catch(e){return{}}})();
 function goBack(){if(OV||NAV.d>0)history.back();else if(cur!=='home')replaceTo('home')}
-function replaceTo(h){delete SCR[NAV.k];history.replaceState({k:NAV.k,d:NAV.d},'','#'+h);cur='';route()}
+function replaceTo(h){delete SCR[NAV.k];delete QSESS[NAV.k];history.replaceState({k:NAV.k,d:NAV.d},'','#'+h);cur='';route()}
 // v48 settings sheet (one history step; Back closes it)
 let sheet=null;
 function closeSheetRaw(){if(sheet){sheet.classList.remove('show');const x=sheet;sheet=null;setTimeout(()=>x.remove(),200)}}
@@ -517,15 +523,20 @@ document.addEventListener('click',e=>{if(e.target.closest&&e.target.closest('.fb
 let OV=null,ignorePop=false;
 function ovOpen(close){if(OV){OV=close;return}OV=close;history.pushState({k:NAV.k,d:NAV.d,ov:1},'',location.href)}
 function ovDrop(){if(!OV)return;OV=null;ignorePop=true;history.back()}
-window.addEventListener('popstate',e=>{if(ignorePop){ignorePop=false;return}if(OV){const f=OV;OV=null;f();return}
+let navAfterPop=null;
+window.addEventListener('popstate',e=>{if(ignorePop){ignorePop=false;if(navAfterPop){const h=navAfterPop;navAfterPop=null;location.hash=h}return}if(OV){const f=OV;OV=null;f();return}
   if(e.state&&e.state.ov&&location.hash===('#'+cur)){ignorePop=true;history.back()}});
 document.addEventListener('click',e=>{if(!OV)return;const a=e.target.closest&&e.target.closest('a[href^="#"]');if(!a)return;e.preventDefault();e.stopPropagation();
-  const f=OV;OV=null;f();history.replaceState(null,'',a.getAttribute('href'));route()},true);
+  const f=OV;OV=null;f();const h=a.getAttribute('href');if(h===location.hash){ignorePop=true;history.back();return}navAfterPop=h;ignorePop=true;history.back()},true);  // v52: drop the overlay step, then push the link as its own step (replacing it lost a Back step)
 const QBY=Object.fromEntries(Q.map(q=>[q.id,q]));
-function saveSess(){try{sessionStorage.setItem('n1_S',S?JSON.stringify({...S,...(S.view!=null?{si:S.view,ans:(S.past||{})[S.view]||{},view:null}:{}),list:S.list.map(q=>q.id),wrong:S.wrong.map(w=>({q:w.q.id,k:w.k}))}):'');sessionStorage.setItem('n1_SS',SS?JSON.stringify({...SS,view:null}):'');sessionStorage.setItem('n1_scr',JSON.stringify(SCR))}catch(e){}}
-function loadSess(){try{const a=sessionStorage.getItem('n1_S');if(a){const o=JSON.parse(a);o.list=o.list.map(i=>QBY[i]).filter(Boolean);o.wrong=o.wrong.map(w=>({q:QBY[w.q],k:w.k})).filter(w=>w.q);S=o}
+// v52: each quiz/play history entry remembers its own quiz session, so Back to an older quiz shows that quiz (not a newer one)
+const QSESS=(()=>{try{return JSON.parse(sessionStorage.getItem('n1_qs'))||{}}catch(e){return{}}})();
+function serS(){return S?JSON.stringify({...S,...(S.view!=null?{si:S.view,ans:(S.past||{})[S.view]||{},view:null}:{}),list:S.list.map(q=>q.id),wrong:S.wrong.map(w=>({q:w.q.id,k:w.k}))}):''}
+function deserS(a){const o=JSON.parse(a);o.list=o.list.map(i=>QBY[i]).filter(Boolean);o.wrong=o.wrong.map(w=>({q:QBY[w.q],k:w.k})).filter(w=>w.q);return o}
+function saveSess(){try{sessionStorage.setItem('n1_S',serS());sessionStorage.setItem('n1_qs',JSON.stringify(QSESS));sessionStorage.setItem('n1_SS',SS?JSON.stringify({...SS,view:null}):'');sessionStorage.setItem('n1_scr',JSON.stringify(SCR));sessionStorage.setItem('n1_decks',JSON.stringify(DECKS))}catch(e){}}
+function loadSess(){try{const a=sessionStorage.getItem('n1_S');if(a)S=deserS(a)
   const b=sessionStorage.getItem('n1_SS');if(b)SS=JSON.parse(b)}catch(e){}}
-function snap(){if(!cur)return;const si=document.querySelector('#s');VS[cur]=Object.assign(VS[cur]||{},{q:si?si.value:'',y:window.scrollY});
+function snap(){if(!cur)return;if(cur==='quiz/play'&&S&&S.sid){QSESS[NAV.k]=serS();const qk=Object.keys(QSESS);if(qk.length>20)delete QSESS[qk[0]]}const si=document.querySelector('#s');VS[cur]=Object.assign(VS[cur]||{},{q:si?si.value:'',y:window.scrollY});
   SCR[NAV.k]={y:window.scrollY,open:[...app.querySelectorAll('details')].map((d,i)=>d.open?i:-1).filter(i=>i>=0)};const ks=Object.keys(SCR);if(ks.length>200)delete SCR[ks[0]];saveSess()}
 window.addEventListener('pagehide',snap);document.addEventListener('visibilitychange',()=>{if(document.hidden)snap()});
 function resumeQuiz(){if(S.done)return results(false);const a=S.ans||{};showQ();for(const j in a){S.ans[j]=a[j];renderAnswered(+j,false)}}
@@ -551,7 +562,7 @@ function route(){if(S&&S.view!=null){S.si=S.view;S.ans={...((S.past||{})[S.view]
   const fresh=!!pending||!SCR[NAV.k];
   cur=h;if(h!=='home')store.set('last',h);header();applyFocus();document.documentElement.dataset.r=h.split('/')[0];if(audio)audio.pause();
   const [p,arg]=h.split('/');const a=arg&&decodeURIComponent(arg);
-  if(p==='quiz'){if(a==='play'){if(pending){const f=pending;pending=null;if(f()===false)return history.back()}else if(S)resumeQuiz();else{pending=null;return replaceTo('quiz')}}else{pending=null;quizSetup()}}else render(p,a);
+  if(p==='quiz'){if(a==='play'){if(pending){const f=pending;pending=null;if(f()===false)return history.back()}else if(S||QSESS[NAV.k]){const e=QSESS[NAV.k];if(e){try{const o=deserS(e);if(!S||o.sid!==S.sid)S=o}catch(_){}}resumeQuiz()}else{pending=null;return replaceTo('quiz')}}else{pending=null;quizSetup()}}else render(p,a);
   const sv=fresh?null:SCR[NAV.k];if(sv&&sv.open){const ds=app.querySelectorAll('details');sv.open.forEach(i=>{if(ds[i])ds[i].open=true})}
   const y=sv?sv.y:(p==='quiz'||p==='study'?0:(VS[h]||{}).y||0);window.scrollTo(0,y);requestAnimationFrame(()=>window.scrollTo(0,y));saveSess();
 }
