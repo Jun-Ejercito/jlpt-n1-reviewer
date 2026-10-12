@@ -1,6 +1,6 @@
 (function(){
 'use strict';
-const APP_VERSION='v46';
+const APP_VERSION='v47';
 const SECTIONS=['文字・語彙','文法','読解'];
 const SEC_INFO={'文字・語彙':{en:'Kanji & Vocabulary',glyph:'字'},'文法':{en:'Grammar',glyph:'文'},'読解':{en:'Reading',glyph:'読'}};
 const IC=(d,extra='')=>`<svg class="ico" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"${extra}>${d}</svg>`;
@@ -353,12 +353,23 @@ function similarView(){const st=VS[cur]||{};if(!SIMO[NAV.k]){SIMO[NAV.k]=shuffle
     $('#sl').innerHTML=f.map(g=>{const tile=g.part_display||g.shared_part||g.kanji[0];return `<a class="stile" href="#similar/${g.id}"><span class="stp ja">${esc(tile)}</span><span class="stm">${esc(g.part_meaning||g.shared_label||'')}</span><span class="stk ja">${g.members.map(m=>esc(m.kanji)).join('')}</span></a>`}).join('')};
   $('#ssh').onclick=()=>{SIMO[NAV.k]=shuffle(SIM.map(g=>g.id));saveSimo();draw()};
   $('#s').oninput=draw;draw()}
+function simDiff(g){const t=g.difference||'',out={};
+  for(const m of g.members){const k=m.kanji.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
+    const r=t.match(new RegExp('([^,;:.()（）→]{1,24}?)\\s*(?:\\+\\s*[^,;.→]{0,12})?→\\s*'+k+'\\s*([^,;.]*)'));
+    if(r)out[m.kanji]={by:r[1].replace(/^(and|or|but|with)\s+/i,'').trim(),gloss:r[2].trim()}}
+  return out}
 function simDetail(id){const g=SIM.find(x=>String(x.id)===String(id));if(!g){app.innerHTML='<div class="card">Group not found.</div>';return}
-  const tile=g.part_display||g.shared_part||g.kanji[0],sto=g.members.filter(m=>KBY[m.kanji]&&KBY[m.kanji].mnemonic);
-  app.innerHTML=`<div class="card simdet"><div class="sdh"><span class="spk">${esc(tile)}</span><div><b>${esc(g.shared_label||tile)}</b>${g.part_meaning?`<div class="srmean">${esc(g.part_meaning)}</div>`:''}</div></div>
-   ${g.part_expect?`<p class="srx">${esc(g.part_expect)}</p>`:''}
-   ${simCard(g,true).replace(/^<div class="card simg open"[^>]*>[\s\S]*?<div class="simx">/,'<div class="simg open nested"><div class="simx">')}</div>
-   ${sto.length?`<h2 class="sec-t">Memory stories</h2>${sto.map(m=>`<div class="card mnc">${storyHTML(m.kanji)}</div>`).join('')}`:''}`;
+  const tile=g.part_display||g.shared_part||g.kanji[0],D0=simDiff(g),D={};g.members.forEach(m=>{D[m.kanji]=m.diff_by?{by:m.diff_by,gloss:m.diff_gloss}:D0[m.kanji]});const all=g.members.every(m=>D[m.kanji]);
+  const rd=m=>[m.onyomi.length?`<span>On ${m.onyomi.map(esc).join('・')}</span>`:'',m.kunyomi.length?`<span>Kun ${m.kunyomi.map(esc).join('・')}</span>`:''].filter(Boolean).join(' · ');
+  app.innerHTML=`<div class="sgd">
+   <div class="sgh"><span class="sgp ja">${esc(tile)}</span><div class="sgt"><b>${esc(g.shared_label||tile)}</b>${g.part_meaning?` <span class="mut">· ${esc(g.part_meaning)}</span>`:''}</div></div>
+   ${g.part_expect?`<p class="sgx">${esc(g.part_expect)}</p>`:''}
+   ${all?`<details class="sgnote"><summary>Full note</summary><p class="sgdiff">${esc(g.difference)}</p></details>`:`<p class="sgdiff">${esc(g.difference)}</p>`}
+   <div class="sgl">${g.members.map(m=>{const inK=KBY[m.kanji],d=D[m.kanji];return `<section class="sgk">
+     <div class="sgkh"><span class="sgkc ja">${inK?`<a href="#kanji/${encodeURIComponent(m.kanji)}">${esc(m.kanji)}</a>`:esc(m.kanji)}</span>
+      <div class="sgkm">${d?`<div class="sgby"><b class="ja">${esc(d.by)}</b> → ${esc(d.gloss||m.meaning_en.split(';')[0])}</div>`:''}<div class="sgmean">${esc(m.meaning_en)}</div><div class="sgrd mut">${rd(m)}</div></div></div>
+     <div class="sgw"><span class="ja sgww">${m.sample.word_ruby&&/<ruby>/.test(m.sample.word_ruby)?m.sample.word_ruby:esc(m.sample.word)}</span>${m.sample.word_ruby&&/<ruby>/.test(m.sample.word_ruby)?`<span class="offuri mut">${esc(m.sample.reading)}</span>`:(m.sample.reading&&m.sample.reading!==m.sample.word?`<span class="mut">${esc(m.sample.reading)}</span>`:'')} <span class="mut">${esc(m.sample.meaning_en)}</span></div>
+     ${inK&&inK.mnemonic?storyHTML(m.kanji):''}</section>`}).join('')}</div></div>`;
 }
 const LEVELS=['all','N5','N4','N3','N2','N1','other'];
 const lvl=x=>x.jlpt?'N'+x.jlpt:'other';
@@ -680,6 +691,6 @@ function studyGuide(){app.innerHTML=`<div class="ph"><h1 class="pt">How to study
  <a class="btn primary full" href="#study/mixed">▶ Start today's session</a>`}
 
 window.addEventListener('hashchange',route);
-window.__n1q=Q;window.__n1={pick:smartPick,nav:()=>NAV,ss:()=>SS,state:()=>S,start:(ids)=>nav('quiz/play',()=>start(Q.filter(q=>ids.includes(q.id)),store.get("quizOpts",{}),false))};
+window.__n1q=Q;window.__sim=SIM;window.__simDiff=simDiff;window.__n1={pick:smartPick,nav:()=>NAV,ss:()=>SS,state:()=>S,start:(ids)=>nav('quiz/play',()=>start(Q.filter(q=>ids.includes(q.id)),store.get("quizOpts",{}),false))};
 loadSess();route();
 })();

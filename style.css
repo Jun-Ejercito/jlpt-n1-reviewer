@@ -687,3 +687,19 @@ html.nofuri rt{visibility:hidden}html:not(.nofuri) .offuri{display:none}
 .simdet .sdh{display:flex;align-items:center;gap:12px}.simdet .srx{margin:8px 0 0;color:var(--mut);font-size:.92em}
 .simg.nested{border:0;box-shadow:none;padding:0;margin:8px 0 0;background:none}.simg.nested .simx{display:block;max-height:none;opacity:1;grid-template-rows:1fr}.simg.nested .simxi{overflow:visible}
 .sgbar{display:flex;align-items:center;justify-content:space-between;margin:2px 2px 0}
+
+/* v47 look-alike group page: flat, hairlines */
+.sgd{font-size:var(--pfs);padding:4px 2px}
+.sgh{display:flex;align-items:baseline;gap:10px;margin:6px 0 2px}.sgp{font-family:var(--serif);font-size:1.9em;color:var(--accent);line-height:1}.sgt b{font-family:var(--serif);font-size:1.1em}
+.sgx{margin:4px 0 0;color:var(--mut);font-size:.88em;line-height:1.55}
+.sgdiff{margin:10px 0 4px;font-size:.88em;line-height:1.6;color:var(--mut)}
+.sgl{margin-top:8px}
+.sgk{padding:14px 0;border-top:1px solid var(--line)}.sgk:last-child{border-bottom:1px solid var(--line)}
+.sgkh{display:flex;gap:14px;align-items:flex-start}
+.sgkc{font-family:var(--serif);font-size:2.4em;line-height:1.1;min-width:1.1em}.sgkc a{color:var(--ink);text-decoration:none}
+.sgkm{min-width:0;flex:1}.sgby{font-size:.92em;margin-bottom:2px}.sgby b{color:var(--accent);font-weight:600}
+.sgmean{line-height:1.45}.sgrd{font-size:.85em;margin-top:2px}
+.sgw{margin:8px 0 0;line-height:2}.sgww{font-size:1.1em;margin-right:6px}
+.sgk .mnemo{margin-top:10px}
+.sgnote summary{cursor:pointer;color:var(--mut);font-size:.82em;margin-top:6px}
+.sgk .mdist{display:none}
