@@ -1,6 +1,6 @@
 (function(){
 'use strict';
-const APP_VERSION='v58';
+const APP_VERSION='v59';
 const SECTIONS=['文字・語彙','文法','読解'];
 const SEC_INFO={'文字・語彙':{en:'Kanji & Vocabulary',glyph:'字'},'文法':{en:'Grammar',glyph:'文'},'読解':{en:'Reading',glyph:'読'}};
 const IC=(d,extra='')=>`<svg class="ico" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"${extra}>${d}</svg>`;
@@ -190,7 +190,7 @@ function showQ(){S.ans={};const[st,n]=S.steps[S.si];S.i=st;const qs=S.list.slice
   app.innerHTML=`<div class="qtop">${fmBtns()}<div class="qprog"><div style="width:${S.si*100/S.steps.length}%"></div></div><span class="mut sm">${S.si+1}/${S.steps.length}${n>1?` · ${stepLabel()}`:''}</span><button class="aa qend" id="qend" aria-label="End quiz" title="End quiz">✕</button>${aaBtn()}</div>
   ${n>1?`<div class="card qcardq gpass"><p class="qmeta">${esc(secOf(q0))} · ${esc(q0.category)} · ${n} questions${S.missedMode?' · review':''}</p>${passageHTML(q0,true)}${q0.reading_guide?'':techHTML(q0)}</div>`:''}
   ${qs.map((q,j)=>`<div class="gq" id="gq${j}"><div class="card qcardq">${n>1?`<p class="qmeta">Question ${j+1}/${n}</p>`:`<p class="qmeta">${esc(secOf(q))} · ${esc(q.category)}${S.missedMode?' · review':''}</p>${passageHTML(q)}${q.reading_guide?'':techHTML(q)}`}
-  ${questionHTML(q)}${q.reading_guide?`<div class="gw">${guideHTML(q,false)}</div>`:''}</div>
+  ${questionHTML(q)}${q.reading_guide&&SHOW_GUIDE?`<div class="gw">${guideHTML(q,false)}</div>`:''}</div>
   <div class="choices${isLongQ(q)?' usage long':''}">${corder(q).map(k=>`<button class="choice" data-k="${esc(k)}" data-j="${j}"><span class="ck">${esc(dk(q,k))}</span><span class="cv">${choiceHTML(q,k,false)}</span></button>`).join('')}</div><div class="fbw"></div></div>`).join('')}
   <div id="nxw"></div>`;
   app.querySelectorAll('.choice').forEach(b=>b.onclick=()=>answer(b.dataset.k,+b.dataset.j));
@@ -336,7 +336,8 @@ window.addEventListener('hashchange',()=>{if(wsheet&&wsheet.classList.contains('
 function stripW(t,...ws){if(!t)return t;const E=x=>x.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
   for(const w of ws.filter(Boolean).sort((a,b)=>b.length-a.length))for(const c of [w,w.replace(/な$/,'')]){const m=t.match(new RegExp('^'+E(c)+'な?\\s*(?:[（(][^)）]{0,30}[)）])?\\s*[:：—–=\\-]\\s*'));if(m&&t.length>m[0].length)return t.slice(m[0].length)}
   return t}
-function guideHTML(q,answered,open){const g=q.reading_guide;if(!g)return'';
+const SHOW_GUIDE=false;  // v59: '💡 How to solve' box hidden on request; data kept in questions.json
+function guideHTML(q,answered,open){const g=q.reading_guide;if(!g||!SHOW_GUIDE)return'';
   const ks=g.key_sentences.map(k=>`<li><p class="ja">${furi&&k.ja_ruby?k.ja_ruby:esc(k.ja)}</p><p class="en">${esc(k.en)}</p><p class="why">→ ${esc(k.why)}</p></li>`).join('');
   const tr=Object.entries(g.choice_traps).sort((a,b)=>corder(q).indexOf(a[0])-corder(q).indexOf(b[0])).map(([c,t])=>`<li><span class="ck">${esc(dk(q,c))}</span><div><b class="trap">${esc(t.trap)}</b> <span class="cj">${esc(q.choices[c]||'')}</span><p>${esc(rmap(q,t.evidence))}</p></div></li>`).join('');
   return `<details class="guide"${open?' open':''}><summary>💡 How to solve this question<span class="gtype">${esc(g.type)}</span></summary>
