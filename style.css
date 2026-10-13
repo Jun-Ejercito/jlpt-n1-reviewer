@@ -819,3 +819,4 @@ html.focusm .toast{bottom:calc(80px + env(safe-area-inset-bottom))}
 .dp,.sgby b.dp{color:var(--dp);font-weight:700}
 .sgdiff .dp,.simd .dp{font-weight:600}
 .mpc.dpt{border-color:color-mix(in srgb,var(--dp) 55%,transparent);background:color-mix(in srgb,var(--dp) 9%,transparent)}.mpc.dpt b{color:var(--dp)}
+.kpeek .pkk{margin:6px 0 2px;font-size:.92em;line-height:1.7}.kpeek .pkk>b{margin-right:.5em;font-weight:600}.kpeek .pkk .rds+.rds{margin-left:.8em}
