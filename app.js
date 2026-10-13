@@ -1,6 +1,6 @@
 (function(){
 'use strict';
-const APP_VERSION='v60';
+const APP_VERSION='v61';
 const SECTIONS=['文字・語彙','文法','読解'];
 const SEC_INFO={'文字・語彙':{en:'Kanji & Vocabulary',glyph:'字'},'文法':{en:'Grammar',glyph:'文'},'読解':{en:'Reading',glyph:'読'}};
 const IC=(d,extra='')=>`<svg class="ico" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"${extra}>${d}</svg>`;
@@ -166,10 +166,15 @@ const isKanjiQ=q=>/表記/.test(q.category),isReadingQ=q=>/読み/.test(q.catego
 const hlHTML=(p,r)=>{const t=furi&&r?r:p.map(esc);return `${t[0]}<mark class="hl">${t[1]}</mark>${t[2]}`};
 const BLANK=/_{2,}|（[\s　]*）/g;
 const isOrderQ=q=>/並べ替え/.test(q.category)&&Array.isArray(q.correct_order),isLongQ=q=>isUsageQ(q)||/内容理解|統合理解|情報検索/.test(q.category)||Object.values(q.choices).some(c=>c.length>14);
+// v61: a paragraph that is only （中略） renders as a faded divider (data unchanged, no tap-a-word)
+const CHU_RE=/^[\s\u3000]*[（(][\s\u3000]*中略[\s\u3000]*[）)][\s\u3000]*$/;
+function chuuryaku(h){const L=h.split('\n'),out=[];for(let i=0;i<L.length;i++){const txt=L[i].replace(/<rt>.*?<\/rt>|<rp>.*?<\/rp>/g,'').replace(/<[^>]+>/g,'');
+  if(CHU_RE.test(txt)){while(out.length&&!out[out.length-1].replace(/<[^>]+>/g,'').trim())out.pop();out.push('<span class="chu" role="separator" aria-label="中略 (omitted)"><span>中略</span></span>');while(i+1<L.length&&!L[i+1].replace(/<[^>]+>/g,'').trim())i++;continue}
+  out.push(L[i])}return out.join('\n').replace(/\n?(<span class="chu"[^]*?<\/span><\/span>)\n?/g,'$1')}
 function passageHTML(q,open){if(!q.passage&&!q.passage_title)return'';const t=q.passage_title?(furi&&q.passage_title_ruby?q.passage_title_ruby:esc(q.passage_title)):'';
   if(!q.passage)return `<p class="ptitle">📄 ${t}</p>`;
   const P=q.passage_w?q:q.pref?Q.find(x=>x.id===q.pref):null;
-  return `<details class="passage"${open||(S&&S.passOpen)?' open':''}><summary>📄 ${t||'Passage 本文'}</summary>${P&&P.wl?`<details class="wlist" data-p="${P.id}"><summary>📖 Word list <span class="mut">· ${P.wl.length} words</span></summary><div class="wlb"></div></details>`:''}<div class="ptext ja">${(P?(furi?P.passage_w_ruby:P.passage_w):furi&&q.passage_ruby?q.passage_ruby:esc(q.passage)).replace(/\[(\d+)\]/g,'<b class="blank num">［$1］</b>')}</div></details>`}
+  return `<details class="passage"${open||(S&&S.passOpen)?' open':''}><summary>📄 ${t||'Passage 本文'}</summary>${P&&P.wl?`<details class="wlist" data-p="${P.id}"><summary>📖 Word list <span class="mut">· ${P.wl.length} words</span></summary><div class="wlb"></div></details>`:''}<div class="ptext ja">${chuuryaku((P?(furi?P.passage_w_ruby:P.passage_w):furi&&q.passage_ruby?q.passage_ruby:esc(q.passage)).replace(/\[(\d+)\]/g,'<b class="blank num">［$1］</b>'))}</div></details>`}
 function orderQHTML(q){let i=0;const body=F(q,'question').replace(/_{3,}|★/g,m=>m==='★'?'<b class="slot star">★</b>':'<b class="slot"></b>'.repeat(Math.max(1,Math.round(m.length/5))));
   return `<p class="q">${body}</p><p class="qhint">Arrange the four parts in order — choose the one that goes in ★</p>`}
 function orderAnsHTML(q){let si;const sl=q.question.match(/_{3,}|★/g)||[];si=sl.indexOf('★');if(si<0||String(q.correct_order[si])!==String(q.answer))si=q.correct_order.map(String).indexOf(String(q.answer));

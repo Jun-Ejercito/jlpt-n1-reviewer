@@ -822,3 +822,7 @@ html.focusm .toast{bottom:calc(80px + env(safe-area-inset-bottom))}
 .kpeek .pkk{margin:6px 0 2px;font-size:.92em;line-height:1.7}.kpeek .pkk>b{margin-right:.5em;font-weight:600}.kpeek .pkk .rds+.rds{margin-left:.8em}
 /* v59: furigana overhangs instead of spreading the base text (no gaps like 情 報) in either furigana state */
 rt{margin:0 -.6em}
+/* v61: （中略） divider */
+.ptext .chu{display:flex;align-items:center;gap:.7em;margin:.5em 0 .8em;opacity:.55;font-size:.68em;line-height:1.2;color:var(--mut);white-space:normal;pointer-events:none;user-select:none}
+.ptext .chu::before,.ptext .chu::after{content:"";flex:1;border-top:1px solid var(--line2,var(--line))}
+.ptext .chu>span{letter-spacing:.2em;padding-left:.2em}
