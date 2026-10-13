@@ -1,6 +1,6 @@
 (function(){
 'use strict';
-const APP_VERSION='v55';
+const APP_VERSION='v56';
 const SECTIONS=['文字・語彙','文法','読解'];
 const SEC_INFO={'文字・語彙':{en:'Kanji & Vocabulary',glyph:'字'},'文法':{en:'Grammar',glyph:'文'},'読解':{en:'Reading',glyph:'読'}};
 const IC=(d,extra='')=>`<svg class="ico" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"${extra}>${d}</svg>`;
@@ -253,13 +253,17 @@ function confetti(){if(reduced())return;const c=document.createElement('div');c.
   document.body.appendChild(c);setTimeout(()=>c.remove(),3800)}
 
 /* ---------- Kanji ---------- */
-function kunHTML(list){const seen=new Set(),out=[];
+function kunHTML(list,lab){const seen=new Set(),out=[];
   for(const r of list||[]){const plain=r.replace(/\./g,'');if(seen.has(plain))continue;seen.add(plain);
-    const [stem,oku]=r.split('.');out.push(`<span class="pill kun">${esc(stem)}${oku?`<span class="oku">${esc(oku)}</span>`:''}</span>`)}
-  return out.length?out.join(''):'<span class="mut">—</span>'}
+    const [stem,oku]=r.split('.');out.push(`${esc(stem)}${oku?`<span class="oku">${esc(oku)}</span>`:''}`)}
+  return out.length?`<span class="rds kun">${lab?'<i class="rl">訓</i>':''}${out.join('<span class="rdot">·</span>')}</span>`:'<span class="mut">—</span>'}
+function onHTML(list,lab){return (list||[]).length?`<span class="rds on">${lab?'<i class="rl">音</i>':''}${list.map(esc).join('<span class="rdot">·</span>')}</span>`:'<span class="mut">—</span>'}
+function rdHTML(m){return [m.onyomi.length?onHTML(m.onyomi,1):'',m.kunyomi.length?kunHTML(m.kunyomi,1):''].filter(Boolean).join(' ')}
+function diffMark(g,D){let t=esc(g.difference||'');const parts=new Set();g.members.forEach(m=>{const d=D[m.kanji];if(!d)return;(d.by.match(/[\u2E80-\u2FDF\u31C0-\u31EF\u3400-\u9FFF\uF900-\uFAFF\u{20000}-\u{2FFFF}]/gu)||[]).forEach(c=>{if(c!==m.kanji&&!(g.shared_part||'').includes(c))parts.add(c)})});
+  if(!parts.size)return t;const re=new RegExp('(['+[...parts].join('')+'])','gu');return t.replace(re,'<b class="dp">$1</b>')}
 function kBadges(x){return `<div class="kbadges">${lvBadge(x)}<span class="gb">${gradeTxt(x.grade)}</span></div>`}
-function kStats(x){return `<div class="kstats"><div class="st"><span class="lbl">音 On</span><div>${x.onyomi.length?x.onyomi.map(r=>`<span class="pill on">${esc(r)}</span>`).join(''):'<span class="mut">—</span>'}</div></div>
-   <div class="st"><span class="lbl">訓 Kun</span><div>${kunHTML(x.kunyomi)}</div></div>
+function kStats(x){return `<div class="kstats"><div class="st"><span class="lbl rlon">音 On</span><div>${onHTML(x.onyomi)}</div></div>
+   <div class="st"><span class="lbl rlkun">訓 Kun</span><div>${kunHTML(x.kunyomi)}</div></div>
    <div class="st"><span class="lbl">画数 Strokes</span><div class="sv">${x.stroke_count}</div></div>
    <div class="st"><span class="lbl">部首 Radical</span><div class="sv">${esc(x.radical)} <small class="mut">#${x.radical_number}</small></div></div></div>`}
 function markKanji(c){const kv=store.get('kanjiViewed',[]);if(!kv.includes(c)){kv.push(c);store.set('kanjiViewed',kv)}}
@@ -278,11 +282,11 @@ function simCard(g,open,focus){const tile=g.part_display||g.shared_part||g.kanji
    <span class="chev" aria-hidden="true">▾</span></button>
   <div class="simx"><div class="simxi">
   <div class="simk">${g.members.map(m=>`<span class="sk${m.kanji===focus?' focus':''}"><b>${esc(m.kanji)}</b><small>${esc(m.meaning_en.split(';')[0])}</small></span>`).join('')}</div>
-  <p class="simd">${esc(g.difference)}</p>
+  <p class="simd">${diffMark(g,Object.fromEntries(g.members.filter(m=>m.diff_by).map(m=>[m.kanji,{by:m.diff_by}])))}</p>
   <div class="simb">${g.members.map(m=>`<div class="simm"><div class="simmk">${K.some(x=>x.kanji===m.kanji)?`<a href="#kanji/${encodeURIComponent(m.kanji)}">${esc(m.kanji)}</a>`:esc(m.kanji)}</div><div class="simmi">
    <div class="simmean">${esc(m.meaning_en)}</div>
-   <div class="simr">${m.onyomi.length?`<span class="pill on">${m.onyomi.map(esc).join('・')}</span>`:''}${m.kunyomi.length?`<span class="pill kun">${m.kunyomi.map(esc).join('・')}</span>`:''}</div>
-   <div class="simw"><span class="ja">${furi&&m.sample.word_ruby?m.sample.word_ruby:esc(m.sample.word)}</span> <span class="mut sm">${esc(m.sample.reading)} · ${esc(m.sample.meaning_en)}</span></div></div></div>`).join('')}</div>
+   <div class="simr">${rdHTML(m)}</div>
+   <div class="simw"><span class="ja">${furi&&m.sample.word_ruby?m.sample.word_ruby:esc(m.sample.word)}</span> <span class="exr sm">${esc(m.sample.reading)}</span> <span class="mut sm">${esc(m.sample.meaning_en)}</span></div></div></div>`).join('')}</div>
   </div></div></div>`}
 function setSimOpen(c,o){c.classList.toggle('open',o);c.querySelector('.simrow').setAttribute('aria-expanded',o)}
 function wireSim(root,single){root.querySelectorAll('.simrow').forEach(b=>b.onclick=()=>{const c=b.closest('.simg'),o=!c.classList.contains('open');
@@ -368,16 +372,17 @@ function simDiff(g){const t=g.difference||'',out={};
   return out}
 function simDetail(id){const g=SIM.find(x=>String(x.id)===String(id));if(!g){app.innerHTML='<div class="card">Group not found.</div>';return}
   const tile=g.part_display||g.shared_part||g.kanji[0],D0=simDiff(g),D={};g.members.forEach(m=>{D[m.kanji]=m.diff_by?{by:m.diff_by,gloss:m.diff_gloss}:D0[m.kanji]});const all=g.members.every(m=>D[m.kanji]);
-  const rd=m=>[m.onyomi.length?`<span>On ${m.onyomi.map(esc).join('・')}</span>`:'',m.kunyomi.length?`<span>Kun ${m.kunyomi.map(esc).join('・')}</span>`:''].filter(Boolean).join(' · ');
+  const rd=rdHTML;
   app.innerHTML=`<div class="sgd">
    <div class="sgh"><span class="sgp ja">${esc(tile)}</span><div class="sgt"><b>${esc(g.shared_label||tile)}</b>${g.part_meaning?` <span class="mut">· ${esc(g.part_meaning)}</span>`:''}</div></div>
    ${g.part_expect?`<p class="sgx">${esc(g.part_expect)}</p>`:''}
-   ${all?`<details class="sgnote"><summary>Full note</summary><p class="sgdiff">${esc(g.difference)}</p></details>`:`<p class="sgdiff">${esc(g.difference)}</p>`}
+   ${all?`<details class="sgnote"><summary>Full note</summary><p class="sgdiff">${diffMark(g,D)}</p></details>`:`<p class="sgdiff">${diffMark(g,D)}</p>`}
    <div class="sgl">${g.members.map(m=>{const inK=KBY[m.kanji],d=D[m.kanji];return `<section class="sgk">
      <div class="sgkh"><span class="sgkc ja">${inK?`<a href="#kanji/${encodeURIComponent(m.kanji)}">${esc(m.kanji)}</a>`:esc(m.kanji)}</span>
-      <div class="sgkm">${d?`<div class="sgby"><b class="ja">${esc(d.by)}</b> → ${esc(d.gloss||m.meaning_en.split(';')[0])}</div>`:''}<div class="sgmean">${esc(m.meaning_en)}</div><div class="sgrd mut">${rd(m)}</div></div></div>
-     <div class="sgw"><span class="ja sgww">${m.sample.word_ruby&&/<ruby>/.test(m.sample.word_ruby)?m.sample.word_ruby:esc(m.sample.word)}</span>${m.sample.word_ruby&&/<ruby>/.test(m.sample.word_ruby)?`<span class="offuri mut">${esc(m.sample.reading)}</span>`:(m.sample.reading&&m.sample.reading!==m.sample.word?`<span class="mut">${esc(m.sample.reading)}</span>`:'')} <span class="mut">${esc(m.sample.meaning_en)}</span></div>
+      <div class="sgkm">${d?`<div class="sgby"><b class="ja dp">${esc(d.by)}</b> → ${esc(d.gloss||m.meaning_en.split(';')[0])}</div>`:''}<div class="sgmean">${esc(m.meaning_en)}</div><div class="sgrd">${rd(m)}</div></div></div>
+     <div class="sgw"><span class="ja sgww">${m.sample.word_ruby&&/<ruby>/.test(m.sample.word_ruby)?m.sample.word_ruby:esc(m.sample.word)}</span>${m.sample.word_ruby&&/<ruby>/.test(m.sample.word_ruby)?`<span class="offuri exr">${esc(m.sample.reading)}</span>`:(m.sample.reading&&m.sample.reading!==m.sample.word?`<span class="exr">${esc(m.sample.reading)}</span>`:'')} <span class="mut">${esc(m.sample.meaning_en)}</span></div>
      ${inK&&inK.mnemonic?storyHTML(m.kanji):''}</section>`}).join('')}</div></div>`;
+  app.querySelectorAll('.sgk').forEach((sec,i)=>{const m=g.members[i],d=m&&D[m.kanji];if(!d)return;const cs=new Set((d.by.match(/[\u2E80-\u2FDF\u31C0-\u31EF\u3400-\u9FFF\uF900-\uFAFF]/gu)||[]).filter(c=>c!==m.kanji&&!(g.shared_part||'').includes(c)));sec.querySelectorAll('.mpc:not(.res)').forEach(t=>{const b=t.querySelector('b');if(b&&cs.has(b.textContent.trim()))t.classList.add('dpt')})});  // v56: accent the distinguishing part tile
 }
 const LEVELS=['all','N5','N4','N3','N2','N1','other'];
 const lvl=x=>x.jlpt?'N'+x.jlpt:'other';
@@ -650,8 +655,8 @@ function backHTML(it){const k=it.key,isW=k[0]==='w',st=srsDB()[k]||{},leech=(st.
      <div class="slinks">${kOfW(v).map(c=>`<a class="chip ja" href="#kanji/${encodeURIComponent(c)}">${esc(c)}</a>`).join('')}<a class="sm" href="#vocab/${encodeURIComponent(v.word)}">Open card →</a></div>${kOfW(v).filter(c=>KBY[c].mnemonic).map(c=>storyHTML(c)).join('')}${lb}</div>`}
   const c=k.slice(1),x=KBY[c],g=simGroup(c),sw=V.filter(v=>(v.kanji||[]).includes(c)).slice(0,3);
   return `<div class="sans"><div class="sbig kj">${esc(c)}</div><div class="smean">${esc(x.meaning_en)}</div>
-   <div class="kread"><span class="lbl">音</span> ${esc((x.onyomi||[]).join('、')||'—')}</div><div class="kread"><span class="lbl">訓</span> ${kunHTML(x.kunyomi)}</div>
-   ${sw.length?`<ul class="ksw">${sw.map(v=>`<li><span class="ja">${furi&&v.word_ruby?v.word_ruby:esc(v.word)}</span> <span class="mut sm">${esc(v.reading)} · ${esc(v.meaning_en)}</span> <button class="say" data-t="${esc(v.word)}" aria-label="Say">🔊</button></li>`).join('')}</ul>`:''}
+   <div class="kread"><span class="lbl rlon">音</span> ${onHTML(x.onyomi)}</div><div class="kread"><span class="lbl rlkun">訓</span> ${kunHTML(x.kunyomi)}</div>
+   ${sw.length?`<ul class="ksw exl">${sw.map(v=>`<li><span class="ja">${furi&&v.word_ruby?v.word_ruby:esc(v.word)}</span> <span class="exr sm">${esc(v.reading)}</span> <span class="mut sm">${esc(v.meaning_en)}</span> <button class="say" data-t="${esc(v.word)}" aria-label="Say">🔊</button></li>`).join('')}</ul>`:''}
    ${x.mnemonic?storyHTML(c):g&&g.difference?`<p class="sdiff sm">👀 ${esc(g.difference)}</p>`:''}
    <div class="slinks"><a class="sm" href="#kanji/${encodeURIComponent(c)}">Open card →</a></div>${lb}</div>`}
 function studyCard(){const it0=SS.items[SS.i];if(!it0)return studyDone();

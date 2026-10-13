@@ -803,3 +803,19 @@ html.focusm .toast{bottom:calc(80px + env(safe-area-inset-bottom))}
 .scard.ro{opacity:.96}
 @media (prefers-reduced-motion:reduce){.sin-r,.sin-l,.nudge{animation:none}}
 .fubtn{min-width:44px;min-height:44px;padding:0 8px}
+/* v56: subtle reading / example colour coding */
+:root{--rd-on:#2c6b66;--rd-kun:#a14a37;--rd-oku:#86655d;--ex-bar:#c49a45;--ex-rd:#6b665c;--dp:#7a4a9a}
+[data-theme=dark]{--rd-on:#82c6bd;--rd-kun:#ec9c87;--rd-oku:#b88c80;--ex-bar:#b8924a;--ex-rd:#aaa397;--dp:#c8a6e6}
+.rds{display:inline;font-weight:500;letter-spacing:.02em}
+.rds.on{color:var(--rd-on)}.rds.kun{color:var(--rd-kun)}
+.rds .oku{color:var(--rd-oku);opacity:1}
+.rds .rdot{color:var(--mut);margin:0 .35em;font-weight:400}
+.rds .rl{font-style:normal;font-size:.68em;font-weight:600;margin-right:.35em;opacity:.9;vertical-align:.1em}
+.sgrd .rds+.rds,.simr .rds+.rds{margin-left:.9em}
+.lbl.rlon{color:var(--rd-on)}.lbl.rlkun{color:var(--rd-kun)}
+.sgw,.simw,.exl li,.sw-ex{border-left:2px solid var(--ex-bar);padding-left:10px}
+.exl{padding-left:0;list-style:none}.exl li{margin:6px 0}
+.exr{color:var(--ex-rd)}
+.dp,.sgby b.dp{color:var(--dp);font-weight:700}
+.sgdiff .dp,.simd .dp{font-weight:600}
+.mpc.dpt{border-color:color-mix(in srgb,var(--dp) 55%,transparent);background:color-mix(in srgb,var(--dp) 9%,transparent)}.mpc.dpt b{color:var(--dp)}
