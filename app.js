@@ -1,6 +1,6 @@
 (function(){
 'use strict';
-const APP_VERSION='v73';
+const APP_VERSION='v74';
 const SECTIONS=['文字・語彙','文法','読解'];
 const SEC_INFO={'文字・語彙':{en:'Kanji & Vocabulary',glyph:'字'},'文法':{en:'Grammar',glyph:'文'},'読解':{en:'Reading',glyph:'読'}};
 const IC=(d,extra='')=>`<svg class="ico" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"${extra}>${d}</svg>`;
@@ -69,7 +69,7 @@ function home(){
   const sk=streak(),acc=pct(st.correct,st.answered);
   app.innerHTML=`<p class="hgreet mut">${dateJa} · ${greet}</p>
   ${todayBtn()}
-  <nav class="hsc">${[['#mistakes','✕','Mistakes',Object.keys(mistDB()).filter(id=>QBY[id]).length||''],['#listen','♪','Listening',''],['#gpairs','文','Grammar pairs',''],['#search','⌕','Search','']].map(([h,i,l,n])=>`<a href="${h}" class="hsl"><span class="hsi ja">${i}</span><span>${l}</span>${n?`<small class="mut">${n}</small>`:''}</a>`).join('')}</nav>
+  <nav class="hsc">${[['#mistakes','✕','Mistakes',Object.keys(mistDB()).filter(id=>QBY[id]).length||''],['#listen','♪','Listening',''],['#gpairs','文','Grammar pairs',''],['#search','<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/></svg>','Search','']].map(([h,i,l,n])=>`<a href="${h}" class="hsl"><span class="hsi ja">${i}</span><span>${l}</span>${n?`<small class="mut">${n}</small>`:''}</a>`).join('')}</nav>
   <details class="hsec"><summary>Study details 学習</summary>${todayCard(buildQueue('mixed'))}</details>
   <div class="hq"><button class="btn ghost" id="qqs">${ICONS.bolt} Quick quiz <small class="mut">10 questions</small></button>${missed.length?`<button class="btn ghost" id="qms">${ICONS.redo} Review missed <small class="mut">${missed.length}</small></button>`:''}</div>
   <details class="hsec"><summary>Today's goal & stats</summary><section class="hero2">
@@ -827,7 +827,7 @@ function todayView(){const t=tdState(),q=buildQueue('mixed'),nw=q.items.length-q
   const cnt=[`${q.due} due`,'10 questions',`${nw} cards`],res=[t.r.rev?`${t.r.rev} reviewed`:'',t.r.quiz?`${t.r.quiz.s}/${t.r.quiz.n} correct`:'',t.r.nw?`${t.r.nw} learned`:''];
   const sum=t.step>=3;
   app.innerHTML=`<div class="ph"><h1 class="pt">Today 今日</h1>${tdDots(t.step)}</div>
-  <div class="card tdsteps">${TD_STEPS.map(([en,ja],i)=>`<div class="tds${i<t.step?' done':i===t.step?' on':''}"><span class="tdn">${i<t.step?'✓':i+1}</span><span class="tdt"><b>${en}</b> <span class="mut ja">${ja}</span><small class="mut">${i<t.step?(res[i]||'skipped'):cnt[i]}</small></span></div>`).join('')}</div>
+  <div class="card tdsteps">${TD_STEPS.map(([en,ja],i)=>`<div class="tds${i<t.step?' done':i===t.step?' on':''}"><span class="tdn">${i<t.step?'✓':i+1}</span><span class="tdt"><b>${en}</b> <span class="mut ja">${ja}</span><small class="mut">${i<t.step?(res[i]||(i===0&&q.due===0?'none due':'skipped')):cnt[i]}</small></span></div>`).join('')}</div>
   ${sum?`<div class="card res tdsum"><h2>お疲れさま · Today's summary</h2><div class="totals">${[['Reviewed',t.r.rev],['Quiz',t.r.quiz?`${t.r.quiz.s}/${t.r.quiz.n}`:'—'],['New learned',t.r.nw],['Streak',streak()+'🔥']].map(([l,v])=>`<div class="tot"><b>${v}</b><span>${l}</span></div>`).join('')}</div>
     <div class="row center">${nw?`<button class="btn primary" id="tdk">Keep going · ${Math.min(nw,srsCfg().ss)} new</button>`:''}<a class="btn ghost" href="#home">Home</a></div></div>`
    :`<button class="btn primary big full" id="tdgo">${['▶ Start reviews','▶ Start quiz','▶ Start new cards'][t.step]}</button><button class="btn ghost full" id="tdskip">Skip this step</button>`}`;
@@ -906,7 +906,7 @@ if('mediaSession' in navigator){const ms=navigator.mediaSession;const h=(a,f)=>{
   h('play',()=>{if(!LA.src)lLoad(true);else LA.play()});h('pause',()=>LA.pause());h('previoustrack',()=>lNext(-1));h('nexttrack',()=>lNext(1));
   h('seekto',d=>{if(d.seekTime!=null)LA.currentTime=d.seekTime});h('seekbackward',()=>LA.currentTime=Math.max(0,LA.currentTime-10));h('seekforward',()=>LA.currentTime+=10)}
 function lUI(tick){if(cur!=='listen')return;const L=lList(),q=L[LS.i],pl=!LA.paused;
-  const b=$('#lpp');if(b){b.textContent=pl?'❚❚':'▶';b.setAttribute('aria-label',pl?'Pause':'Play')}
+  const b=$('#lpp');if(b){b.innerHTML=pl?'<svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor" aria-hidden="true"><path d="M7 5h3.5v14H7zM13.5 5H17v14h-3.5z"/></svg>':'<svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg>';b.setAttribute('aria-label',pl?'Pause':'Play')}
   const d=LA.duration||(q&&q.teacher.duration)||1,fi=$('#lbar i');if(fi)fi.style.width=(100*(LA.dataset.q===String(q&&q.id)?LA.currentTime:0)/d)+'%';
   const tm=$('#ltm');if(tm)tm.textContent=`${fmtT(LA.dataset.q===String(q&&q.id)?LA.currentTime:0)} / ${fmtT(d)}`;
   const sl=$('#lsl');if(sl)sl.textContent=LS.until?`⏾ ${Math.max(1,Math.ceil((LS.until-Date.now())/6e4))} min left`:LS.sleep===-1?'⏾ stops after this one':'';
@@ -919,7 +919,7 @@ function listenView(keepScroll){const L=lList();if(LS.i>=L.length)LS.i=0;const q
   ${q?`<div class="card lnow" id="lnow" data-q="${q.id}"><p class="qmeta">${LS.i+1}/${L.length} · ${esc(secOf(q))} · ${esc(q.category)}</p>
    <p class="ja lsn">${esc(qSnip(q,60))}</p><p class="sm">正解 <b class="ja">${esc(q.answer_word)}</b> · <a href="#rq/${q.id}">Open question →</a></p>
    <div class="lbar" id="lbar"><i></i>${(q.teacher.chapters||[]).slice(1).map(c=>`<b style="left:${(100*c.start/q.teacher.duration).toFixed(2)}%"></b>`).join('')}</div><div class="ltm"><span id="ltm"></span><span id="lsl" class="mut sm"></span></div>
-   <div class="lctl"><button class="lb" id="lpv" aria-label="Previous">⏮</button><button class="lb lbp" id="lpp" aria-label="Play">▶</button><button class="lb" id="lnx" aria-label="Next">⏭</button></div>
+   <div class="lctl"><button class="lb" id="lpv" aria-label="Previous"><svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor" aria-hidden="true"><path d="M6 5h2v14H6zM20 5v14L9 12z"/></svg></button><button class="lb lbp" id="lpp" aria-label="Play"><svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg></button><button class="lb" id="lnx" aria-label="Next"><svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor" aria-hidden="true"><path d="M16 5h2v14h-2zM4 5v14l11-7z"/></svg></button></div>
    <div class="srow lslp"><span class="sm">Sleep timer</span>${seg3('lsp',[[0,'Off'],[10,'10m'],[20,'20m'],[30,'30m'],[-1,'End']],LS.until||LS.sleep===-1?LS.sleep:0)}</div>
    <details class="ttr" id="ltrd" open><summary>Transcript <span class="tcr">· ${esc(q.teacher.credit||'')}</span></summary><div id="ltr">${trHTML(q)}</div></details></div>
   <h3 class="sec-t sm">Queue · ${L.length}</h3><div class="mlist lq">${L.map((x,i)=>`<button class="lrow${i===LS.i?' on':''}" data-i="${i}"><span class="mg ja">${secGlyph(x)}</span><span class="ja">${esc(x.answer_word)}</span><small class="mut">Q${x.id} · ${fmtT(x.teacher.duration)}</small></button>`).join('')}</div>`

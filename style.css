@@ -888,3 +888,4 @@ rt{margin:0 -.6em}
 .lrow:first-child{border-top:0}.lrow small{margin-left:auto}.lrow.on{background:var(--indigo-soft)}
 .sraud{flex-wrap:wrap}.audst{display:flex;flex-direction:column;align-items:flex-end;gap:6px}.audst .two{display:flex;gap:6px}
 @media (max-width:360px){.hsc{grid-template-columns:repeat(2,minmax(0,1fr))}.lctl{gap:14px}}
+.lb{display:inline-grid;place-items:center}.lbp svg{width:26px;height:26px}.hsl .hsi svg{display:block}
