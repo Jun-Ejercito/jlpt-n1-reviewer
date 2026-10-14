@@ -1,6 +1,6 @@
 (function(){
 'use strict';
-const APP_VERSION='v81';
+const APP_VERSION='v82';
 const SECTIONS=['文字・語彙','文法','読解'];
 const SEC_INFO={'文字・語彙':{en:'Kanji & Vocabulary',glyph:'字'},'文法':{en:'Grammar',glyph:'文'},'読解':{en:'Reading',glyph:'読'}};
 const IC=(d,extra='')=>`<svg class="ico" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"${extra}>${d}</svg>`;
@@ -69,7 +69,7 @@ function home(){
   const sk=streak(),acc=pct(st.correct,st.answered);
   app.innerHTML=`<p class="hgreet mut">${dateJa} · ${greet}</p>
   ${todayBtn()}
-  <nav class="hsc">${[['#mistakes','✕','Mistakes',Object.keys(mistDB()).filter(id=>QBY[id]).length||''],['#gpairs','文','Grammar pairs',''],['#search','<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/></svg>','Search','']].map(([h,i,l,n])=>`<a href="${h}" class="hsl"><span class="hsi ja">${i}</span><span>${l}</span>${n?`<small class="mut">${n}</small>`:''}</a>`).join('')}</nav>
+  <nav class="hsc">${[['#mistakes','✕','Mistakes',Object.keys(mistDB()).filter(id=>QBY[id]).length||''],['#gpairs','文','Grammar pairs',''],['#mock','模','Mock exam',''],['#search','<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/></svg>','Search','']].map(([h,i,l,n])=>`<a href="${h}" class="hsl"><span class="hsi ja">${i}</span><span>${l}</span>${n?`<small class="mut">${n}</small>`:''}</a>`).join('')}</nav>
   <details class="hsec"><summary>Study details 学習</summary>${todayCard(buildQueue('mixed'))}</details>
   <div class="hq"><button class="btn ghost" id="qqs">${ICONS.bolt} Quick quiz <small class="mut">10 questions</small></button>${missed.length?`<button class="btn ghost" id="qms">${ICONS.redo} Review missed <small class="mut">${missed.length}</small></button>`:''}</div>
   <details class="hsec"><summary>Today's goal & stats</summary><section class="hero2">
@@ -223,7 +223,7 @@ function answer(k,j=0){
   let missed=store.get('missed',[]),st=store.get('stats',{answered:0,correct:0}),cs=store.get('catStats',{});
   st.answered++;{const qa=store.get('qAtt',{});qa[q.id]=(qa[q.id]||0)+1;store.set('qAtt',qa)}cs[q.category]=cs[q.category]||{a:0,c:0};cs[q.category].a++;
   if(ok){S.score++;st.correct++;cs[q.category].c++;if(S.missedMode)missed=missed.filter(x=>x!==q.id)}else{S.wrong.push({q,k});if(!missed.includes(q.id))missed.push(q.id)}
-  if(!ok)srsMiss(q);mistRec(q,ok);store.set('missed',missed);store.set('stats',st);store.set('catStats',cs);logActivity();
+  if(!ok){srsMiss(q);rcAdd(q,k)}mistRec(q,ok);store.set('missed',missed);store.set('stats',st);store.set('catStats',cs);logActivity();
   renderAnswered(j,true);
   if(q.audio&&S.opts.autoplay)play(q.audio);
 }
@@ -239,9 +239,11 @@ function renderAnswered(j,anim){
   box.querySelector('.fbw').innerHTML=`<div class="card fb ${ok?'is-ok':'is-bad'}">
   <div class="fbh"><div class="verdict">${ok?'<span class="vi">✓</span> Correct':'<span class="vi">✕</span> Incorrect'}${ok?'':`<span class="ya">Your answer: <b>${esc(dk(q,k))}</b> ${choiceHTML(q,k,true)}</span>`}</div>
    ${q.audio?`<button class="abtn" aria-label="Play audio" title="Play audio">🔊</button>`:''}</div>
-  ${isOrderQ(q)?orderAnsHTML(q):''}<p class="ja sent">${sent}</p><p class="mut sm en">${esc(q.complete_sentence_en)}</p>
+  ${isOrderQ(q)?orderAnsHTML(q):''}
   <div class="achip"><span class="badge ok">正解 ${esc(dk(q,q.answer))}</span><span class="aw">${F(q,'answer_word')}</span><span class="mut sm">${esc(q.answer_romaji)}</span></div>
-  ${q.teacher?teacherHTML(q):''}
+  ${q.teacher?teacherHTML(q,ok?null:k):''}
+  <details class="more"><summary><span class="lbl">More</span><small class="mut">sentence · note · other choices · example</small></summary>
+  <p class="ja sent">${sent}</p><p class="mut sm en">${esc(q.complete_sentence_en)}</p>
   ${ex?`<p class="anote">${esc(rmap(q,stripW(ex.answer_note,q.answer_word)))}</p>
    <details class="others dsc${isLongQ(q)?' usage':''}"><summary><span class="lbl">Other choices (${ex.others.length})</span></summary>${ex.others.slice().sort((a,b)=>corder(q).indexOf(String(a.key))-corder(q).indexOf(String(b.key))).map(o=>{const cn=(q.choice_notes||{})[o.key]||null;
      const fake=cn?/not a real word|wrong reading|does not connect|not natural|not a (common|natural|correct)/.test(cn.note)&&!cn.example_ja:o.fake;
@@ -249,9 +251,9 @@ function renderAnswered(j,anim){
      return `<div class="orow${fake?' fake':''}"><span class="badge">${esc(dk(q,o.key))}</span><div class="obody"><div class="oline"><span class="ow">${choiceHTML(q,o.key,true)}</span>${mean?`<span class="on2">${form}${esc(rmap(q,mean))}</span>`:''}${cn&&cn.note&&!/^\s*wrong\s*$/i.test(cn.note)?`<span class="onote">${esc(rmap(q,cn.note))}</span>`:''}</div>
       ${cn&&cn.example_ja?`<div class="oex"><span class="rei">例</span><div><div class="ja">${furi&&cn.example_ja_ruby?cn.example_ja_ruby:esc(cn.example_ja)}</div><div class="oen">${esc(cn.example_en)}</div></div></div>`:''}</div></div>`}).join('')}</details>
    ${ex.tip?`<p class="tip">💡 <b>Tip</b> ${esc(rmap(q,ex.tip))}</p>`:''}`:`<p class="anote">${esc(rmap(q,q.explanation_en))}</p>`}
-  <div class="ex tight"><span class="lbl">Example 例文</span><div class="ja">${F(q,'example_ja')}</div><div class="mut sm">${esc(q.example_en)}</div></div></div>`;
+  <div class="ex tight"><span class="lbl">Example 例文</span><div class="ja">${F(q,'example_ja')}</div><div class="mut sm">${esc(q.example_en)}</div></div></details></div>`;
   if(q.audio)box.querySelector('.abtn').onclick=()=>play(q.audio);
-  if(q.teacher)bindTeacher(box.querySelector('.tch'),q);
+  if(q.teacher)bindTeacher(box.querySelector('.tch'),q,ok?null:k);
   const done=Object.keys(S.ans).length>=n;
   if(done){$('.qprog div').style.width=`${(S.si+1)*100/S.steps.length}%`;
     $('#nxw').innerHTML=`<div class="nextbar"><button class="btn primary big full" id="nx">${S.si+1<S.steps.length?'Next →':'See results'}</button></div>`;
@@ -322,35 +324,50 @@ document.documentElement.dataset.ts=store.get('ts','m');
 const fuBtn=()=>`<button class="aa fubtn" type="button" aria-pressed="${furiOn}" aria-label="Furigana ${furiOn?'on':'off'} (tap to toggle)" title="Furigana"><span class="fk">あ</span><span class="fK">亜</span></button>`;
 let TCH=null;
 function fmtT(t){t=Math.max(0,Math.round(t||0));return Math.floor(t/60)+':'+String(t%60).padStart(2,'0')}
-function teacherHTML(q){const t=q.teacher;return `<div class="tch" data-q="${q.id}"><div class="tpill"><button class="tpb" aria-label="Play teacher explanation">▶</button><span class="tlb">Teacher explains</span><span class="tbar"><i></i>${(t.chapters||[]).slice(1).map(c=>`<b style="left:${(100*c.start/t.duration).toFixed(2)}%"></b>`).join('')}</span><span class="ttm">${fmtT(t.duration)}</span></div>
-  <details class="ttr"><summary>Transcript${t.credit?` <span class="tcr">· ${esc(t.credit)}</span>`:''}</summary>${trHTML(q)}</details></div>`}
+function teacherHTML(q,wk){const t=q.teacher,W=wk&&t.w&&t.w[wk],D0=W?W[1]:0,DT=D0+t.duration;return `<div class="tch" data-q="${q.id}"><div class="tpill"><button class="tpb" aria-label="Play teacher explanation">▶</button><span class="tlb">${W?'For your answer, then the explanation':'Teacher explains'}</span><span class="tbar"><i></i>${(W?[{start:0}]:[]).concat((t.chapters||[]).slice(1)).map(c=>`<b style="left:${(100*(c.start+D0)/DT).toFixed(2)}%"></b>`).join('')}</span><span class="ttm">${fmtT(DT)}</span></div>
+  <details class="ttr"><summary>Transcript${t.credit?` <span class="tcr">· ${esc(t.credit)}</span>`:''}</summary>${trHTML(q,wk)}</details></div>`}
 // v73: transcripts live in teacher.js (lazy); chapter blocks are filled on first open
-function trHTML(q){const t=q.teacher,T=window.TEACHER&&window.TEACHER[q.id];
-  if(T&&T.sg){const ch=t.chapters||[{title:'',start:0}];return `<div class="ttx tkar">${ch.map((c,ci)=>`<div class="tkc">${c.title?`<div class="tkh">${esc(c.title)}</div>`:''}${T.sg.filter(g=>g[1]===ci).map(g=>`<span class="tsg" data-s="${g[0]}"><span class="tja">${g[2]}</span>${g[3]?`<span class="ten">${esc(g[3])}</span>`:''}</span>`).join('')}</div>`).join('')}</div>`}
+// v82: topic label = the choice itself (kanji + reading) with a subtle ✓ / ✗
+function tkLabel(q,ci,title){const ks=Object.keys(q.choices),wr=ks.filter(k=>k!==String(q.answer)),ch=q.teacher.chapters||[];
+  if(isOrderQ(q)||ch.length!==wr.length+1)return esc(title);const k=ci?wr[ci-1]:String(q.answer),txt=String(q.choices[k]);if(txt.length>12)return `<i class="tkm ${ci?'x':'o'}">${ci?'✗':'✓'}</i>${esc(title)}`;
+  const cn=(q.choice_notes||{})[k]||{},form=ci?cn.form:(q.answer_word!==txt?q.answer_word:''),isK=s=>/[\u4e00-\u9fff]/.test(s);
+  let rd=cn.reading||'';if(!rd&&isK(txt)){const v=V.find(v=>v.word===txt);if(v)rd=v.reading}
+  const lab=form&&!isK(txt)&&isK(form)?`${esc(form)}<small>（${esc(txt)}）</small>`:rd&&rd!==txt?`${esc(txt)}<small>（${esc(rd)}）</small>`:esc(txt);
+  return `<i class="tkm ${ci?'x':'o'}">${ci?'✗':'✓'}</i>${lab}`}
+function trHTML(q,wk){const t=q.teacher,T=window.TEACHER&&window.TEACHER[q.id],Wa=wk&&t.w&&t.w[wk],Ws=Wa&&T&&T.w&&T.w[wk],D0=Wa?Wa[1]:0;
+  if(T&&T.sg){const ch=t.chapters||[{title:'',start:0}];return `<div class="ttx tkar${store.get('enAll',false)?' enall':''}"><button class="tken" type="button">${store.get('enAll',false)?'Hide English':'Show all English'}</button>${Ws?`<div class="tkc tkw"><div class="tkh"><i class="tkm x">✗</i>${esc(String(q.choices[wk]).length>12?'Your choice':q.choices[wk])} <small>· for you</small></div>${Ws.map(g=>`<span class="tsg" data-s="${g[0]}"><span class="tja">${g[1]}</span>${g[2]?`<span class="ten">${esc(g[2])}</span>`:''}</span>`).join('')}</div>`:''}${ch.map((c,ci)=>`<div class="tkc">${c.title?`<div class="tkh">${tkLabel(q,ci,c.title)}</div>`:''}${T.sg.filter(g=>g[1]===ci).map(g=>`<span class="tsg" data-s="${+(g[0]+D0).toFixed(2)}"><span class="tja">${g[2]}</span>${g[3]?`<span class="ten">${esc(g[3])}</span>`:''}</span>`).join('')}</div>`).join('')}</div>`}
   const ph=T?'':' data-ph="1"';
   if(t.chapters)return `<div class="ttx"${ph}>${t.chapters.map((c,i)=>`<div class="tchap" data-s="${c.start}"><span class="tct">${esc(c.title)}</span><span class="tcx">${T?esc(T.ch[i]||'').replace(/\n/g,'<br>'):'…'}</span></div>`).join('')}</div>`;
   return `<div class="ttx"${ph}>${T?esc(T.script).replace(/\n/g,'<br>'):'…'}</div>`}
 let teacherP=null;function loadTeacher(){return teacherP||(teacherP=new Promise((ok,no)=>{if(window.TEACHER)return ok(window.TEACHER);const sc=document.createElement('script');sc.src='teacher.js?v='+APP_VERSION.slice(1);sc.onload=()=>ok(window.TEACHER);sc.onerror=()=>{teacherP=null;no()};document.head.appendChild(sc)}))}
-function fillTr(el,q){if(!el.querySelector('.ttx[data-ph]'))return;loadTeacher().then(()=>{const x=el.querySelector('.ttx');if(x){const d=document.createElement('div');d.innerHTML=trHTML(q);x.replaceWith(d.firstElementChild);if(el._wire)el._wire();if(el._sync)el._sync()}}).catch(()=>{})}
-function bindTeacher(el,q){if(!el)return;if(TCH){TCH.pause();TCH=null}
-  const a=new Audio(q.teacher.audio),b=el.querySelector('.tpb'),bar=el.querySelector('.tbar'),fill=bar.querySelector('i'),tm=el.querySelector('.ttm');a.preload='none';
-  const st=()=>{const p=!a.paused;b.textContent=p?'❚❚':'▶';b.setAttribute('aria-label',p?'Pause':'Play teacher explanation');el.classList.toggle('on',p||a.currentTime>0)};
+function fillTr(el,q,wk){if(!el.querySelector('.ttx[data-ph]'))return;loadTeacher().then(()=>{const x=el.querySelector('.ttx');if(x){const d=document.createElement('div');d.innerHTML=trHTML(q,wk);x.replaceWith(d.firstElementChild);if(el._wire)el._wire();if(el._sync)el._sync()}}).catch(()=>{})}
+// v83: when the answer was wrong and a tailored clip exists, the player plays that clip first (it ends with a chime), then the
+// main explanation, on one combined timeline. Nothing auto-plays.
+function bindTeacher(el,q,wk){if(!el)return;if(TCH){TCH.pause();TCH=null}
+  const W=wk&&q.teacher.w&&q.teacher.w[wk],D0=W?W[1]:0,DM=q.teacher.duration,DT=D0+DM;
+  const a=new Audio(W?W[0]:q.teacher.audio),b=el.querySelector('.tpb'),bar=el.querySelector('.tbar'),fill=bar.querySelector('i'),tm=el.querySelector('.ttm');a.preload='none';
+  let ph=W?0:1,want=null;const T=()=>ph===0?a.currentTime:D0+a.currentTime;
+  const load=(p,t)=>{ph=p;want=t;a.src=p===0?W[0]:q.teacher.audio;a.load()};
+  a.addEventListener('loadedmetadata',()=>{if(want!=null){try{a.currentTime=want}catch(e){}want=null}});
+  const seek=t=>{t=Math.max(0,Math.min(DT-.05,t));const p=W&&t<D0?0:1,lt=p===0?t:t-D0;if(p!==ph)load(p,lt);else a.currentTime=lt;TCH=a;if(a.paused)a.play().catch(()=>{})};
+  const st=()=>{const p=!a.paused;b.textContent=p?'❚❚':'▶';b.setAttribute('aria-label',p?'Pause':'Play teacher explanation');el.classList.toggle('on',p||T()>0)};
   b.onclick=e=>{e.stopPropagation();if(a.paused){if(TCH&&TCH!==a)TCH.pause();TCH=a;a.play().catch(()=>{})}else a.pause()};
-  a.onplay=a.onpause=st;a.onended=()=>{a.currentTime=0;st()};
-  a.ontimeupdate=()=>{const d=a.duration||q.teacher.duration;fill.style.width=(100*a.currentTime/d)+'%';tm.textContent=fmtT(a.currentTime)+' / '+fmtT(d)};
-  bar.onclick=e=>{e.stopPropagation();const r=bar.getBoundingClientRect(),d=a.duration||q.teacher.duration;a.currentTime=Math.max(0,Math.min(1,(e.clientX-r.left)/r.width))*d;if(a.paused){TCH=a;a.play().catch(()=>{})}};
-  el._wire=()=>el.querySelectorAll('.tchap').forEach(c=>c.onclick=e=>{e.stopPropagation();a.currentTime=+c.dataset.s;TCH=a;if(a.paused)a.play().catch(()=>{})});el._wire();
-  const tr=el.querySelector('.ttr');if(tr){tr.addEventListener('toggle',()=>{if(tr.open)fillTr(el,q)});if(tr.open)fillTr(el,q)}
-  ;
-  a.addEventListener('timeupdate',()=>{let cur=-1;el.querySelectorAll('.tchap').forEach((c,i)=>{if(a.currentTime>=+c.dataset.s)cur=i});el.querySelectorAll('.tchap').forEach((c,i)=>c.classList.toggle('cur',i===cur&&a.currentTime>0))});
+  a.onplay=a.onpause=st;
+  a.onended=()=>{if(ph===0){load(1,0);a.play().catch(()=>{});return}if(W)load(0,0);else a.currentTime=0;st();last=-2;sync()};
+  a.ontimeupdate=()=>{fill.style.width=(100*T()/DT)+'%';tm.textContent=fmtT(T())+' / '+fmtT(DT)};
+  bar.onclick=e=>{e.stopPropagation();const r=bar.getBoundingClientRect();seek(Math.max(0,Math.min(1,(e.clientX-r.left)/r.width))*DT)};
+  el._wire=()=>el.querySelectorAll('.tchap').forEach(c=>c.onclick=e=>{e.stopPropagation();seek(D0+ +c.dataset.s)});el._wire();
+  const tr=el.querySelector('.ttr');if(tr){tr.addEventListener('toggle',()=>{if(tr.open)fillTr(el,q,wk)});if(tr.open)fillTr(el,q,wk)}
+  a.addEventListener('timeupdate',()=>{let cur=-1;el.querySelectorAll('.tchap').forEach((c,i)=>{if(T()>=D0+ +c.dataset.s)cur=i});el.querySelectorAll('.tchap').forEach((c,i)=>c.classList.toggle('cur',i===cur&&T()>0))});
   let raf=0,last=-2,uScroll=0;const segs=()=>el.querySelectorAll('.tsg');
-  const sync=()=>{const S_=segs();if(S_.length){const t=a.currentTime;let c=-1;S_.forEach((s,i)=>{if(t+0.08>=+s.dataset.s)c=i});if(a.currentTime===0&&a.paused)c=-1;
+  const sync=()=>{const S_=segs();if(S_.length){const t=T();let c=-1;S_.forEach((s,i)=>{if(t+0.08>=+s.dataset.s)c=i});if(t===0&&a.paused&&ph===(W?0:1))c=-1;
      if(c!==last){last=c;S_.forEach((s,i)=>{s.classList.toggle('cur',i===c);s.classList.toggle('past',i<c)});
        const tr=el.querySelector('.ttr');if(c>=0&&tr&&tr.open&&Date.now()-uScroll>2500){const r=S_[c].getBoundingClientRect(),H=innerHeight;if(r.top<H*.2||r.bottom>H*.75)S_[c].scrollIntoView({block:'center',behavior:reduced()?'auto':'smooth'})}}}
     if(!a.paused)raf=requestAnimationFrame(sync)};
-  a.addEventListener('play',()=>{cancelAnimationFrame(raf);raf=requestAnimationFrame(sync)});a.addEventListener('pause',()=>{cancelAnimationFrame(raf);sync()});a.addEventListener('seeked',sync);a.addEventListener('ended',()=>{last=-2;sync()});
+  a.addEventListener('play',()=>{cancelAnimationFrame(raf);raf=requestAnimationFrame(sync)});a.addEventListener('pause',()=>{cancelAnimationFrame(raf);sync()});a.addEventListener('seeked',sync);
   ['touchmove','wheel'].forEach(ev=>window.addEventListener(ev,()=>{uScroll=Date.now()},{passive:true}));
-  el.addEventListener('click',e=>{const sg=e.target.closest('.tsg');if(!sg||sg.classList.contains('cur'))return;e.stopPropagation();a.currentTime=+sg.dataset.s;TCH=a;if(a.paused){if(TCH&&TCH!==a)TCH.pause();a.play().catch(()=>{})}last=-2;sync()});
+  el.addEventListener('click',e=>{const tb=e.target.closest('.tken');if(tb){e.stopPropagation();const on=!store.get('enAll',false);store.set('enAll',on);el.querySelectorAll('.tkar').forEach(x=>x.classList.toggle('enall',on));el.querySelectorAll('.tken').forEach(b=>b.textContent=on?'Hide English':'Show all English');return}
+    const sg=e.target.closest('.tsg');if(!sg||sg.classList.contains('cur'))return;e.stopPropagation();if(TCH&&TCH!==a)TCH.pause();seek(+sg.dataset.s);last=-2;sync()});
   el._sync=()=>{last=-2;sync()};
   window.addEventListener('hashchange',()=>a.pause(),{once:true})}
 document.addEventListener('click',e=>{const b=e.target.closest&&e.target.closest('.fubtn');if(!b)return;e.preventDefault();furiOn=!furiOn;store.set('furigana',furiOn);applyFuri();
@@ -607,7 +624,7 @@ function resumeQuiz(){if(S.done)return results(false);const a=S.ans||{};showQ();
 function resumeStudy(){if(SS.graded){SS.i++;SS.graded=false;SS.shown=false}const sh=SS.shown;SS.shown=false;studyCard();if(sh&&SS.items[SS.i])reveal(SS.items[SS.i])}
 document.addEventListener('click',e=>{if(e.target.closest&&e.target.closest('#qend')&&confirm('End this quiz? Answers so far are saved.')){S=null;saveSess();replaceTo('quiz')}});
 const TABS=[['home',ICONS.home,'Home'],['quiz',ICONS.quiz,'Quiz'],['vocab',ICONS.vocab,'Words'],['kanji',ICONS.kanji,'Kanji'],['progress',ICONS.progress,'Progress']];
-const TITLES={home:'JLPT N1',quiz:'Quiz',vocab:'Words',kanji:'Kanji',kanjicards:'Kanji cards',similar:'Look-alike',progress:'Progress',tips:'読解 Tips',study:'Study',studyguide:'How to study',today:'Today',mistakes:'Mistakes',rq:'Review',search:'Search',gpairs:'Grammar pairs'};
+const TITLES={home:'JLPT N1',quiz:'Quiz',vocab:'Words',kanji:'Kanji',kanjicards:'Kanji cards',similar:'Look-alike',progress:'Progress',tips:'読解 Tips',study:'Study',studyguide:'How to study',today:'Today',mistakes:'Mistakes',recall:'Recall',mock:'Mock exam',rq:'Review',search:'Search',gpairs:'Grammar pairs'};
 function header(){const h=$('header'),root=(cur||'home').split('/')[0],showBack=NAV.d>0||root!=='home';
   h.innerHTML=`${showBack?`<button class="hb icon" id="hbk" aria-label="Back">${ICONS.back}</button>`:'<span class="hbsp"></span>'}<a href="#home" class="htl">${esc(TITLES[root]||'JLPT N1')}</a>
    <span class="hbr"><a class="hb icon" id="hsr" href="#search" aria-label="Search" title="Search"><svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/></svg></a><button class="hb icon" id="hs" aria-label="Settings" title="Settings">⚙</button></span>`;
@@ -630,7 +647,7 @@ function route(){if(S&&S.view!=null){S.si=S.view;S.ans={...((S.past||{})[S.view]
   const sv=fresh?null:SCR[NAV.k];if(sv&&sv.open){const ds=app.querySelectorAll('details');sv.open.forEach(i=>{if(ds[i])ds[i].open=true})}
   const y=sv?sv.y:(p==='quiz'||p==='study'?0:(VS[h]||{}).y||0);window.scrollTo(0,y);requestAnimationFrame(()=>window.scrollTo(0,y));saveSess();
 }
-function render(p,a){if(p==='vocab')deck('vocab',a);else if(p==='kanji'){if(a)kanjiDetail(a);else kanjiGrid()}else if(p==='kanjicards')deck('kanji',a);else if(p==='similar'){if(a)simDetail(a);else similarView()}else if(p==='tips')tipsView();else if(p==='study'){if(a){if(SS&&SS.mode===a&&SS.items&&SS.i<SS.items.length)resumeStudy();else studyStart(a)}else studyHome()}else if(p==='studyguide')studyGuide();else if(p==='progress')progress();else if(p==='mistakes')mistakesView();else if(p==='rq')reviewQ(a);else if(p==='search')searchView();else if(p==='listen'){try{localStorage.removeItem('n1_listen')}catch(e){}replaceTo('home');return}else if(p==='gpairs')gpairsView(a);else if(p==='today')todayView();else home()}
+function render(p,a){if(p==='vocab')deck('vocab',a);else if(p==='kanji'){if(a)kanjiDetail(a);else kanjiGrid()}else if(p==='kanjicards')deck('kanji',a);else if(p==='similar'){if(a)simDetail(a);else similarView()}else if(p==='tips')tipsView();else if(p==='study'){if(a){if(SS&&SS.mode===a&&SS.items&&SS.i<SS.items.length)resumeStudy();else studyStart(a)}else studyHome()}else if(p==='studyguide')studyGuide();else if(p==='progress')progress();else if(p==='mistakes')mistakesView();else if(p==='recall')recallView();else if(p==='mock'){if(a==='play')mockPlay();else if(a==='res')mockRes();else mockView()}else if(p==='rq')reviewQ(a);else if(p==='search')searchView();else if(p==='listen'){try{localStorage.removeItem('n1_listen')}catch(e){}replaceTo('home');return}else if(p==='gpairs')gpairsView(a);else if(p==='today')todayView();else home()}
 function rerender(){const y=window.scrollY;
   if(S&&!S.done&&document.querySelector('.choice')){const a=S.ans||{};showQ();for(const j in a){S.ans[j]=a[j];renderAnswered(+j,false)}}
   else if(S&&S.done)results(false);
@@ -821,6 +838,7 @@ function mistakesView(){const m=mistDB(),f=store.get('mistF','');
   app.innerHTML=`<div class="ph"><h1 class="pt">Mistakes 間違いノート</h1></div>
   <div class="mfil">${seg3('mf',[['','All'],...SECTIONS.map(s=>[s,SEC_INFO[s].glyph+' '+s])],f)}</div>
   ${(()=>{const t=dn(),due=rows.filter(q=>m[q.id].d<=t).length;return (due?`<button class="btn primary full" id="mdv">↺ Review due <small>${due}</small></button>`:'')+(rows.length?`<button class="btn ${due?'ghost':'primary'} full" id="mrv">Review all <small>${rows.length}</small></button>`:'')})()}
+  ${(()=>{const a=rcAll().length,d=rcDue().length;return a?`<a class="hrow rcrow" href="#recall"><span>思</span><b>Recall cards</b><small class="mut">${d?d+' due · ':''}${a} scheduled</small><span class="chev">${ICONS.chev}</span></a>`:''})()}
   <p class="mut sm mhint">${all?`${all} question${all>1?'s':''} · reviewed after 1 · 3 · 7 days, then removed`:'No mistakes yet. Questions you answer wrong appear here.'}</p>
   <div class="mlist">${rows.map(q=>{const e=m[q.id];return `<div class="mrow"><a class="mra" href="#rq/${q.id}"><span class="mg ja">${secGlyph(q)}</span><span class="mtx"><span class="ja">${esc(qSnip(q))}</span><small class="mut">${esc(q.category)} · 正解 ${esc(q.answer_word)}</small></span>
     <span class="mst"><span class="${e.l?'t-ok':'t-bad'}">${e.l?'✓':'✕'}</span><small class="mut">${e.d<=dn()?'<b class="mdue">due</b>':'in '+(e.d-dn())+'d'} · ×${e.n}</small></span></a><button class="mrm" data-id="${q.id}" aria-label="Remove from notebook" title="Remove">✕</button></div>`}).join('')}</div>`;
@@ -828,6 +846,82 @@ function mistakesView(){const m=mistDB(),f=store.get('mistF','');
   if($('#mdv'))$('#mdv').onclick=()=>{const o=store.get('quizOpts',{}),t=dn();nav('quiz/play',()=>start(shuffle(rows.filter(q=>m[q.id].d<=t)),{...o,autoplay:false},true))};
   if($('#mrv'))$('#mrv').onclick=()=>{const o=store.get('quizOpts',{});nav('quiz/play',()=>start(shuffle(rows),{...o,autoplay:false},true))};
   app.querySelectorAll('.mrm').forEach(b=>b.onclick=e=>{e.preventDefault();const id=b.dataset.id;mistRemove(id);mistakesView();toast('Removed from Mistakes','Undo',()=>{const m=mistDB();m[id]={n:1,l:0,s:0,t:Date.now(),d:dn()+1};store.set('mist',m);if(cur==='mistakes')mistakesView()})})}
+// ---- v84 recall cards: a wrong choice schedules a mini meaning card for that distractor on the 1/3/7-day schedule
+const rcDB=()=>store.get('rc',{});
+const rcCard=id=>{const[qi,k]=String(id).split('_'),q=QBY[qi];return q&&q.rc&&q.rc[k]?{q,k,c:q.rc[k]}:null};
+function rcAdd(q,k){if(!q.rc||!q.rc[k])return;const r=rcDB(),id=q.id+'_'+k,e=r[id];r[id]={s:0,d:dn()+RIV[0],n:(e?e.n:0)+1};store.set('rc',r)}
+function rcDue(){const r=rcDB(),t=dn();return Object.keys(r).filter(id=>rcCard(id)&&r[id].d<=t)}
+const rcAll=()=>Object.keys(rcDB()).filter(id=>rcCard(id));
+function rcRec(id,ok){const r=rcDB(),e=r[id];if(!e)return;if(!ok){e.s=0;e.d=dn()+RIV[0];e.n=(e.n||0)+1}else if(e.d<=dn()){e.s=(e.s||0)+1;if(e.s>=RIV.length)delete r[id];else e.d=dn()+RIV[e.s]}store.set('rc',r)}
+const RCS={};
+function recallView(){let R_=RCS[NAV.k];if(!R_)R_=RCS[NAV.k]={q:shuffle(rcDue()),i:0,ok:0,a:null,o:null};
+  const tot=R_.q.length,hd=`<div class="ph"><h1 class="pt">Recall 思い出す</h1>${tot&&R_.i<tot?`<span class="mut sm rcn">${R_.i+1} / ${tot}</span>`:''}</div>`;
+  if(!tot){app.innerHTML=hd+`<div class="card center rce"><p>No recall cards due.</p><p class="mut sm">When you pick a wrong choice, a mini card for that word comes back after 1 · 3 · 7 days.</p>${rcAll().length?`<p class="mut sm">${rcAll().length} scheduled</p>`:''}</div>`;return}
+  if(R_.i>=tot){app.innerHTML=hd+`<div class="card center rce"><p class="rcd">${R_.ok} / ${tot}</p><p class="mut sm">Correct cards move to the next step (1 → 3 → 7 days); missed ones start again tomorrow.</p><div class="row center"><a class="btn ghost" href="#mistakes">Mistakes</a><a class="btn primary" href="#home">Home</a></div></div>`;return}
+  const id=R_.q[R_.i],x=rcCard(id);if(!x){R_.i++;return recallView()}const c=x.c,A=R_.a;
+  if(!R_.o||R_.o.id!==id)R_.o={id,o:shuffle([c.m,...c.o])};
+  app.innerHTML=hd+`<div class="card rcc"><p class="mut sm">What does this mean?</p><p class="rcw ja">${esc(c.w)}</p><p class="rcr">${A!=null&&c.r?esc(c.r):'&nbsp;'}</p>
+  <div class="choices">${R_.o.o.map((m,i)=>`<button class="choice${A!=null?' dis'+(m===c.m?' ok':i===A?' bad':''):''}" data-i="${i}"><span class="cv">${esc(m)}</span></button>`).join('')}</div>
+  ${A!=null?`<div class="rcx">${c.ex?`<div class="ja">${esc(c.ex)}</div><div class="mut sm">${esc(c.en)}</div>`:''}<a class="mut sm" href="#rq/${x.q.id}">From Q${x.q.id} ›</a></div><button class="btn primary big full" id="rcnx">${R_.i+1<tot?'Next →':'Finish'}</button>`:''}</div>`;
+  if(A==null)app.querySelectorAll('.rcc .choice').forEach(b=>b.onclick=()=>{const i=+b.dataset.i,ok=R_.o.o[i]===c.m;R_.a=i;if(ok)R_.ok++;rcRec(id,ok);recallView()});
+  else $('#rcnx').onclick=()=>{R_.i++;R_.a=null;R_.o=null;recallView();window.scrollTo(0,0)}}
+// ---- v85 mock exam: N1 言語知識・読解 proportions, time scaled from 110 min / 70 items, no feedback until the end
+const MOCK_T=[['漢字読み',6,q=>q.category.startsWith('kanji reading')],['文脈規定',7,q=>/^(vocabulary|kanji \(|idioms|set phrases)/.test(q.category)],['言い換え',6,q=>q.category.startsWith('paraphrase')],['用法',6,q=>q.category.startsWith('usage')],
+  ['文法形式',10,q=>q.category.startsWith('grammar')],['組み立て',5,q=>q.category.startsWith('sentence order')],['文章の文法',5,q=>q.category.startsWith('text grammar')],['内容理解',21,q=>q.category.startsWith('reading comprehension')],['統合理解',2,q=>q.category.startsWith('integrated')],['情報検索',2,q=>q.category.startsWith('information')]];
+const MOCK_N=70,MSECS=['文字・語彙','文法','読解'];
+let M=(()=>{try{return JSON.parse(sessionStorage.getItem('n1_mock'))}catch(e){return null}})(),MT=0;
+const mSave=()=>sessionStorage.setItem('n1_mock',JSON.stringify(M));
+function mockPick(full){const att=store.get('qAtt',{}),out=[],used=new Set();
+  for(const[,n,f] of MOCK_T){const need=full?n:Math.max(1,Math.round(n/2)),gs=new Set(),units=[];
+    for(const q of Q.filter(f)){if(used.has(q.id))continue;const g=q.passage_group;if(g){if(gs.has(g))continue;gs.add(g);units.push(Q.filter(x=>x.passage_group===g).sort((a,b)=>a.id-b.id))}else units.push([q])}
+    let c=0;for(const u of units.map(u=>({u,a:Math.min(...u.map(q=>att[q.id]||0)),r:Math.random()})).sort((a,b)=>a.a-b.a||a.r-b.r)){if(c>=need)break;u.u.forEach(q=>used.add(q.id));out.push(...u.u);c+=u.u.length}}
+  return out}
+function mSteps(L){const st=[];for(let i=0;i<L.length;){const g=L[i].passage_group;let j=i+1;if(g)while(j<L.length&&L[j].passage_group===g)j++;st.push([i,j-i]);i=j}return st}
+const mFmt=s=>{s=Math.max(0,Math.ceil(s));return Math.floor(s/60)+':'+String(s%60).padStart(2,'0')};
+function mockView(){clearInterval(MT);const H=store.get('mocks',[]);
+  app.innerHTML=`<div class="ph"><h1 class="pt">Mock exam 模試</h1></div>
+  ${M&&!M.done?`<a class="btn primary big full" href="#mock/play">▶ Resume mock · ${mFmt((M.end-Date.now())/1000)} left</a>`:''}
+  <div class="card mkc"><p class="mut sm">言語知識（文字・語彙・文法）・読解 · N1 question-type proportions · no feedback until the end. 聴解 is not included.</p>
+  <button class="mko" data-f="1"><b>Full mock</b><small>~${MOCK_N} questions · ${Math.round(110*MOCK_N/MOCK_N)} min</small></button>
+  <button class="mko" data-f="0"><b>Mini mock</b><small>~${MOCK_T.reduce((a,[,n])=>a+Math.max(1,Math.round(n/2)),0)} questions · ~${Math.round(110*MOCK_T.reduce((a,[,n])=>a+Math.max(1,Math.round(n/2)),0)/MOCK_N)} min</small></button>
+  <p class="mut sm">Time is scaled from the real 110 min for ~70 items, so passages may make it slightly longer.</p></div>
+  ${H.length?`<h2 class="sec-t">History</h2><div class="card">${mockChart(H)}<div class="mkh">${H.slice(-6).reverse().map(h=>`<div class="mkhr"><span>${esc(h.d)}</span><span class="mut sm">${h.full?'Full':'Mini'}</span><b>${h.tot}<small>/120</small></b></div>`).join('')}</div></div>`:''}`;
+  app.querySelectorAll('.mko').forEach(b=>b.onclick=()=>{if(M&&!M.done&&!confirm('Discard the unfinished mock?'))return;const full=b.dataset.f==='1',L=mockPick(full);
+    M={full,ids:L.map(q=>q.id),ans:{},si:0,secs:Math.round(110*60*L.length/MOCK_N),done:false};M.end=Date.now()+M.secs*1000;mSave();location.hash='mock/play'})}
+function mockChart(H){const h=H.slice(-12),W=300,Hh=120,bw=W/Math.max(h.length,6),pass=Math.round(120*100/180);
+  return `<svg class="mkch" viewBox="0 0 ${W} ${Hh+18}" role="img" aria-label="Mock score history"><line x1="0" x2="${W}" y1="${Hh-Hh*pass/120}" y2="${Hh-Hh*pass/120}" class="mkpl"/><text x="${W-2}" y="${Hh-Hh*pass/120-3}" text-anchor="end" class="mkpt">pass pace ${pass}/120</text>
+  ${h.map((x,i)=>`<rect x="${i*bw+bw*.2}" y="${Hh-Hh*x.tot/120}" width="${bw*.6}" height="${Hh*x.tot/120}" rx="3" class="mkb${x.tot>=pass?' ok':''}"/><text x="${i*bw+bw/2}" y="${Hh+13}" text-anchor="middle" class="mkpt">${x.tot}</text>`).join('')}</svg>`}
+function mockPlay(){clearInterval(MT);if(!M)return replaceTo('mock');if(M.done)return replaceTo('mock/res');
+  const L=M.ids.map(i=>QBY[i]),ST=mSteps(L),[st,n]=ST[M.si],qs=L.slice(st,st+n),q0=qs[0],na=Object.keys(M.ans).length;
+  app.innerHTML=`<div class="qtop mkt"><span class="mktm" id="mtm">${mFmt((M.end-Date.now())/1000)}</span><div class="qprog"><div style="width:${na*100/L.length}%"></div></div><span class="mut sm">${M.si+1}/${ST.length}</span>${aaBtn()}</div>
+  ${n>1?`<div class="card qcardq gpass"><p class="qmeta">${esc(secOf(q0))} · ${n} questions</p>${passageHTML(q0,true)}</div>`:''}
+  ${qs.map((q,j)=>`<div class="gq"><div class="card qcardq"><p class="qmeta">Q${st+j+1} · ${esc(secOf(q))}</p>${n>1?'':passageHTML(q)}${questionHTML(q)}</div>
+  <div class="choices${isLongQ(q)?' usage long':''}">${corder(q).map(k=>`<button class="choice${M.ans[q.id]===String(k)?' sel':''}" data-q="${q.id}" data-k="${esc(k)}" aria-pressed="${M.ans[q.id]===String(k)}"><span class="ck">${esc(dk(q,k))}</span><span class="cv">${choiceHTML(q,k,false)}</span></button>`).join('')}</div></div>`).join('')}
+  <div class="nextbar mknav"><button class="btn ghost" id="mpv" ${M.si?'':'disabled'}>← Prev</button><button class="btn ghost" id="mfin">Finish</button><button class="btn primary" id="mnx">${M.si+1<ST.length?'Next →':'Review end'}</button></div>`;
+  app.querySelectorAll('.choice').forEach(b=>b.onclick=()=>{const id=b.dataset.q;M.ans[id]=M.ans[id]===b.dataset.k?undefined:b.dataset.k;if(M.ans[id]===undefined)delete M.ans[id];mSave();
+    app.querySelectorAll(`.choice[data-q="${id}"]`).forEach(c=>{const on=M.ans[id]===c.dataset.k;c.classList.toggle('sel',on);c.setAttribute('aria-pressed',on)});$('.qprog div').style.width=Object.keys(M.ans).length*100/L.length+'%'});
+  $('#mpv').onclick=()=>{M.si--;mSave();mockPlay();window.scrollTo(0,0)};
+  $('#mnx').onclick=()=>{if(M.si+1<ST.length){M.si++;mSave();mockPlay();window.scrollTo(0,0)}else $('#mfin').click()};
+  $('#mfin').onclick=()=>{const left=L.length-Object.keys(M.ans).length;if(confirm(left?`${left} unanswered. Finish and score now?`:'Finish and score now?'))mockFinish()};
+  const tick=()=>{const r=(M.end-Date.now())/1000,e=$('#mtm');if(!e||cur!=='mock/play'){clearInterval(MT);return}e.textContent=mFmt(r);e.classList.toggle('low',r<300);if(r<=0){clearInterval(MT);toast('Time is up');mockFinish()}};MT=setInterval(tick,1000)}
+function mockFinish(){if(!M||M.done)return;clearInterval(MT);const L=M.ids.map(i=>QBY[i]),sc={};MSECS.forEach(s=>sc[s]={c:0,t:0});
+  for(const q of L){const k=M.ans[q.id],ok=k===String(q.answer),s=sc[secOf(q)];s.t++;if(ok)s.c++;
+    if(k!=null){const qa=store.get('qAtt',{});qa[q.id]=(qa[q.id]||0)+1;store.set('qAtt',qa);mistRec(q,ok);if(!ok){srsMiss(q);rcAdd(q,k)}}}
+  const s60=s=>s.t?Math.round(60*s.c/s.t):0,lk=(sc['文字・語彙'].t+sc['文法'].t)?Math.round(60*(sc['文字・語彙'].c+sc['文法'].c)/(sc['文字・語彙'].t+sc['文法'].t)):0,rd=s60(sc['読解']);
+  M.done=true;M.res={sc,lk,rd,tot:lk+rd,used:Math.round((M.secs*1000-(M.end-Date.now()))/60000)};mSave();
+  const H=store.get('mocks',[]);H.push({d:dayKey(),full:M.full,v:s60(sc['文字・語彙']),g:s60(sc['文法']),r:rd,lk,rd,tot:lk+rd});store.set('mocks',H.slice(-50));logActivity();replaceTo('mock/res')}
+function mockRes(){clearInterval(MT);if(!M||!M.done)return replaceTo('mock');const L=M.ids.map(i=>QBY[i]),R_=M.res,s60=s=>s.t?Math.round(60*s.c/s.t):0;
+  const bar=(lab,v,sub)=>`<div class="mkr"><div class="mkrl"><b>${lab}</b><span class="mut sm">${sub}</span></div><div class="mkrb"><i style="width:${100*v/60}%" class="${v>=19?'ok':'bad'}"></i><s style="left:${100*19/60}%"></s></div><b class="mkrv">${v}<small>/60</small></b></div>`;
+  const wrong=L.filter(q=>M.ans[q.id]!==String(q.answer));
+  app.innerHTML=`<div class="ph"><h1 class="pt">Mock result 結果</h1><span class="mut sm">${M.full?'Full':'Mini'} · ${R_.used} min</span></div>
+  <div class="card mkres"><p class="mkest">Estimated · scaled 0–60 from % correct</p>
+  ${MSECS.map(s=>bar(s,s60(R_.sc[s]),`${R_.sc[s].c}/${R_.sc[s].t}`)).join('')}
+  <hr class="mkhr0"><p class="mut sm">JLPT-style sections (estimated)</p>
+  ${bar('言語知識',R_.lk,'文字・語彙・文法')}${bar('読解',R_.rd,'')}
+  <div class="mktot"><b>${R_.tot}</b><span>/120 estimated</span></div>
+  <p class="mut sm">Pass mark: each section ≥ 19 and total ≥ 100 / 180. 聴解 (0–60) isn't included here, so you'd need ${Math.max(19,100-R_.tot)}+ in listening${R_.tot+60<100?' (out of reach on this estimate)':''}. ${R_.lk>=19&&R_.rd>=19?'Both sections clear the 19 minimum.':'A section is below the 19 minimum.'}</p></div>
+  <div class="row center"><a class="btn primary" href="#mock">Mock home</a><a class="btn ghost" href="#home">Home</a></div>
+  ${wrong.length?`<h2 class="sec-t">Review (${wrong.length})</h2><div class="mlist">${wrong.map(q=>`<a class="mrow mra" href="#rq/${q.id}"><span class="mg ja">${secGlyph(q)}</span><span class="mtx"><span class="ja">${esc(qSnip(q))}</span><small class="mut">${M.ans[q.id]!=null?'Your answer '+esc(String(q.choices[M.ans[q.id]]).slice(0,20)):'Unanswered'} · 正解 ${esc(String(q.answer_word).slice(0,20))}</small></span></a>`).join('')}</div>`:''}`}
 // review one question (answerable; teacher audio after answering). Uses a throw-away quiz state so a running quiz is untouched.
 function reviewQ(id){const q=QBY[+id];if(!q){app.innerHTML='<div class="card">Question not found.</div>';return}
   const e=mistDB()[q.id];
@@ -859,6 +953,7 @@ function todayView(){const t=tdState(),q=buildQueue('mixed'),nw=q.items.length-q
   ${sum?`<div class="card res tdsum"><h2>お疲れさま · Today's summary</h2><div class="totals">${[['Reviewed',t.r.rev],['Quiz',t.r.quiz?`${t.r.quiz.s}/${t.r.quiz.n}`:'—'],['New learned',t.r.nw],['Streak',streak()+'🔥']].map(([l,v])=>`<div class="tot"><b>${v}</b><span>${l}</span></div>`).join('')}</div>
     <div class="row center">${nw?`<button class="btn primary" id="tdk">Keep going · ${Math.min(nw,srsCfg().ss)} new</button>`:''}<a class="btn ghost" href="#home">Home</a></div></div>`
    :`<button class="btn primary big full" id="tdgo">${['▶ Start reviews','▶ Start quiz','▶ Start new cards'][t.step]}</button><button class="btn ghost full" id="tdskip">Skip this step</button>`}`;
+  {const rn=rcDue().length;if(rn)app.insertAdjacentHTML('beforeend',`<a class="hrow rcrow" href="#recall"><span>思</span><b>Recall cards</b><small class="mut">${rn} due · 1 · 3 · 7 days</small><span class="chev">${ICONS.chev}</span></a>`)}
   const go=()=>{const t2=tdState();if(t2.step===0)location.hash='study/due';else if(t2.step===1){const o=store.get('quizOpts',{});nav('quiz/play',()=>{const md=shuffle(mistDue()).slice(0,10),ids=new Set(md.map(q=>q.id)),fill=md.length<10?roundPick(Q.filter(q=>!ids.has(q.id)),10-md.length,'all'):[];start([...md,...fill],{...o,shuffle:false,autoplay:false},false);S.today=1})}else location.hash='study/new'};
   if($('#tdgo'))$('#tdgo').onclick=go;
   if($('#tdskip'))$('#tdskip').onclick=()=>{const t2=tdState();t2.step++;tdSave(t2);todayView()};

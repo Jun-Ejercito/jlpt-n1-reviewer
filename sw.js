@@ -1,7 +1,7 @@
 // JLPT N1 Reviewer service worker: app shell cached; audio cached on demand (Range-aware)
-const V='n1-shell-v81',AUD='n1-audio';
+const V='n1-shell-v82',AUD='n1-audio-v82';
 self.addEventListener('install',e=>{self.skipWaiting();e.waitUntil(caches.open(V).then(c=>c.addAll(['./','index.html','style.css','app.js','data.js','tips.js']).catch(()=>{})))});
-self.addEventListener('activate',e=>e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k.startsWith('n1-shell-')&&k!==V).map(k=>caches.delete(k)))).then(()=>self.clients.claim())));
+self.addEventListener('activate',e=>e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>(k.startsWith('n1-shell-')&&k!==V)||(k.startsWith('n1-audio')&&k!==AUD)).map(k=>caches.delete(k)))).then(()=>self.clients.claim())));
 const strip=u=>{const x=new URL(u);x.search='';return x.href};
 async function audio(req){const c=await caches.open(AUD),key=strip(req.url);let r=await c.match(key);
   if(!r){const net=fetch(key).then(async res=>{if(res.ok&&res.status===200)await c.put(key,res.clone());return res});
