@@ -905,3 +905,7 @@ rt{margin:0 -.6em}
 .tsg.cur{color:var(--ink);background:color-mix(in srgb,var(--indigo) 13%,transparent)}
 .tsg .w[data-g]{cursor:inherit}
 [data-theme=dark] .tsg.cur{background:color-mix(in srgb,var(--indigo) 26%,transparent)}
+/* v80: transcript English (display only) + clear separation from the explanation note */
+.tsg .tja{display:block}.tsg .ten{display:block;font-size:.8em;line-height:1.45;color:var(--mut);margin:1px 0 3px}
+.tsg.cur .ten{color:color-mix(in srgb,var(--ink) 70%,var(--mut))}
+.tch+.anote{margin-top:14px;padding-top:12px;border-top:1px solid color-mix(in srgb,var(--line) 70%,transparent)}

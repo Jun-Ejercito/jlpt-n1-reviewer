@@ -1,6 +1,6 @@
 (function(){
 'use strict';
-const APP_VERSION='v79';
+const APP_VERSION='v80';
 const SECTIONS=['文字・語彙','文法','読解'];
 const SEC_INFO={'文字・語彙':{en:'Kanji & Vocabulary',glyph:'字'},'文法':{en:'Grammar',glyph:'文'},'読解':{en:'Reading',glyph:'読'}};
 const IC=(d,extra='')=>`<svg class="ico" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"${extra}>${d}</svg>`;
@@ -311,7 +311,7 @@ function teacherHTML(q){const t=q.teacher;return `<div class="tch" data-q="${q.i
   <details class="ttr"><summary>Transcript${t.credit?` <span class="tcr">· ${esc(t.credit)}</span>`:''}</summary>${trHTML(q)}</details></div>`}
 // v73: transcripts live in teacher.js (lazy); chapter blocks are filled on first open
 function trHTML(q){const t=q.teacher,T=window.TEACHER&&window.TEACHER[q.id];
-  if(T&&T.sg){const ch=t.chapters||[{title:'',start:0}];return `<div class="ttx tkar">${ch.map((c,ci)=>`<div class="tkc">${c.title?`<div class="tkh">${esc(c.title)}</div>`:''}${T.sg.filter(g=>g[1]===ci).map(g=>`<span class="tsg" data-s="${g[0]}">${g[2]}</span>`).join('')}</div>`).join('')}</div>`}
+  if(T&&T.sg){const ch=t.chapters||[{title:'',start:0}];return `<div class="ttx tkar">${ch.map((c,ci)=>`<div class="tkc">${c.title?`<div class="tkh">${esc(c.title)}</div>`:''}${T.sg.filter(g=>g[1]===ci).map(g=>`<span class="tsg" data-s="${g[0]}"><span class="tja">${g[2]}</span>${g[3]?`<span class="ten">${esc(g[3])}</span>`:''}</span>`).join('')}</div>`).join('')}</div>`}
   const ph=T?'':' data-ph="1"';
   if(t.chapters)return `<div class="ttx"${ph}>${t.chapters.map((c,i)=>`<div class="tchap" data-s="${c.start}"><span class="tct">${esc(c.title)}</span><span class="tcx">${T?esc(T.ch[i]||'').replace(/\n/g,'<br>'):'…'}</span></div>`).join('')}</div>`;
   return `<div class="ttx"${ph}>${T?esc(T.script).replace(/\n/g,'<br>'):'…'}</div>`}
