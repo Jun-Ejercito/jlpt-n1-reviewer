@@ -875,3 +875,19 @@ rt{margin:0 -.6em}
 .sraud{flex-wrap:wrap}.audst{display:flex;flex-direction:column;align-items:flex-end;gap:6px}.audst .two{display:flex;gap:6px}
 
 .hsl .hsi svg{display:block}
+/* v76: grammar pair detail, spacious */
+.gpd{font-size:var(--pfs);padding:8px 2px calc(var(--tabh,64px) + 48px)}
+.gph0{padding:8px 0 22px;border-bottom:1px solid var(--line)}
+.gpd .gpt{font-family:var(--serif);font-size:1.6em;font-weight:500;margin:0;line-height:1.35;color:var(--ink)}
+.gpsub{margin:4px 0 0;color:var(--mut);font-size:.92em}
+.gpd .gpk{margin:14px 0 0;line-height:2;font-size:.95em}.gpd .gpk a{color:var(--accent);text-decoration:none;padding:4px 0}
+.gpdot{color:var(--mut);margin:0 .6em}
+.gpd .gpp{padding:30px 0 32px;border-bottom:1px solid var(--line);scroll-margin-top:72px}
+.gpd .gpn{font-family:var(--serif);font-size:1.75em;font-weight:500;margin:0;line-height:1.25;color:var(--ink)}
+.gpd .gpf{margin:4px 0 0;font-size:.85em;color:var(--mut);background:none;padding:0}
+.gpm{margin:16px 0 0;line-height:1.7}.gpm .ja{font-weight:400}.gpe{color:var(--ex-rd);margin-left:.7em;font-size:.92em}
+.gpd .gpu{margin:12px 0 0;line-height:1.8;font-size:.95em;display:flex;gap:10px;align-items:baseline}
+.gpl{flex:none;font-size:.7em;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--mut)}
+.gpx{margin:16px 0 0;border-left:2px solid var(--ex-bar);padding:2px 0 2px 12px;line-height:1.9}.gpxe{color:var(--mut);font-size:.88em;line-height:1.5;margin-top:2px}
+.gpd .gpq{margin:16px 0 0;font-size:.88em;color:var(--mut)}.gpd .gpq a{color:var(--accent);text-decoration:none;margin-right:.6em}
+.gtile{gap:8px;padding:14px 10px}

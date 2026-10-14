@@ -1,6 +1,6 @@
 (function(){
 'use strict';
-const APP_VERSION='v75';
+const APP_VERSION='v76';
 const SECTIONS=['文字・語彙','文法','読解'];
 const SEC_INFO={'文字・語彙':{en:'Kanji & Vocabulary',glyph:'字'},'文法':{en:'Grammar',glyph:'文'},'読解':{en:'Reading',glyph:'読'}};
 const IC=(d,extra='')=>`<svg class="ico" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"${extra}>${d}</svg>`;
@@ -875,12 +875,13 @@ function searchView(){const st=VS[cur]||{};const EXP=new Set(st.exp||[]);
 /* ---- Grammar look-alike pairs ---- */
 function gpairsView(id){app.innerHTML='<p class="mut">Loading…</p>';loadGP().then(GP=>{if(!(cur||'').startsWith('gpairs'))return;
   if(id){const g=GP.find(x=>String(x.id)===String(id));if(!g){app.innerHTML='<div class="card">Group not found.</div>';return}
-    app.innerHTML=`<div class="sgd gpd"><div class="sgh"><span class="sgp ja gpt">${esc(g.patterns[0].p)}</span><div class="sgt"><b>${esc(g.title)}</b> <span class="mut">· ${esc(g.en)}</span></div></div>
-     <div class="gpk ja">${g.patterns.map(p=>`<a href="#gp${g.id}-${esc(p.p)}" class="chip">${esc(p.p)}</a>`).join('')}</div>
-     <div class="sgl">${g.patterns.map(p=>`<section class="sgk gpp" id="gp${g.id}-${esc(p.p)}"><div class="gph"><b class="ja gpn">${esc(p.p)}</b><span class="gpf ja">${esc(p.form)}</span></div>
-      <p class="gpj ja">＝ ${esc(p.ja)} <span class="mut">· ${esc(p.en)}</span></p><p class="gpu sm">👀 ${esc(p.nu)}</p>
-      <div class="sex"><div class="ja">${esc(p.ex)}</div><div class="mut sm">${esc(p.exen)}</div></div>
-      ${p.q.length?`<div class="gpq">${p.q.map(i=>`<a class="chip" href="#rq/${i}">Q${i}</a>`).join('')}</div>`:''}</section>`).join('')}</div></div>`;
+    app.innerHTML=`<div class="gpd"><div class="gph0"><h1 class="gpt ja">${esc(g.title)}</h1><p class="gpsub">${esc(g.en)}</p>
+     <nav class="gpk ja" aria-label="Patterns">${g.patterns.map(p=>`<a href="#gp${g.id}-${esc(p.p)}">${esc(p.p)}</a>`).join('<span class="gpdot" aria-hidden="true">·</span>')}</nav></div>
+     ${g.patterns.map(p=>`<section class="gpp" id="gp${g.id}-${esc(p.p)}"><h2 class="gpn ja">${esc(p.p)}</h2><p class="gpf ja">${esc(p.form)}</p>
+      <p class="gpm"><span class="ja">${esc(p.ja)}</span><span class="gpe">${esc(p.en)}</span></p>
+      <p class="gpu"><span class="gpl">Point</span><span class="ja">${esc(p.nu)}</span></p>
+      <div class="gpx"><div class="ja">${esc(p.ex)}</div><div class="gpxe">${esc(p.exen)}</div></div>
+      ${p.q.length?`<p class="gpq">Related: ${p.q.map(i=>`<a href="#rq/${i}">Q${i} ›</a>`).join(' ')}</p>`:''}</section>`).join('')}</div>`;
     app.querySelectorAll('.gpk a').forEach(a=>a.onclick=e=>{e.preventDefault();const t=document.getElementById(a.getAttribute('href').slice(1));if(t)t.scrollIntoView({behavior:reduced()?'auto':'smooth',block:'start'})});
     return}
   const st=VS[cur]||{};
