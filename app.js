@@ -1,6 +1,6 @@
 (function(){
 'use strict';
-const APP_VERSION='v66';
+const APP_VERSION='v67';
 const SECTIONS=['文字・語彙','文法','読解'];
 const SEC_INFO={'文字・語彙':{en:'Kanji & Vocabulary',glyph:'字'},'文法':{en:'Grammar',glyph:'文'},'読解':{en:'Reading',glyph:'読'}};
 const IC=(d,extra='')=>`<svg class="ico" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"${extra}>${d}</svg>`;
@@ -305,8 +305,8 @@ document.documentElement.dataset.ts=store.get('ts','m');
 const fuBtn=()=>`<button class="aa fubtn" type="button" aria-pressed="${furiOn}" aria-label="Furigana ${furiOn?'on':'off'} (tap to toggle)" title="Furigana"><span class="fk">あ</span><span class="fK">亜</span></button>`;
 let TCH=null;
 function fmtT(t){t=Math.max(0,Math.round(t||0));return Math.floor(t/60)+':'+String(t%60).padStart(2,'0')}
-function teacherHTML(q){const t=q.teacher;return `<div class="tch"><div class="tpill"><button class="tpb" aria-label="Play teacher explanation">▶</button><span class="tlb">Teacher explains</span><span class="tbar"><i></i></span><span class="ttm">${fmtT(t.duration)}</span></div>
-  ${t.script?`<details class="ttr"><summary>Transcript${t.credit?` <span class="tcr">· ${esc(t.credit)}</span>`:''}</summary><div class="ttx">${esc(t.script).replace(/\n/g,'<br>')}</div></details>`:''}</div>`}
+function teacherHTML(q){const t=q.teacher;return `<div class="tch"><div class="tpill"><button class="tpb" aria-label="Play teacher explanation">▶</button><span class="tlb">Teacher explains</span><span class="tbar"><i></i>${(t.chapters||[]).slice(1).map(c=>`<b style="left:${(100*c.start/t.duration).toFixed(2)}%"></b>`).join('')}</span><span class="ttm">${fmtT(t.duration)}</span></div>
+  ${t.script?`<details class="ttr"><summary>Transcript${t.credit?` <span class="tcr">· ${esc(t.credit)}</span>`:''}</summary>${t.chapters?`<div class="ttx">${t.chapters.map((c,i)=>`<div class="tchap" data-s="${c.start}"><span class="tct">${esc(c.title)}</span>${esc(c.text).replace(/\n/g,'<br>')}</div>`).join('')}</div>`:`<div class="ttx">${esc(t.script).replace(/\n/g,'<br>')}</div>`}</details>`:''}</div>`}
 function bindTeacher(el,q){if(!el)return;if(TCH){TCH.pause();TCH=null}
   const a=new Audio(q.teacher.audio),b=el.querySelector('.tpb'),bar=el.querySelector('.tbar'),fill=bar.querySelector('i'),tm=el.querySelector('.ttm');a.preload='none';
   const st=()=>{const p=!a.paused;b.textContent=p?'❚❚':'▶';b.setAttribute('aria-label',p?'Pause':'Play teacher explanation');el.classList.toggle('on',p||a.currentTime>0)};
@@ -314,6 +314,8 @@ function bindTeacher(el,q){if(!el)return;if(TCH){TCH.pause();TCH=null}
   a.onplay=a.onpause=st;a.onended=()=>{a.currentTime=0;st()};
   a.ontimeupdate=()=>{const d=a.duration||q.teacher.duration;fill.style.width=(100*a.currentTime/d)+'%';tm.textContent=fmtT(a.currentTime)+' / '+fmtT(d)};
   bar.onclick=e=>{e.stopPropagation();const r=bar.getBoundingClientRect(),d=a.duration||q.teacher.duration;a.currentTime=Math.max(0,Math.min(1,(e.clientX-r.left)/r.width))*d;if(a.paused){TCH=a;a.play().catch(()=>{})}};
+  el.querySelectorAll('.tchap').forEach(c=>c.onclick=e=>{e.stopPropagation();a.currentTime=+c.dataset.s;TCH=a;if(a.paused)a.play().catch(()=>{})});
+  a.addEventListener('timeupdate',()=>{let cur=-1;el.querySelectorAll('.tchap').forEach((c,i)=>{if(a.currentTime>=+c.dataset.s)cur=i});el.querySelectorAll('.tchap').forEach((c,i)=>c.classList.toggle('cur',i===cur&&a.currentTime>0))});
   window.addEventListener('hashchange',()=>a.pause(),{once:true})}
 document.addEventListener('click',e=>{const b=e.target.closest&&e.target.closest('.fubtn');if(!b)return;e.preventDefault();furiOn=!furiOn;store.set('furigana',furiOn);applyFuri();
   document.querySelectorAll('.fubtn').forEach(x=>{x.setAttribute('aria-pressed',furiOn);x.setAttribute('aria-label','Furigana '+(furiOn?'on':'off')+' (tap to toggle)')});const hf=document.getElementById('hf');if(hf)hf.checked=furiOn});

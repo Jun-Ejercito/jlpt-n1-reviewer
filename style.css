@@ -838,3 +838,7 @@ rt{margin:0 -.6em}
 .ttr{margin-top:.35em;font-size:.85em}.ttr summary{cursor:pointer;opacity:.7}
 .ttx{margin-top:.4em;line-height:1.6;opacity:.9}
 .tcr{font-size:.9em;opacity:.8}
+.tbar b{position:absolute;top:-2px;bottom:-2px;width:2px;margin-left:-1px;background:var(--card);pointer-events:none}
+.tchap{padding:.5em 0;border-top:1px solid var(--line);cursor:pointer}.tchap:first-child{border-top:0;padding-top:0}
+.tct{display:block;font-size:.8em;font-weight:600;opacity:.6;margin-bottom:.15em}
+.tchap.cur .tct{color:var(--indigo);opacity:1}
