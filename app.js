@@ -1,6 +1,6 @@
 (function(){
 'use strict';
-const APP_VERSION='v78';
+const APP_VERSION='v79';
 const SECTIONS=['文字・語彙','文法','読解'];
 const SEC_INFO={'文字・語彙':{en:'Kanji & Vocabulary',glyph:'字'},'文法':{en:'Grammar',glyph:'文'},'読解':{en:'Reading',glyph:'読'}};
 const IC=(d,extra='')=>`<svg class="ico" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"${extra}>${d}</svg>`;
@@ -311,11 +311,12 @@ function teacherHTML(q){const t=q.teacher;return `<div class="tch" data-q="${q.i
   <details class="ttr"><summary>Transcript${t.credit?` <span class="tcr">· ${esc(t.credit)}</span>`:''}</summary>${trHTML(q)}</details></div>`}
 // v73: transcripts live in teacher.js (lazy); chapter blocks are filled on first open
 function trHTML(q){const t=q.teacher,T=window.TEACHER&&window.TEACHER[q.id];
+  if(T&&T.sg){const ch=t.chapters||[{title:'',start:0}];return `<div class="ttx tkar">${ch.map((c,ci)=>`<div class="tkc">${c.title?`<div class="tkh">${esc(c.title)}</div>`:''}${T.sg.filter(g=>g[1]===ci).map(g=>`<span class="tsg" data-s="${g[0]}">${g[2]}</span>`).join('')}</div>`).join('')}</div>`}
   const ph=T?'':' data-ph="1"';
   if(t.chapters)return `<div class="ttx"${ph}>${t.chapters.map((c,i)=>`<div class="tchap" data-s="${c.start}"><span class="tct">${esc(c.title)}</span><span class="tcx">${T?esc(T.ch[i]||'').replace(/\n/g,'<br>'):'…'}</span></div>`).join('')}</div>`;
   return `<div class="ttx"${ph}>${T?esc(T.script).replace(/\n/g,'<br>'):'…'}</div>`}
 let teacherP=null;function loadTeacher(){return teacherP||(teacherP=new Promise((ok,no)=>{if(window.TEACHER)return ok(window.TEACHER);const sc=document.createElement('script');sc.src='teacher.js?v='+APP_VERSION.slice(1);sc.onload=()=>ok(window.TEACHER);sc.onerror=()=>{teacherP=null;no()};document.head.appendChild(sc)}))}
-function fillTr(el,q){if(!el.querySelector('.ttx[data-ph]'))return;loadTeacher().then(()=>{const x=el.querySelector('.ttx');if(x){const d=document.createElement('div');d.innerHTML=trHTML(q);x.replaceWith(d.firstElementChild);if(el._wire)el._wire()}}).catch(()=>{})}
+function fillTr(el,q){if(!el.querySelector('.ttx[data-ph]'))return;loadTeacher().then(()=>{const x=el.querySelector('.ttx');if(x){const d=document.createElement('div');d.innerHTML=trHTML(q);x.replaceWith(d.firstElementChild);if(el._wire)el._wire();if(el._sync)el._sync()}}).catch(()=>{})}
 function bindTeacher(el,q){if(!el)return;if(TCH){TCH.pause();TCH=null}
   const a=new Audio(q.teacher.audio),b=el.querySelector('.tpb'),bar=el.querySelector('.tbar'),fill=bar.querySelector('i'),tm=el.querySelector('.ttm');a.preload='none';
   const st=()=>{const p=!a.paused;b.textContent=p?'❚❚':'▶';b.setAttribute('aria-label',p?'Pause':'Play teacher explanation');el.classList.toggle('on',p||a.currentTime>0)};
@@ -327,6 +328,15 @@ function bindTeacher(el,q){if(!el)return;if(TCH){TCH.pause();TCH=null}
   const tr=el.querySelector('.ttr');if(tr){tr.addEventListener('toggle',()=>{if(tr.open)fillTr(el,q)});if(tr.open)fillTr(el,q)}
   ;
   a.addEventListener('timeupdate',()=>{let cur=-1;el.querySelectorAll('.tchap').forEach((c,i)=>{if(a.currentTime>=+c.dataset.s)cur=i});el.querySelectorAll('.tchap').forEach((c,i)=>c.classList.toggle('cur',i===cur&&a.currentTime>0))});
+  let raf=0,last=-2,uScroll=0;const segs=()=>el.querySelectorAll('.tsg');
+  const sync=()=>{const S_=segs();if(S_.length){const t=a.currentTime;let c=-1;S_.forEach((s,i)=>{if(t+0.08>=+s.dataset.s)c=i});if(a.currentTime===0&&a.paused)c=-1;
+     if(c!==last){last=c;S_.forEach((s,i)=>{s.classList.toggle('cur',i===c);s.classList.toggle('past',i<c)});
+       const tr=el.querySelector('.ttr');if(c>=0&&tr&&tr.open&&Date.now()-uScroll>2500){const r=S_[c].getBoundingClientRect(),H=innerHeight;if(r.top<H*.2||r.bottom>H*.75)S_[c].scrollIntoView({block:'center',behavior:reduced()?'auto':'smooth'})}}}
+    if(!a.paused)raf=requestAnimationFrame(sync)};
+  a.addEventListener('play',()=>{cancelAnimationFrame(raf);raf=requestAnimationFrame(sync)});a.addEventListener('pause',()=>{cancelAnimationFrame(raf);sync()});a.addEventListener('seeked',sync);a.addEventListener('ended',()=>{last=-2;sync()});
+  ['touchmove','wheel'].forEach(ev=>window.addEventListener(ev,()=>{uScroll=Date.now()},{passive:true}));
+  el.addEventListener('click',e=>{const sg=e.target.closest('.tsg');if(!sg||sg.classList.contains('cur'))return;e.stopPropagation();a.currentTime=+sg.dataset.s;TCH=a;if(a.paused){if(TCH&&TCH!==a)TCH.pause();a.play().catch(()=>{})}last=-2;sync()});
+  el._sync=()=>{last=-2;sync()};
   window.addEventListener('hashchange',()=>a.pause(),{once:true})}
 document.addEventListener('click',e=>{const b=e.target.closest&&e.target.closest('.fubtn');if(!b)return;e.preventDefault();furiOn=!furiOn;store.set('furigana',furiOn);applyFuri();
   document.querySelectorAll('.fubtn').forEach(x=>{x.setAttribute('aria-pressed',furiOn);x.setAttribute('aria-label','Furigana '+(furiOn?'on':'off')+' (tap to toggle)')});const hf=document.getElementById('hf');if(hf)hf.checked=furiOn});
@@ -359,7 +369,7 @@ function renderWL(box){const pid=+box.dataset.p,P=Q.find(x=>x.id===pid);if(!P)re
    <ul class="wll">${ids.map(i=>{const [w,r,p,g,vw,rare]=G[i];return `<li class="wli${vw?' n1':rare?' rare':''}" data-g="${i}" data-s="${esc(w)}" data-r="${esc(r)}"><span class="wlw ja">${esc(w)}</span><span class="wlr">${r&&r!==w?esc(r):''}</span><span class="wlg">${esc(g)}</span>${vw?'<i class="mk">★</i>':rare?'<i class="mk">◆</i>':''}</li>`}).join('')}</ul>
    <p class="mut sm wlk">★ in your N1 word bank · ◆ less common word · tap a row for details</p>`;
    box.querySelector('.wk').onchange=e=>{store.set('wlKanji',e.target.checked);renderWL(box)};box.querySelector('.wh2').onchange=e=>{store.set('wlHard',e.target.checked);renderWL(box)}})}
-document.addEventListener('click',e=>{const w=e.target.closest&&e.target.closest('#app .w[data-g],.wli');
+document.addEventListener('click',e=>{let w=e.target.closest&&e.target.closest('#app .w[data-g],.wli');if(w&&w.closest('.tsg:not(.cur)'))w=null;
   if(w){e.preventDefault();showWord(w);return}
   if(wsheet&&wsheet.classList.contains('show')&&!e.target.closest('.wsheet,#hbk'))closeWord()},true);
 document.addEventListener('toggle',e=>{const d=e.target;if(d.classList&&d.classList.contains('wlist')&&d.open)renderWL(d)},true);

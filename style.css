@@ -897,3 +897,11 @@ rt{margin:0 -.6em}
 .scard,.scard *{box-sizing:border-box}.scard{max-width:100%;overflow-wrap:anywhere}
 .tyw{width:100%;min-width:0}.tyw input{min-width:0;width:100%;flex:1 1 auto}.tyw .btn{flex:0 0 auto;white-space:nowrap;padding-inline:14px}
 .scard.revealed{padding-top:14px;padding-bottom:14px}.scard.revealed .tyw{margin-top:6px}.scard.revealed .sbig{margin:8px 0 4px}
+/* v79: karaoke transcript */
+.tkar{line-height:1.95}.tkc+.tkc{margin-top:14px;padding-top:12px;border-top:1px solid color-mix(in srgb,var(--line) 70%,transparent)}
+.tkh{font-size:.72em;letter-spacing:.06em;color:var(--mut);margin-bottom:4px}
+.tsg{display:block;padding:3px 8px;margin:0 -8px;border-radius:8px;color:color-mix(in srgb,var(--ink) 72%,var(--mut));cursor:pointer;transition:background .25s,color .25s,opacity .25s;-webkit-tap-highlight-color:transparent}
+.tsg.past{opacity:.45}
+.tsg.cur{color:var(--ink);background:color-mix(in srgb,var(--indigo) 13%,transparent)}
+.tsg .w[data-g]{cursor:inherit}
+[data-theme=dark] .tsg.cur{background:color-mix(in srgb,var(--indigo) 26%,transparent)}
