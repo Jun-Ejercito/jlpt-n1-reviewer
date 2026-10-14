@@ -1,6 +1,6 @@
 (function(){
 'use strict';
-const APP_VERSION='v77';
+const APP_VERSION='v78';
 const SECTIONS=['文字・語彙','文法','読解'];
 const SEC_INFO={'文字・語彙':{en:'Kanji & Vocabulary',glyph:'字'},'文法':{en:'Grammar',glyph:'文'},'読解':{en:'Reading',glyph:'読'}};
 const IC=(d,extra='')=>`<svg class="ico" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"${extra}>${d}</svg>`;
@@ -704,7 +704,7 @@ function studyCard(){const it0=SS.items[SS.i];if(!it0)return studyDone();
   $('#knw').onclick=()=>knowIt(SS.items[SS.i]);
   if(it.type==='wr'||it.type==='kw')$('#sc').addEventListener('click',e=>{if(SS.shown||e.target.closest('a,button,input,.say,rt'))return;togglePeek()});
   $('#rv').onclick=()=>reveal(it);
-  const ty=$('#ty');if(ty){const v=VBY[+it.key.slice(1)],ok=()=>hira(ty.value)===hira(v.reading);let comp=false;ty.focus();
+  const ty=$('#ty');if(ty){const v=VBY[+it.key.slice(1)],ok=()=>hira(ty.value)===hira(v.reading);let comp=false;ty.focus({preventScroll:true});
     ty.addEventListener('compositionstart',()=>comp=true);ty.addEventListener('compositionend',()=>{comp=false;if(ok())reveal(it,true)});
     ty.oninput=e=>{if(!comp&&!e.isComposing&&ok())reveal(it,true)};$('#tyc').onclick=()=>reveal(it,ok());
     ty.onkeydown=e=>{if(e.key==='Enter'&&!e.isComposing){e.preventDefault();reveal(it,ok())}}}
@@ -713,7 +713,7 @@ function studyCard(){const it0=SS.items[SS.i];if(!it0)return studyDone();
 function peekRaw(){const p=document.getElementById('pk');if(p){p.hidden=true;const sc=document.getElementById('sc');if(sc)sc.classList.remove('peeking')}}
 function closePeek(){const p=document.getElementById('pk');if(p&&!p.hidden){peekRaw();ovDrop()}}
 function togglePeek(){const p=document.getElementById('pk');if(!p)return;if(p.hidden){p.hidden=false;$('#sc').classList.add('peeking');ovOpen(peekRaw)}else closePeek()}
-function reveal(it,auto){if(SS.shown)return;closePeek();SS.shown=true;const db=srsDB(),st=db[it.key];
+function reveal(it,auto){if(SS.shown)return;closePeek();SS.shown=true;{const t=document.activeElement;if(t&&t.id==='ty')t.blur()}requestAnimationFrame(()=>{if(window.scrollY>0&&$('#sc'))window.scrollTo(0,0)});const db=srsDB(),st=db[it.key];
   const sc=$('#sc');sc.classList.add('revealed');sc.querySelector('.sback').innerHTML=(auto===true?'<p class="verd ok">✓ Correct</p>':auto===false?'<p class="verd bad">✕ Not quite</p>':'')+backHTML(it);
   const sug=auto===true?3:auto===false?1:0;
   $('#sbar').innerHTML=`<div class="grades">${[[1,'Again'],[2,'Hard'],[3,'Good'],[4,'Easy']].map(([g,l])=>`<button class="gbtn g${g}${sug===g?' sug':''}" data-g="${g}"><b>${l}</b><small>${ivLabel(sched(st,g).iv)}</small></button>`).join('')}</div>${SS.tip?'<p class="swtip" aria-hidden="true">Tip: swipe ← next (skip) · → previous card</p>':''}`;

@@ -893,3 +893,7 @@ rt{margin:0 -.6em}
 .gtile{gap:8px;padding:14px 10px}
 .gpd a.gpa{color:inherit;text-decoration:none;border-bottom:1px dotted color-mix(in srgb,var(--indigo) 55%,transparent)}
 .gpd .w[data-g]{cursor:pointer}
+/* v78: study card fits width; typing row shrink-safe; compact revealed card */
+.scard,.scard *{box-sizing:border-box}.scard{max-width:100%;overflow-wrap:anywhere}
+.tyw{width:100%;min-width:0}.tyw input{min-width:0;width:100%;flex:1 1 auto}.tyw .btn{flex:0 0 auto;white-space:nowrap;padding-inline:14px}
+.scard.revealed{padding-top:14px;padding-bottom:14px}.scard.revealed .tyw{margin-top:6px}.scard.revealed .sbig{margin:8px 0 4px}
