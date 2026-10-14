@@ -1,6 +1,6 @@
 (function(){
 'use strict';
-const APP_VERSION='v61';
+const APP_VERSION='v62';
 const SECTIONS=['文字・語彙','文法','読解'];
 const SEC_INFO={'文字・語彙':{en:'Kanji & Vocabulary',glyph:'字'},'文法':{en:'Grammar',glyph:'文'},'読解':{en:'Reading',glyph:'読'}};
 const IC=(d,extra='')=>`<svg class="ico" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"${extra}>${d}</svg>`;
@@ -224,6 +224,7 @@ function renderAnswered(j,anim){
    ${q.audio?`<button class="abtn" aria-label="Play audio" title="Play audio">🔊</button>`:''}</div>
   ${isOrderQ(q)?orderAnsHTML(q):''}<p class="ja sent">${sent}</p><p class="mut sm en">${esc(q.complete_sentence_en)}</p>
   <div class="achip"><span class="badge ok">正解 ${esc(dk(q,q.answer))}</span><span class="aw">${F(q,'answer_word')}</span><span class="mut sm">${esc(q.answer_romaji)}</span></div>
+  ${q.teacher?teacherHTML(q):''}
   ${ex?`<p class="anote">${esc(rmap(q,stripW(ex.answer_note,q.answer_word)))}</p>
    <details class="others dsc${isLongQ(q)?' usage':''}"><summary><span class="lbl">Other choices (${ex.others.length})</span></summary>${ex.others.slice().sort((a,b)=>corder(q).indexOf(String(a.key))-corder(q).indexOf(String(b.key))).map(o=>{const cn=(q.choice_notes||{})[o.key]||null;
      const fake=cn?/not a real word|wrong reading|does not connect|not natural|not a (common|natural|correct)/.test(cn.note)&&!cn.example_ja:o.fake;
@@ -233,6 +234,7 @@ function renderAnswered(j,anim){
    ${ex.tip?`<p class="tip">💡 <b>Tip</b> ${esc(rmap(q,ex.tip))}</p>`:''}`:`<p class="anote">${esc(rmap(q,q.explanation_en))}</p>`}
   <div class="ex tight"><span class="lbl">Example 例文</span><div class="ja">${F(q,'example_ja')}</div><div class="mut sm">${esc(q.example_en)}</div></div></div>`;
   if(q.audio)box.querySelector('.abtn').onclick=()=>play(q.audio);
+  if(q.teacher)bindTeacher(box.querySelector('.tch'),q);
   const done=Object.keys(S.ans).length>=n;
   if(done){$('.qprog div').style.width=`${(S.si+1)*100/S.steps.length}%`;
     $('#nxw').innerHTML=`<div class="nextbar"><button class="btn primary big full" id="nx">${S.si+1<S.steps.length?'Next →':'See results'}</button></div>`;
@@ -301,6 +303,18 @@ function tipKey(q){return Object.keys(TIPS.hints).find(k=>q.category.includes(k)
 document.documentElement.dataset.ts=store.get('ts','m');
 // v43 text size: one delegated handler (v41's ✕ End button also has class .aa and was stealing the old querySelector('.aa') hookup)
 const fuBtn=()=>`<button class="aa fubtn" type="button" aria-pressed="${furiOn}" aria-label="Furigana ${furiOn?'on':'off'} (tap to toggle)" title="Furigana"><span class="fk">あ</span><span class="fK">亜</span></button>`;
+let TCH=null;
+function fmtT(t){t=Math.max(0,Math.round(t||0));return Math.floor(t/60)+':'+String(t%60).padStart(2,'0')}
+function teacherHTML(q){const t=q.teacher;return `<div class="tch"><div class="tpill"><button class="tpb" aria-label="Play teacher explanation">▶</button><span class="tlb">Teacher explains</span><span class="tbar"><i></i></span><span class="ttm">${fmtT(t.duration)}</span></div>
+  ${t.script?`<details class="ttr"><summary>Transcript</summary><div class="ttx">${esc(t.script).replace(/\n/g,'<br>')}</div></details>`:''}</div>`}
+function bindTeacher(el,q){if(!el)return;if(TCH){TCH.pause();TCH=null}
+  const a=new Audio(q.teacher.audio),b=el.querySelector('.tpb'),bar=el.querySelector('.tbar'),fill=bar.querySelector('i'),tm=el.querySelector('.ttm');a.preload='none';
+  const st=()=>{const p=!a.paused;b.textContent=p?'❚❚':'▶';b.setAttribute('aria-label',p?'Pause':'Play teacher explanation');el.classList.toggle('on',p||a.currentTime>0)};
+  b.onclick=e=>{e.stopPropagation();if(a.paused){if(TCH&&TCH!==a)TCH.pause();TCH=a;a.play().catch(()=>{})}else a.pause()};
+  a.onplay=a.onpause=st;a.onended=()=>{a.currentTime=0;st()};
+  a.ontimeupdate=()=>{const d=a.duration||q.teacher.duration;fill.style.width=(100*a.currentTime/d)+'%';tm.textContent=fmtT(a.currentTime)+' / '+fmtT(d)};
+  bar.onclick=e=>{e.stopPropagation();const r=bar.getBoundingClientRect(),d=a.duration||q.teacher.duration;a.currentTime=Math.max(0,Math.min(1,(e.clientX-r.left)/r.width))*d;if(a.paused){TCH=a;a.play().catch(()=>{})}};
+  window.addEventListener('hashchange',()=>a.pause(),{once:true})}
 document.addEventListener('click',e=>{const b=e.target.closest&&e.target.closest('.fubtn');if(!b)return;e.preventDefault();furiOn=!furiOn;store.set('furigana',furiOn);applyFuri();
   document.querySelectorAll('.fubtn').forEach(x=>{x.setAttribute('aria-pressed',furiOn);x.setAttribute('aria-label','Furigana '+(furiOn?'on':'off')+' (tap to toggle)')});const hf=document.getElementById('hf');if(hf)hf.checked=furiOn});
 const TS=['s','m','l','xl'],aaBtn=()=>{const t=store.get('ts','m');return fuBtn()+`<button class="aa aats" type="button" aria-label="Text size: ${t.toUpperCase()} (tap to change)" title="Text size">A<small>a</small><i>${t.toUpperCase()}</i></button>`};
