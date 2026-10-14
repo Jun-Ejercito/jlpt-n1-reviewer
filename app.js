@@ -1,6 +1,6 @@
 (function(){
 'use strict';
-const APP_VERSION='v74';
+const APP_VERSION='v75';
 const SECTIONS=['文字・語彙','文法','読解'];
 const SEC_INFO={'文字・語彙':{en:'Kanji & Vocabulary',glyph:'字'},'文法':{en:'Grammar',glyph:'文'},'読解':{en:'Reading',glyph:'読'}};
 const IC=(d,extra='')=>`<svg class="ico" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"${extra}>${d}</svg>`;
@@ -69,7 +69,7 @@ function home(){
   const sk=streak(),acc=pct(st.correct,st.answered);
   app.innerHTML=`<p class="hgreet mut">${dateJa} · ${greet}</p>
   ${todayBtn()}
-  <nav class="hsc">${[['#mistakes','✕','Mistakes',Object.keys(mistDB()).filter(id=>QBY[id]).length||''],['#listen','♪','Listening',''],['#gpairs','文','Grammar pairs',''],['#search','<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/></svg>','Search','']].map(([h,i,l,n])=>`<a href="${h}" class="hsl"><span class="hsi ja">${i}</span><span>${l}</span>${n?`<small class="mut">${n}</small>`:''}</a>`).join('')}</nav>
+  <nav class="hsc">${[['#mistakes','✕','Mistakes',Object.keys(mistDB()).filter(id=>QBY[id]).length||''],['#gpairs','文','Grammar pairs',''],['#search','<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/></svg>','Search','']].map(([h,i,l,n])=>`<a href="${h}" class="hsl"><span class="hsi ja">${i}</span><span>${l}</span>${n?`<small class="mut">${n}</small>`:''}</a>`).join('')}</nav>
   <details class="hsec"><summary>Study details 学習</summary>${todayCard(buildQueue('mixed'))}</details>
   <div class="hq"><button class="btn ghost" id="qqs">${ICONS.bolt} Quick quiz <small class="mut">10 questions</small></button>${missed.length?`<button class="btn ghost" id="qms">${ICONS.redo} Review missed <small class="mut">${missed.length}</small></button>`:''}</div>
   <details class="hsec"><summary>Today's goal & stats</summary><section class="hero2">
@@ -325,7 +325,7 @@ function bindTeacher(el,q){if(!el)return;if(TCH){TCH.pause();TCH=null}
   bar.onclick=e=>{e.stopPropagation();const r=bar.getBoundingClientRect(),d=a.duration||q.teacher.duration;a.currentTime=Math.max(0,Math.min(1,(e.clientX-r.left)/r.width))*d;if(a.paused){TCH=a;a.play().catch(()=>{})}};
   el._wire=()=>el.querySelectorAll('.tchap').forEach(c=>c.onclick=e=>{e.stopPropagation();a.currentTime=+c.dataset.s;TCH=a;if(a.paused)a.play().catch(()=>{})});el._wire();
   const tr=el.querySelector('.ttr');if(tr){tr.addEventListener('toggle',()=>{if(tr.open)fillTr(el,q)});if(tr.open)fillTr(el,q)}
-  a.addEventListener('play',()=>{if(window.__lstop)window.__lstop()});
+  ;
   a.addEventListener('timeupdate',()=>{let cur=-1;el.querySelectorAll('.tchap').forEach((c,i)=>{if(a.currentTime>=+c.dataset.s)cur=i});el.querySelectorAll('.tchap').forEach((c,i)=>c.classList.toggle('cur',i===cur&&a.currentTime>0))});
   window.addEventListener('hashchange',()=>a.pause(),{once:true})}
 document.addEventListener('click',e=>{const b=e.target.closest&&e.target.closest('.fubtn');if(!b)return;e.preventDefault();furiOn=!furiOn;store.set('furigana',furiOn);applyFuri();
@@ -582,12 +582,12 @@ function resumeQuiz(){if(S.done)return results(false);const a=S.ans||{};showQ();
 function resumeStudy(){if(SS.graded){SS.i++;SS.graded=false;SS.shown=false}const sh=SS.shown;SS.shown=false;studyCard();if(sh&&SS.items[SS.i])reveal(SS.items[SS.i])}
 document.addEventListener('click',e=>{if(e.target.closest&&e.target.closest('#qend')&&confirm('End this quiz? Answers so far are saved.')){S=null;saveSess();replaceTo('quiz')}});
 const TABS=[['home',ICONS.home,'Home'],['quiz',ICONS.quiz,'Quiz'],['vocab',ICONS.vocab,'Words'],['kanji',ICONS.kanji,'Kanji'],['progress',ICONS.progress,'Progress']];
-const TITLES={home:'JLPT N1',quiz:'Quiz',vocab:'Words',kanji:'Kanji',kanjicards:'Kanji cards',similar:'Look-alike',progress:'Progress',tips:'読解 Tips',study:'Study',studyguide:'How to study',today:'Today',mistakes:'Mistakes',rq:'Review',search:'Search',listen:'Listening',gpairs:'Grammar pairs'};
+const TITLES={home:'JLPT N1',quiz:'Quiz',vocab:'Words',kanji:'Kanji',kanjicards:'Kanji cards',similar:'Look-alike',progress:'Progress',tips:'読解 Tips',study:'Study',studyguide:'How to study',today:'Today',mistakes:'Mistakes',rq:'Review',search:'Search',gpairs:'Grammar pairs'};
 function header(){const h=$('header'),root=(cur||'home').split('/')[0],showBack=NAV.d>0||root!=='home';
   h.innerHTML=`${showBack?`<button class="hb icon" id="hbk" aria-label="Back">${ICONS.back}</button>`:'<span class="hbsp"></span>'}<a href="#home" class="htl">${esc(TITLES[root]||'JLPT N1')}</a>
    <span class="hbr"><a class="hb icon" id="hsr" href="#search" aria-label="Search" title="Search"><svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/></svg></a><button class="hb icon" id="hs" aria-label="Settings" title="Settings">⚙</button></span>`;
   if($('#hbk'))$('#hbk').onclick=goBack;$('#hs').onclick=openSettings;
-  const tabRoot=(root==='kanjicards'||root==='similar')?'kanji':(root==='tips'||root==='study'||root==='studyguide'||['today','mistakes','rq','search','listen','gpairs'].includes(root))?'home':root;
+  const tabRoot=(root==='kanjicards'||root==='similar')?'kanji':(root==='tips'||root==='study'||root==='studyguide'||['today','mistakes','rq','search','gpairs'].includes(root))?'home':root;
   $('#tabs').innerHTML=TABS.map(([k,i,l])=>`<a href="#${k==='kanji'&&store.get('kanjiMode','grid')==='cards'?'kanjicards':k}" data-tab="${k}" class="tab${tabRoot===k?' on':''}" ${tabRoot===k?'aria-current="page"':''}><span class="ti">${i}</span><span>${l}</span></a>`).join('');
   $('#tabs').querySelectorAll('[data-tab]').forEach(a=>a.onclick=()=>{const t=a.dataset.tab;   // entering a tab fresh → new random order
     if(t==='vocab'){ORDER.vocab=null;delete VS.vocab}if(t==='kanji'){ORDER.kanji=null;delete VS.kanjicards;delete VS.kanji}
@@ -605,7 +605,7 @@ function route(){if(S&&S.view!=null){S.si=S.view;S.ans={...((S.past||{})[S.view]
   const sv=fresh?null:SCR[NAV.k];if(sv&&sv.open){const ds=app.querySelectorAll('details');sv.open.forEach(i=>{if(ds[i])ds[i].open=true})}
   const y=sv?sv.y:(p==='quiz'||p==='study'?0:(VS[h]||{}).y||0);window.scrollTo(0,y);requestAnimationFrame(()=>window.scrollTo(0,y));saveSess();
 }
-function render(p,a){if(p==='vocab')deck('vocab',a);else if(p==='kanji'){if(a)kanjiDetail(a);else kanjiGrid()}else if(p==='kanjicards')deck('kanji',a);else if(p==='similar'){if(a)simDetail(a);else similarView()}else if(p==='tips')tipsView();else if(p==='study'){if(a){if(SS&&SS.mode===a&&SS.items&&SS.i<SS.items.length)resumeStudy();else studyStart(a)}else studyHome()}else if(p==='studyguide')studyGuide();else if(p==='progress')progress();else if(p==='mistakes')mistakesView();else if(p==='rq')reviewQ(a);else if(p==='search')searchView();else if(p==='listen')listenView();else if(p==='gpairs')gpairsView(a);else if(p==='today')todayView();else home()}
+function render(p,a){if(p==='vocab')deck('vocab',a);else if(p==='kanji'){if(a)kanjiDetail(a);else kanjiGrid()}else if(p==='kanjicards')deck('kanji',a);else if(p==='similar'){if(a)simDetail(a);else similarView()}else if(p==='tips')tipsView();else if(p==='study'){if(a){if(SS&&SS.mode===a&&SS.items&&SS.i<SS.items.length)resumeStudy();else studyStart(a)}else studyHome()}else if(p==='studyguide')studyGuide();else if(p==='progress')progress();else if(p==='mistakes')mistakesView();else if(p==='rq')reviewQ(a);else if(p==='search')searchView();else if(p==='listen'){try{localStorage.removeItem('n1_listen')}catch(e){}replaceTo('home');return}else if(p==='gpairs')gpairsView(a);else if(p==='today')todayView();else home()}
 function rerender(){const y=window.scrollY;
   if(S&&!S.done&&document.querySelector('.choice')){const a=S.ans||{};showQ();for(const j in a){S.ans[j]=a[j];renderAnswered(+j,false)}}
   else if(S&&S.done)results(false);
@@ -888,54 +888,6 @@ function gpairsView(id){app.innerHTML='<p class="mut">Loading…</p>';loadGP().t
   const draw=()=>{const t=hira($('#s').value.trim()).toLowerCase();const f=GP.filter(g=>!t||hira([g.title,g.en,...g.patterns.flatMap(p=>[p.p,p.ja,p.en])].join(' ')).toLowerCase().includes(t));$('#cnt').textContent=`${f.length} groups`;
     $('#sl').innerHTML=f.map(g=>`<a class="stile gtile" href="#gpairs/${g.id}"><span class="stp ja gtp">${esc(g.patterns[0].p)}</span><span class="stm">${esc(g.title)}</span><span class="stk ja">${g.patterns.slice(1).map(p=>esc(p.p)).join('・')}</span></a>`).join('')};
   $('#s').oninput=draw;draw();const y=(SCR[NAV.k]||{}).y;if(y)window.scrollTo(0,y)}).catch(()=>{app.innerHTML='<div class="card">Could not load grammar pairs (offline?).</div>'})}
-
-/* ---- Listening mode ---- */
-const LA=new Audio();LA.preload='none';let LS=Object.assign({f:'all',i:0,sleep:0},store.get('listen',{}));LS.until=0;let LST=null;
-const lsave=()=>store.set('listen',{f:LS.f,i:LS.i,sleep:LS.sleep});
-function lList(){const m=mistDB();return Q.filter(q=>q.teacher&&(LS.f==='all'||(LS.f==='mist'?m[q.id]:secOf(q)===LS.f)))}
-window.__lstop=()=>{if(!LA.paused)LA.pause()};
-function lLoad(play){const L=lList();if(!L.length)return;LS.i=(LS.i+L.length)%L.length;const q=L[LS.i];lsave();
-  if(LA.dataset.q!==String(q.id)){LA.src=q.teacher.audio;LA.dataset.q=q.id}
-  if('mediaSession' in navigator){navigator.mediaSession.metadata=new MediaMetadata({title:`Q${q.id} · ${q.answer_word}`,artist:`${secOf(q)} · Teacher (VOICEVOX:WhiteCUL)`,album:'JLPT N1 Reviewer'})}
-  if(play){if(TCH)TCH.pause();LA.play().catch(()=>{})}lUI()}
-function lNext(d){LS.i+=d;lLoad(true)}
-function lSleep(min){clearTimeout(LST);LS.sleep=min;LS.until=0;if(min>0){LS.until=Date.now()+min*6e4;LST=setTimeout(()=>{LA.pause();LS.until=0;LS.sleep=0;lsave();lUI();toast('Sleep timer · paused')},min*6e4)}lsave();lUI()}
-LA.addEventListener('ended',()=>{if(LS.sleep===-1){LS.sleep=0;lsave();lUI();return}lNext(1)});
-['play','pause','timeupdate','loadedmetadata'].forEach(ev=>LA.addEventListener(ev,()=>lUI(ev==='timeupdate')));
-if('mediaSession' in navigator){const ms=navigator.mediaSession;const h=(a,f)=>{try{ms.setActionHandler(a,f)}catch(e){}};
-  h('play',()=>{if(!LA.src)lLoad(true);else LA.play()});h('pause',()=>LA.pause());h('previoustrack',()=>lNext(-1));h('nexttrack',()=>lNext(1));
-  h('seekto',d=>{if(d.seekTime!=null)LA.currentTime=d.seekTime});h('seekbackward',()=>LA.currentTime=Math.max(0,LA.currentTime-10));h('seekforward',()=>LA.currentTime+=10)}
-function lUI(tick){if(cur!=='listen')return;const L=lList(),q=L[LS.i],pl=!LA.paused;
-  const b=$('#lpp');if(b){b.innerHTML=pl?'<svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor" aria-hidden="true"><path d="M7 5h3.5v14H7zM13.5 5H17v14h-3.5z"/></svg>':'<svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg>';b.setAttribute('aria-label',pl?'Pause':'Play')}
-  const d=LA.duration||(q&&q.teacher.duration)||1,fi=$('#lbar i');if(fi)fi.style.width=(100*(LA.dataset.q===String(q&&q.id)?LA.currentTime:0)/d)+'%';
-  const tm=$('#ltm');if(tm)tm.textContent=`${fmtT(LA.dataset.q===String(q&&q.id)?LA.currentTime:0)} / ${fmtT(d)}`;
-  const sl=$('#lsl');if(sl)sl.textContent=LS.until?`⏾ ${Math.max(1,Math.ceil((LS.until-Date.now())/6e4))} min left`:LS.sleep===-1?'⏾ stops after this one':'';
-  if(tick){const tc=document.querySelectorAll('#ltr .tchap');let c=-1;tc.forEach((x,i)=>{if(LA.currentTime>=+x.dataset.s)c=i});tc.forEach((x,i)=>x.classList.toggle('cur',i===c));return}
-  if(q&&$('#lnow')&&$('#lnow').dataset.q!==String(q.id))listenView(true);
-  document.querySelectorAll('.lrow').forEach(r=>r.classList.toggle('on',+r.dataset.i===LS.i))}
-function listenView(keepScroll){const L=lList();if(LS.i>=L.length)LS.i=0;const q=L[LS.i];
-  app.innerHTML=`<div class="ph"><h1 class="pt">Listening 聞き流し</h1></div>
-  <div class="mfil">${seg3('lf',[['all','All'],...SECTIONS.map(s=>[s,SEC_INFO[s].glyph]),['mist','Mistakes']],LS.f)}</div>
-  ${q?`<div class="card lnow" id="lnow" data-q="${q.id}"><p class="qmeta">${LS.i+1}/${L.length} · ${esc(secOf(q))} · ${esc(q.category)}</p>
-   <p class="ja lsn">${esc(qSnip(q,60))}</p><p class="sm">正解 <b class="ja">${esc(q.answer_word)}</b> · <a href="#rq/${q.id}">Open question →</a></p>
-   <div class="lbar" id="lbar"><i></i>${(q.teacher.chapters||[]).slice(1).map(c=>`<b style="left:${(100*c.start/q.teacher.duration).toFixed(2)}%"></b>`).join('')}</div><div class="ltm"><span id="ltm"></span><span id="lsl" class="mut sm"></span></div>
-   <div class="lctl"><button class="lb" id="lpv" aria-label="Previous"><svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor" aria-hidden="true"><path d="M6 5h2v14H6zM20 5v14L9 12z"/></svg></button><button class="lb lbp" id="lpp" aria-label="Play"><svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg></button><button class="lb" id="lnx" aria-label="Next"><svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor" aria-hidden="true"><path d="M16 5h2v14h-2zM4 5v14l11-7z"/></svg></button></div>
-   <div class="srow lslp"><span class="sm">Sleep timer</span>${seg3('lsp',[[0,'Off'],[10,'10m'],[20,'20m'],[30,'30m'],[-1,'End']],LS.until||LS.sleep===-1?LS.sleep:0)}</div>
-   <details class="ttr" id="ltrd" open><summary>Transcript <span class="tcr">· ${esc(q.teacher.credit||'')}</span></summary><div id="ltr">${trHTML(q)}</div></details></div>
-  <h3 class="sec-t sm">Queue · ${L.length}</h3><div class="mlist lq">${L.map((x,i)=>`<button class="lrow${i===LS.i?' on':''}" data-i="${i}"><span class="mg ja">${secGlyph(x)}</span><span class="ja">${esc(x.answer_word)}</span><small class="mut">Q${x.id} · ${fmtT(x.teacher.duration)}</small></button>`).join('')}</div>`
-  :'<div class="card mut">Nothing to play for this filter.</div>'}`;
-  $('#lf').querySelectorAll('button').forEach(b=>b.onclick=()=>{LS.f=b.dataset.v;LS.i=0;lsave();LA.pause();listenView()});
-  if(!q)return;
-  $('#lpp').onclick=()=>{if(LA.dataset.q!==String(q.id))lLoad(true);else if(LA.paused){if(TCH)TCH.pause();LA.play().catch(()=>{})}else LA.pause()};
-  $('#lpv').onclick=()=>lNext(-1);$('#lnx').onclick=()=>lNext(1);
-  $('#lbar').onclick=e=>{const r=$('#lbar').getBoundingClientRect();if(LA.dataset.q!==String(q.id))lLoad(false);const d=LA.duration||q.teacher.duration;LA.currentTime=Math.max(0,Math.min(1,(e.clientX-r.left)/r.width))*d;LA.play().catch(()=>{})};
-  $('#lsp').querySelectorAll('button').forEach(b=>b.onclick=()=>{$('#lsp').querySelectorAll('button').forEach(x=>x.classList.toggle('on',x===b));const v=+b.dataset.v;if(v===-1){clearTimeout(LST);LS.until=0;LS.sleep=-1;lsave();lUI()}else lSleep(v)});
-  app.querySelectorAll('.lrow').forEach(r=>r.onclick=()=>{LS.i=+r.dataset.i;lLoad(true)});
-  const wire=()=>document.querySelectorAll('#ltr .tchap').forEach(c=>c.onclick=()=>{if(LA.dataset.q!==String(q.id))lLoad(false);LA.currentTime=+c.dataset.s;LA.play().catch(()=>{})});
-  wire();if(!window.TEACHER)loadTeacher().then(()=>{const x=$('#ltr');if(x&&cur==='listen'){x.innerHTML=trHTML(q);wire()}}).catch(()=>{});
-  if(LA.dataset.q!==String(q.id)&&LA.paused){LA.src=q.teacher.audio;LA.dataset.q=q.id}
-  lUI();if(keepScroll!==true&&keepScroll)window.scrollTo(0,0)}
-setInterval(()=>{if(cur==='listen'&&LS.until)lUI(true)},15000);
 
 /* ---- Offline audio (service worker + Cache API) ---- */
 const AUDIO_CACHE='n1-audio';

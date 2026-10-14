@@ -1,5 +1,5 @@
 // JLPT N1 Reviewer service worker: app shell cached; audio cached on demand (Range-aware)
-const V='n1-shell-v74',AUD='n1-audio';
+const V='n1-shell-v75',AUD='n1-audio';
 self.addEventListener('install',e=>{self.skipWaiting();e.waitUntil(caches.open(V).then(c=>c.addAll(['./','index.html','style.css','app.js','data.js','tips.js']).catch(()=>{})))});
 self.addEventListener('activate',e=>e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k.startsWith('n1-shell-')&&k!==V).map(k=>caches.delete(k)))).then(()=>self.clients.claim())));
 const strip=u=>{const x=new URL(u);x.search='';return x.href};
