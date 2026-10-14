@@ -891,3 +891,5 @@ rt{margin:0 -.6em}
 .gpx{margin:16px 0 0;border-left:2px solid var(--ex-bar);padding:2px 0 2px 12px;line-height:1.9}.gpxe{color:var(--mut);font-size:.88em;line-height:1.5;margin-top:2px}
 .gpd .gpq{margin:16px 0 0;font-size:.88em;color:var(--mut)}.gpd .gpq a{color:var(--accent);text-decoration:none;margin-right:.6em}
 .gtile{gap:8px;padding:14px 10px}
+.gpd a.gpa{color:inherit;text-decoration:none;border-bottom:1px dotted color-mix(in srgb,var(--indigo) 55%,transparent)}
+.gpd .w[data-g]{cursor:pointer}

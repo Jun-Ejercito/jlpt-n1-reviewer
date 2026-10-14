@@ -1,6 +1,6 @@
 (function(){
 'use strict';
-const APP_VERSION='v76';
+const APP_VERSION='v77';
 const SECTIONS=['文字・語彙','文法','読解'];
 const SEC_INFO={'文字・語彙':{en:'Kanji & Vocabulary',glyph:'字'},'文法':{en:'Grammar',glyph:'文'},'読解':{en:'Reading',glyph:'読'}};
 const IC=(d,extra='')=>`<svg class="ico" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"${extra}>${d}</svg>`;
@@ -335,7 +335,7 @@ document.addEventListener('click',e=>{const b=e.target.closest&&e.target.closest
   const t=TS[(TS.indexOf(store.get('ts','m'))+1)%TS.length];store.set('ts',t);document.documentElement.dataset.ts=t;
   document.querySelectorAll('.aats').forEach(x=>{x.querySelector('i').textContent=t.toUpperCase();x.setAttribute('aria-label','Text size: '+t.toUpperCase()+' (tap to change)')})});
 // ---- tap-a-word (v30): glossary is lazy-loaded on first use
-let glossP=null;function loadGloss(){return glossP||(glossP=new Promise((ok,no)=>{if(window.GLOSS)return ok(window.GLOSS);const sc=document.createElement('script');sc.src='glossary.js?v=49';sc.onload=()=>ok(window.GLOSS);sc.onerror=()=>{glossP=null;no()};document.head.appendChild(sc)}))}
+let glossP=null;function loadGloss(){return glossP||(glossP=new Promise((ok,no)=>{if(window.GLOSS)return ok(window.GLOSS);const sc=document.createElement('script');sc.src='glossary.js?v='+APP_VERSION.slice(1);sc.onload=()=>ok(window.GLOSS);sc.onerror=()=>{glossP=null;no()};document.head.appendChild(sc)}))}
 const surfOf=el=>{const c=el.cloneNode(true);c.querySelectorAll('rt,rp').forEach(r=>r.remove());return c.textContent.trim()};
 let wsheet=null,wcur=null;
 function closeWord(){closeWordRaw();ovDrop()}
@@ -873,15 +873,21 @@ function searchView(){const st=VS[cur]||{};const EXP=new Set(st.exp||[]);
   if(!st.q)setTimeout(()=>{const i=$('#s');if(i)i.focus()},50)}
 
 /* ---- Grammar look-alike pairs ---- */
+const TW=(o,f)=>{const w=o[f+'_w'];return w?w[1]:esc(o[f])};
+let GPJ=null;const gpSec=p=>document.getElementById('gp'+(cur||'').split('/')[1]+'-'+p);
+function gpJump(p){const t=gpSec(p);if(t)t.scrollIntoView({behavior:reduced()?'auto':'smooth',block:'start'})}
+document.addEventListener('click',e=>{const a=e.target.closest&&e.target.closest('#app a.gpa');if(!a)return;const g=a.getAttribute('href').split('/')[1];
+  if((cur||'')==='gpairs/'+g){e.preventDefault();gpJump(a.dataset.gp)}else GPJ=a.dataset.gp});
 function gpairsView(id){app.innerHTML='<p class="mut">Loading…</p>';loadGP().then(GP=>{if(!(cur||'').startsWith('gpairs'))return;
   if(id){const g=GP.find(x=>String(x.id)===String(id));if(!g){app.innerHTML='<div class="card">Group not found.</div>';return}
-    app.innerHTML=`<div class="gpd"><div class="gph0"><h1 class="gpt ja">${esc(g.title)}</h1><p class="gpsub">${esc(g.en)}</p>
+    app.innerHTML=`<div class="gpd"><div class="gph0"><h1 class="gpt ja">${TW(g,'title')}</h1><p class="gpsub">${esc(g.en)}</p>
      <nav class="gpk ja" aria-label="Patterns">${g.patterns.map(p=>`<a href="#gp${g.id}-${esc(p.p)}">${esc(p.p)}</a>`).join('<span class="gpdot" aria-hidden="true">·</span>')}</nav></div>
      ${g.patterns.map(p=>`<section class="gpp" id="gp${g.id}-${esc(p.p)}"><h2 class="gpn ja">${esc(p.p)}</h2><p class="gpf ja">${esc(p.form)}</p>
-      <p class="gpm"><span class="ja">${esc(p.ja)}</span><span class="gpe">${esc(p.en)}</span></p>
-      <p class="gpu"><span class="gpl">Point</span><span class="ja">${esc(p.nu)}</span></p>
-      <div class="gpx"><div class="ja">${esc(p.ex)}</div><div class="gpxe">${esc(p.exen)}</div></div>
+      <p class="gpm"><span class="ja">${TW(p,'ja')}</span><span class="gpe">${esc(p.en)}</span></p>
+      <p class="gpu"><span class="gpl">Point</span><span class="ja">${TW(p,'nu')}</span></p>
+      <div class="gpx"><div class="ja">${TW(p,'ex')}</div><div class="gpxe">${esc(p.exen)}</div></div>
       ${p.q.length?`<p class="gpq">Related: ${p.q.map(i=>`<a href="#rq/${i}">Q${i} ›</a>`).join(' ')}</p>`:''}</section>`).join('')}</div>`;
+    if(GPJ){const p=GPJ;GPJ=null;setTimeout(()=>{const t=gpSec(p);if(t)t.scrollIntoView({block:'start'})},80)}
     app.querySelectorAll('.gpk a').forEach(a=>a.onclick=e=>{e.preventDefault();const t=document.getElementById(a.getAttribute('href').slice(1));if(t)t.scrollIntoView({behavior:reduced()?'auto':'smooth',block:'start'})});
     return}
   const st=VS[cur]||{};
