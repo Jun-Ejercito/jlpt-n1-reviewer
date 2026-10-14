@@ -1,6 +1,6 @@
 (function(){
 'use strict';
-const APP_VERSION='v80';
+const APP_VERSION='v81';
 const SECTIONS=['文字・語彙','文法','読解'];
 const SEC_INFO={'文字・語彙':{en:'Kanji & Vocabulary',glyph:'字'},'文法':{en:'Grammar',glyph:'文'},'読解':{en:'Reading',glyph:'読'}};
 const IC=(d,extra='')=>`<svg class="ico" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"${extra}>${d}</svg>`;
@@ -98,9 +98,9 @@ function home(){
   <p class="ver">JLPT N1 Reviewer · ${APP_VERSION}</p>`;
   $('#gm').onclick=()=>{store.set('goal',Math.max(5,goal-5));home()};$('#gp').onclick=()=>{store.set('goal',Math.min(200,goal+5));home()};
   const o=store.get('quizOpts',{cat:'',shuffle:true,n:10,autoplay:false});
-  $('#qq').onclick=()=>{nav('quiz/play',()=>start(smartPick(Q,10),{...o,shuffle:true},false,10))};
+  $('#qq').onclick=()=>{nav('quiz/play',()=>{start(smartPick(Q,10,'all'),{...o,shuffle:true},false,10);S.rkey='all'})};
   $('#qm').onclick=()=>{nav('quiz/play',()=>start(shuffle(Q.filter(q=>missed.includes(q.id))),o,true))};$('#qqs').onclick=()=>$('#qq').click();if($('#qms'))$('#qms').onclick=()=>$('#qm').click();
-  app.querySelectorAll('.seccard').forEach(b=>b.onclick=()=>{const sec=b.dataset.sec;store.set('quizOpts',{...o,cat:sec});nav('quiz/play',()=>start(smartPick(Q.filter(q=>secOf(q)===sec),o.n||10),{...o,cat:sec,shuffle:true},false,o.n||10))});
+  app.querySelectorAll('.seccard').forEach(b=>b.onclick=()=>{const sec=b.dataset.sec;store.set('quizOpts',{...o,cat:sec});nav('quiz/play',()=>{start(smartPick(Q.filter(q=>secOf(q)===sec),o.n||10,sec),{...o,cat:sec,shuffle:true},false,o.n||10);S.rkey=sec})});
   if(store.get('wordsFilter',null)===null)store.set('wordsFilter',false);
 }
 let pending=null;function nav(h,fn){pending=fn;if(location.hash==='#'+h)route();else location.hash=h}
@@ -134,22 +134,37 @@ function quizSetup(){
   app.innerHTML=`<h1 class="pt">Quiz 問題</h1>${S&&!S.done?`<a class="card resq" href="#quiz/play">▶ <b>Resume your quiz</b> <span class="mut sm">· question ${S.si+1}/${S.steps.length}</span></a>`:''}<div class="card form">
   <label><span class="lbl">Section</span><select id="cat"><option value="">All (${Q.length})</option>${cats.map(c=>`<option ${c===o.cat?'selected':''} value="${esc(c)}">${esc(c)} (${Q.filter(q=>secOf(q)===c).length})</option>`).join('')}</select></label>
   <label><span class="lbl">Number of questions</span><input id="n" type="number" min="1" max="${Q.length}" value="${o.n}"></label>
-  <label class="sw"><input type="checkbox" id="shuf" ${o.shuffle?'checked':''}><span></span> Shuffle questions <small class="mut">· Mix: 60% least-tried</small></label>
+  <label class="sw"><input type="checkbox" id="shuf" ${o.shuffle?'checked':''}><span></span> Shuffle questions <small class="mut">· unseen first</small></label>
   <label class="sw"><input type="checkbox" id="auto" ${o.autoplay?'checked':''}><span></span> Autoplay audio after answering</label>
   <label class="sw"><input type="checkbox" id="shc" ${o.sc!==false?'checked':''}><span></span> Shuffle choices</label>
+  <p class="rhint mut sm" id="rhint">${roundHint(o.cat||'all')}</p>
   <div class="row"><button class="btn primary big" id="go">Start quiz</button><button class="btn ghost big" id="rm" ${missed.length?'':'disabled'}>↺ Review missed only (${missed.length})</button></div></div>`;
   const opts=()=>{const x={cat:$('#cat').value,shuffle:$('#shuf').checked,n:Math.max(1,+$('#n').value||10),autoplay:$('#auto').checked,sc:$('#shc').checked};store.set('quizOpts',x);return x};
-  $('#go').onclick=()=>{const x=opts();let p=Q.filter(q=>!x.cat||secOf(q)===x.cat);if(x.shuffle)p=smartPick(p,x.n);nav('quiz/play',()=>start(p,x,false,x.n))};
+  $('#cat').addEventListener('change',()=>{$('#rhint').textContent=roundHint($('#cat').value||'all')});
+  $('#go').onclick=()=>{const x=opts();let p=Q.filter(q=>!x.cat||secOf(q)===x.cat);p=roundPick(p,x.n,x.cat||'all',!x.shuffle);if(!p.length){toast('Everything here is scheduled for review later');return}nav('quiz/play',()=>{start(p,x,false,x.n);S.rkey=x.cat||'all'})};
   $('#rm').onclick=()=>{const x=opts();let p=Q.filter(q=>missed.includes(q.id));if(x.shuffle)p=shuffle(p);nav('quiz/play',()=>start(p,x,true))};
 }
 // v39: ~60% of a random quiz comes from the least-attempted questions (passage groups = one unit, min member count)
-function smartPick(list,limit){const att=store.get('qAtt',{}),units=[],seen=new Set();
-  for(const q of list){const g=q.passage_group;if(!g){units.push([q]);continue}if(seen.has(g))continue;seen.add(g);units.push(Q.filter(x=>x.passage_group===g).sort((a,b)=>a.id-b.id))}
-  const tot=units.reduce((a,u)=>a+u.length,0);if(!(limit>0)||tot<=limit)return shuffle(units).flat();
-  const quota=Math.round(limit*.6),sc=units.map(u=>({u,a:Math.min(...u.map(q=>att[q.id]||0)),r:Math.random()})).sort((x,y)=>x.a-y.a||x.r-y.r);
-  const pick=[];let c=0;while(sc.length&&c<quota){const x=sc.shift();pick.push(x.u);c+=x.u.length}
-  for(const x of shuffle(sc)){if(c>=limit)break;pick.push(x.u);c+=x.u.length}
-  return shuffle(pick).flat()}
+// v81: unseen-first rounds per filter ('all' or a section). A question counts as seen when shown; passages stay whole;
+// when a round is exhausted a new one starts (topped up with least-answered). Scheduled mistakes are excluded until due.
+const RIV=[1,3,7];
+function rounds(){let r=store.get('rounds',null);if(!r){const att=store.get('qAtt',{}),seenIds=Object.keys(att).map(Number).filter(i=>QBY[i]);r={all:{n:1,s:seenIds}};
+  SECTIONS.forEach(sec=>{r[sec]={n:1,s:seenIds.filter(i=>secOf(QBY[i])===sec)}});
+  for(const k in r){const pool=k==='all'?Q:Q.filter(q=>secOf(q)===k);if(pool.every(q=>r[k].s.includes(q.id)))r[k]={n:2,s:[]}}store.set('rounds',r)}return r}
+const rkeyOf=list=>{if(list.length>=Q.length)return'all';const s0=secOf(list[0]);return list.every(q=>secOf(q)===s0)&&list.length===Q.filter(q=>secOf(q)===s0).length?s0:'all'};
+function notDueSet(){const m=mistDB(),t=dn();return new Set(Object.keys(m).filter(id=>m[id].d>t).map(Number))}
+function roundInfo(key){const r=rounds()[key]||{n:1,s:[]},pool=key==='all'?Q:Q.filter(q=>secOf(q)===key),S_=new Set(r.s);return {n:r.n,seen:pool.filter(q=>S_.has(q.id)).length,tot:pool.length}}
+const roundHint=key=>{const i=roundInfo(key);return `Round ${i.n} · ${i.seen}/${i.tot} seen`};
+function markSeen(qs){const r=rounds();let ch=false;for(const q of qs)for(const k of ['all',secOf(q)]){if(!r[k])r[k]={n:1,s:[]};if(!r[k].s.includes(q.id)){r[k].s.push(q.id);ch=true}}if(ch)store.set('rounds',r)}
+function roundPick(list,limit,key,ordered){const att=store.get('qAtt',{}),ex=notDueSet(),r=rounds();if(!r[key])r[key]={n:1,s:[]};const R_=r[key];
+  const units=[],gs=new Set();for(const q of list){const g=q.passage_group;let u;if(!g)u=[q];else{if(gs.has(g))continue;gs.add(g);u=Q.filter(x=>x.passage_group===g).sort((a,b)=>a.id-b.id)}if(!u.some(x=>ex.has(x.id)))units.push(u)}
+  if(!units.length)return [];const order=a=>ordered?a.slice().sort((x,y)=>x[0].id-y[0].id):shuffle(a);
+  if(!(limit>0))limit=1e9;let seen=new Set(R_.s);const pick=[];let c=0;
+  const pend=new Set(R_.p||[]),fr=order(units.filter(u=>u.some(x=>!seen.has(x.id))));for(const u of [...fr.filter(u=>u.some(x=>pend.has(x.id))),...fr.filter(u=>!u.some(x=>pend.has(x.id)))]){if(c>=limit)break;pick.push(u);c+=u.length}
+  const nU=pick.length;if(c<limit){R_.n++;R_.s=[];R_.p=pick.flat().map(q=>q.id);store.set('rounds',r);const rest=units.filter(u=>!pick.includes(u)).map(u=>({u,a:Math.min(...u.map(q=>att[q.id]||0)),x:Math.random()})).sort((p,q)=>p.a-q.a||p.x-q.x);
+    for(const o of rest){if(c>=limit)break;pick.push(o.u);c+=o.u.length}}
+  return (ordered?pick:[...shuffle(pick.slice(0,nU)),...shuffle(pick.slice(nU))]).flat()}
+function smartPick(list,limit,key){return roundPick(list,limit,key||rkeyOf(list))}
 function start(list,opts,missedMode,limit){if(!list.length){alert('No questions match.');return false}
   // passage groups: a group is always taken whole (members from the full bank, id order) and counts as one unit;
   // with a size limit we add whole units until the limit is reached (may slightly exceed it, never splits a group)
@@ -193,7 +208,7 @@ function questionHTML(q){
   return `<p class="q">${body}</p>${isReadingQ(q)?'<p class="qhint">Choose the correct reading of the underlined word</p>':''}`}
 function choiceHTML(q,k,answered){if(answered&&isUsageQ(q)&&q.choices_hl_w&&q.choices_hl_w[k])return hlHTML(q.choices_hl[k],q.choices_hl_w[k]);if(answered&&q.choices_w&&q.choices_w[k])return q.choices_w[k];if(isUsageQ(q)&&q.choices_hl&&q.choices_hl[k])return hlHTML(q.choices_hl[k],q.choices_hl_ruby&&q.choices_hl_ruby[k]);const r=q.choices_ruby&&q.choices_ruby[k];return furi&&r&&(answered||!isKanjiQ(q))?r:esc(q.choices[k])}
 function stepLabel(){const[st,n]=S.steps[S.si];return n>1?`Q${st+1}–${st+n}`:`Q${st+1}`}
-function showQ(){S.ans={};const[st,n]=S.steps[S.si];S.i=st;const qs=S.list.slice(st,st+n),q0=qs[0];
+function showQ(){S.ans={};const[st,n]=S.steps[S.si];S.i=st;const qs=S.list.slice(st,st+n),q0=qs[0];markSeen(qs);
   app.innerHTML=`<div class="qtop">${fmBtns()}<div class="qprog"><div style="width:${S.si*100/S.steps.length}%"></div></div><span class="mut sm">${S.si+1}/${S.steps.length}${n>1?` · ${stepLabel()}`:''}</span><button class="aa qend" id="qend" aria-label="End quiz" title="End quiz">✕</button>${aaBtn()}</div>
   ${n>1?`<div class="card qcardq gpass"><p class="qmeta">${esc(secOf(q0))} · ${esc(q0.category)} · ${n} questions${S.missedMode?' · review':''}</p>${passageHTML(q0,true)}${q0.reading_guide?'':techHTML(q0)}</div>`:''}
   ${qs.map((q,j)=>`<div class="gq" id="gq${j}"><div class="card qcardq">${n>1?`<p class="qmeta">Question ${j+1}/${n}</p>`:`<p class="qmeta">${esc(secOf(q))} · ${esc(q.category)}${S.missedMode?' · review':''}</p>${passageHTML(q)}${q.reading_guide?'':techHTML(q)}`}
@@ -248,7 +263,7 @@ function results(celebrate=true){S.done=true;
   const n=S.list.length,p=pct(S.score,n);
   app.innerHTML=`<div class="card res"><h2>Results 結果</h2>${ring(p,p+'%',`${S.score}/${n}`,140,p>=80?'var(--ok)':p>=50?'var(--indigo)':'var(--accent)')}
   <p class="mut">${p>=80?'すばらしい！ Excellent work.':p>=50?'いい調子！ Keep going.':'がんばろう！ Review and try again.'}</p>
-  <div class="row center"><button class="btn primary" id="again">New quiz</button>${S.wrong.length?`<button class="btn ghost" id="rw">↺ Retry missed</button>`:''}<a class="btn ghost" href="#home">Home</a></div>${tdAfterQuiz()}</div>
+  <div class="row center"><button class="btn primary" id="again">New quiz</button>${S.wrong.length?`<button class="btn ghost" id="rw">↺ Retry missed</button>`:''}<a class="btn ghost" href="#home">Home</a></div><p class="rhint mut sm">${roundHint(S.rkey||'all')}</p>${tdAfterQuiz()}</div>
   ${S.wrong.length?`<h2 class="sec-t">Review missed questions</h2>`+S.wrong.map(({q,k})=>`<div class="card"><p class="ja">${F(q,'complete_sentence')}</p><p class="mut">${esc(q.complete_sentence_en)}</p>
   <p>Your answer: <span class="t-bad">${esc(dk(q,k))}. ${choiceHTML(q,k,true)}</span><br>正解：<span class="t-ok">${esc(dk(q,q.answer))}. ${F(q,'answer_word')}</span> <span class="mut">(${esc(q.answer_romaji)})</span></p>
   <p class="mut sm">${esc(q.explanation_en)}</p>${q.audio?`<button class="btn sm ghost" data-a="${esc(q.audio)}">🔊 Play</button>`:''}</div>`).join(''):'<div class="card t-ok center">Perfect score! 満点！</div>'}`;
@@ -793,23 +808,26 @@ const secGlyph=q=>SEC_INFO[secOf(q)].glyph;
 const qSnip=(q,n=46)=>{const t=secOf(q)==='読解'?q.question:(q.complete_sentence||q.question||'');return t.length>n?t.slice(0,n)+'…':t};
 
 /* ---- Mistake notebook: n1_mist = {id:{n:misses,l:lastOk(0/1),s:okStreak,t:time}} ---- */
-function mistDB(){let m=store.get('mist',null);if(!m){m={};store.get('missed',[]).forEach(id=>{if(QBY[id])m[id]={n:1,l:0,s:0,t:Date.now()}});store.set('mist',m)}return m}
+function mistDB(){let m=store.get('mist',null);if(!m){m={};store.get('missed',[]).forEach(id=>{if(QBY[id])m[id]={n:1,l:0,s:0,t:Date.now()}})}
+  let ch=!store.get('mist',null);for(const id in m){const e=m[id];if(e.d==null){e.s=Math.min(e.s||0,2);e.d=dn();ch=true}}if(ch)store.set('mist',m);return m}
+const mistDue=()=>{const m=mistDB(),t=dn();return Object.keys(m).filter(id=>QBY[id]&&m[id].d<=t).map(id=>QBY[id])};
 function mistRec(q,ok){const m=mistDB(),e=m[q.id];
-  if(ok){if(!e)return;e.s=(e.s||0)+1;e.l=1;e.t=Date.now();if(e.s>=2){delete m[q.id];store.set('mist',m);toast('Removed from Mistakes · 2 correct in a row');return}}
-  else m[q.id]={n:(e?e.n:0)+1,l:0,s:0,t:Date.now()};store.set('mist',m)}
+  if(ok){if(!e)return;e.l=1;e.t=Date.now();if(e.d<=dn()){e.s=(e.s||0)+1;if(e.s>=RIV.length){delete m[q.id];store.set('mist',m);store.set('missed',store.get('missed',[]).filter(x=>x!==q.id));toast('Mastered · removed from Mistakes');return}e.d=dn()+RIV[e.s]}}
+  else m[q.id]={n:(e?e.n:0)+1,l:0,s:0,t:Date.now(),d:dn()+RIV[0]};store.set('mist',m)}
 function mistRemove(id){const m=mistDB();delete m[id];store.set('mist',m);store.set('missed',store.get('missed',[]).filter(x=>x!==+id))}
 function mistakesView(){const m=mistDB(),f=store.get('mistF','');
   const rows=Object.keys(m).map(id=>QBY[id]).filter(q=>q&&(!f||secOf(q)===f)).sort((a,b)=>m[b.id].t-m[a.id].t);
   const all=Object.keys(m).filter(id=>QBY[id]).length;
   app.innerHTML=`<div class="ph"><h1 class="pt">Mistakes 間違いノート</h1></div>
   <div class="mfil">${seg3('mf',[['','All'],...SECTIONS.map(s=>[s,SEC_INFO[s].glyph+' '+s])],f)}</div>
-  ${rows.length?`<button class="btn primary full" id="mrv">↺ Review these <small>${rows.length}</small></button>`:''}
-  <p class="mut sm mhint">${all?`${all} question${all>1?'s':''} · removed after 2 correct in a row`:'No mistakes yet. Questions you answer wrong appear here.'}</p>
+  ${(()=>{const t=dn(),due=rows.filter(q=>m[q.id].d<=t).length;return (due?`<button class="btn primary full" id="mdv">↺ Review due <small>${due}</small></button>`:'')+(rows.length?`<button class="btn ${due?'ghost':'primary'} full" id="mrv">Review all <small>${rows.length}</small></button>`:'')})()}
+  <p class="mut sm mhint">${all?`${all} question${all>1?'s':''} · reviewed after 1 · 3 · 7 days, then removed`:'No mistakes yet. Questions you answer wrong appear here.'}</p>
   <div class="mlist">${rows.map(q=>{const e=m[q.id];return `<div class="mrow"><a class="mra" href="#rq/${q.id}"><span class="mg ja">${secGlyph(q)}</span><span class="mtx"><span class="ja">${esc(qSnip(q))}</span><small class="mut">${esc(q.category)} · 正解 ${esc(q.answer_word)}</small></span>
-    <span class="mst"><span class="${e.l?'t-ok':'t-bad'}">${e.l?'✓':'✕'}</span><small class="mut">×${e.n}</small></span></a><button class="mrm" data-id="${q.id}" aria-label="Remove from notebook" title="Remove">✕</button></div>`}).join('')}</div>`;
+    <span class="mst"><span class="${e.l?'t-ok':'t-bad'}">${e.l?'✓':'✕'}</span><small class="mut">${e.d<=dn()?'<b class="mdue">due</b>':'in '+(e.d-dn())+'d'} · ×${e.n}</small></span></a><button class="mrm" data-id="${q.id}" aria-label="Remove from notebook" title="Remove">✕</button></div>`}).join('')}</div>`;
   $('#mf').querySelectorAll('button').forEach(b=>b.onclick=()=>{store.set('mistF',b.dataset.v);mistakesView()});
+  if($('#mdv'))$('#mdv').onclick=()=>{const o=store.get('quizOpts',{}),t=dn();nav('quiz/play',()=>start(shuffle(rows.filter(q=>m[q.id].d<=t)),{...o,autoplay:false},true))};
   if($('#mrv'))$('#mrv').onclick=()=>{const o=store.get('quizOpts',{});nav('quiz/play',()=>start(shuffle(rows),{...o,autoplay:false},true))};
-  app.querySelectorAll('.mrm').forEach(b=>b.onclick=e=>{e.preventDefault();const id=b.dataset.id;mistRemove(id);mistakesView();toast('Removed from Mistakes','Undo',()=>{const m=mistDB();m[id]={n:1,l:0,s:0,t:Date.now()};store.set('mist',m);if(cur==='mistakes')mistakesView()})})}
+  app.querySelectorAll('.mrm').forEach(b=>b.onclick=e=>{e.preventDefault();const id=b.dataset.id;mistRemove(id);mistakesView();toast('Removed from Mistakes','Undo',()=>{const m=mistDB();m[id]={n:1,l:0,s:0,t:Date.now(),d:dn()+1};store.set('mist',m);if(cur==='mistakes')mistakesView()})})}
 // review one question (answerable; teacher audio after answering). Uses a throw-away quiz state so a running quiz is untouched.
 function reviewQ(id){const q=QBY[+id];if(!q){app.innerHTML='<div class="card">Question not found.</div>';return}
   const e=mistDB()[q.id];
@@ -834,14 +852,14 @@ function todayBtn(){const t=tdState(),q=buildQueue('mixed'),nw=q.items.length-q.
   return `<a class="btn primary todayb" href="#today"><span class="tdl"><b>▶ ${lbl}</b><small>${q.due} review${q.due===1?'':'s'} · 10 quiz · ${nw} new</small></span>${tdDots(t.step)}</a>`}
 function todayView(){const t=tdState(),q=buildQueue('mixed'),nw=q.items.length-q.due;
   if(t.step===0&&q.due===0){t.step=1;tdSave(t)}
-  const cnt=[`${q.due} due`,'10 questions',`${nw} cards`],res=[t.r.rev?`${t.r.rev} reviewed`:'',t.r.quiz?`${t.r.quiz.s}/${t.r.quiz.n} correct`:'',t.r.nw?`${t.r.nw} learned`:''];
+  const cnt=[`${q.due} due`,(()=>{const k=mistDue().length;return k?`10 questions · ${Math.min(k,10)} mistake${k>1?'s':''} due`:'10 questions'})(),`${nw} cards`],res=[t.r.rev?`${t.r.rev} reviewed`:'',t.r.quiz?`${t.r.quiz.s}/${t.r.quiz.n} correct`:'',t.r.nw?`${t.r.nw} learned`:''];
   const sum=t.step>=3;
   app.innerHTML=`<div class="ph"><h1 class="pt">Today 今日</h1>${tdDots(t.step)}</div>
   <div class="card tdsteps">${TD_STEPS.map(([en,ja],i)=>`<div class="tds${i<t.step?' done':i===t.step?' on':''}"><span class="tdn">${i<t.step?'✓':i+1}</span><span class="tdt"><b>${en}</b> <span class="mut ja">${ja}</span><small class="mut">${i<t.step?(res[i]||(i===0&&q.due===0?'none due':'skipped')):cnt[i]}</small></span></div>`).join('')}</div>
   ${sum?`<div class="card res tdsum"><h2>お疲れさま · Today's summary</h2><div class="totals">${[['Reviewed',t.r.rev],['Quiz',t.r.quiz?`${t.r.quiz.s}/${t.r.quiz.n}`:'—'],['New learned',t.r.nw],['Streak',streak()+'🔥']].map(([l,v])=>`<div class="tot"><b>${v}</b><span>${l}</span></div>`).join('')}</div>
     <div class="row center">${nw?`<button class="btn primary" id="tdk">Keep going · ${Math.min(nw,srsCfg().ss)} new</button>`:''}<a class="btn ghost" href="#home">Home</a></div></div>`
    :`<button class="btn primary big full" id="tdgo">${['▶ Start reviews','▶ Start quiz','▶ Start new cards'][t.step]}</button><button class="btn ghost full" id="tdskip">Skip this step</button>`}`;
-  const go=()=>{const t2=tdState();if(t2.step===0)location.hash='study/due';else if(t2.step===1){const o=store.get('quizOpts',{});nav('quiz/play',()=>{start(smartPick(Q,10),{...o,shuffle:true,autoplay:false},false,10);S.today=1})}else location.hash='study/new'};
+  const go=()=>{const t2=tdState();if(t2.step===0)location.hash='study/due';else if(t2.step===1){const o=store.get('quizOpts',{});nav('quiz/play',()=>{const md=shuffle(mistDue()).slice(0,10),ids=new Set(md.map(q=>q.id)),fill=md.length<10?roundPick(Q.filter(q=>!ids.has(q.id)),10-md.length,'all'):[];start([...md,...fill],{...o,shuffle:false,autoplay:false},false);S.today=1})}else location.hash='study/new'};
   if($('#tdgo'))$('#tdgo').onclick=go;
   if($('#tdskip'))$('#tdskip').onclick=()=>{const t2=tdState();t2.step++;tdSave(t2);todayView()};
   if($('#tdk'))$('#tdk').onclick=()=>{location.hash='study/new'}}

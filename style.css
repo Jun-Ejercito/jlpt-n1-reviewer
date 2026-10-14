@@ -909,3 +909,7 @@ rt{margin:0 -.6em}
 .tsg .tja{display:block}.tsg .ten{display:block;font-size:.8em;line-height:1.45;color:var(--mut);margin:1px 0 3px}
 .tsg.cur .ten{color:color-mix(in srgb,var(--ink) 70%,var(--mut))}
 .tch+.anote{margin-top:14px;padding-top:12px;border-top:1px solid color-mix(in srgb,var(--line) 70%,transparent)}
+/* v81 rounds + mistake schedule */
+.rhint{margin:.4rem 0 .2rem;text-align:center;letter-spacing:.02em}
+.mdue{color:var(--bad,#c0392b);font-weight:600}
+#mdv+#mrv{margin-top:.5rem}
