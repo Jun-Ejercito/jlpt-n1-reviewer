@@ -1,6 +1,6 @@
 (function(){
 'use strict';
-const APP_VERSION='v91';
+const APP_VERSION='v92';
 const SECTIONS=['文字・語彙','文法','読解'];
 const SEC_INFO={'文字・語彙':{en:'Kanji & Vocabulary',glyph:'字'},'文法':{en:'Grammar',glyph:'文'},'読解':{en:'Reading',glyph:'読'}};
 const IC=(d,extra='')=>`<svg class="ico" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"${extra}>${d}</svg>`;
@@ -499,9 +499,9 @@ function deck(kind,focus){
   const ICON={filter:'<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 6h16M7 12h10M10 18h4"/></svg>',
     shuffle:'<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 3h5v5M4 20 21 3M21 16v5h-5M15 15l6 6M4 4l5 5"/></svg>'};
   const showHint=ent&&ent.hint!=null?ent.hint:!store.get('hintSeen_'+kind,false);if(!ent||ent.o.length!==src.length)saveOrd();DECKS[dkk].hint=showHint;
-  app.innerHTML=`<div class="ph deck-ph"><h1 class="pt">${isV?'Words 語彙':'Kanji 漢字'}</h1>${isV?'':seg(false)}<a class="btn sm primary stbtn" href="#study/${isV?'words':'kanji'}">▶ Study</a></div>
+  app.innerHTML=`<div class="ph deck-ph"><h1 class="pt">${isV?'Words 語彙':'Kanji 漢字'}</h1>${isV?'':seg(false)+'<a class="btn sm primary stbtn" href="#study/kanji">▶ Study</a>'}</div>
   <div class="toolbar"><div class="search"><input type="search" id="s" placeholder="Search ${isV?'words':'kanji'}…" aria-label="Search ${isV?'word, reading, romaji, meaning':'kanji, reading, meaning'}"></div>
-   ${isV?`<button class="ibtn${onlyUnknown?' active':''}" id="ou" aria-pressed="${onlyUnknown}" aria-label="Show only words not marked Know" title="Only not-known words">${ICON.filter}<i class="dot"></i></button>`:''}
+   ${isV?`<a class="btn sm primary stbtn" href="#study/words">▶ Study</a><button class="ibtn${onlyUnknown?' active':''}" id="ou" aria-pressed="${onlyUnknown}" aria-label="Show only words not marked Know" title="Only not-known words">${ICON.filter}<i class="dot"></i></button>`:''}
 </div>
   ${isV?'':levelBar(K)}
   <div class="stage" id="stage"><div class="hint hint-l">✕ Don't know</div><div class="hint hint-r">✓ Know</div>
