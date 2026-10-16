@@ -1,6 +1,6 @@
 (function(){
 'use strict';
-const APP_VERSION='v93';
+const APP_VERSION='v94';
 const SECTIONS=['文字・語彙','文法','読解'];
 const SEC_INFO={'文字・語彙':{en:'Kanji & Vocabulary',glyph:'字'},'文法':{en:'Grammar',glyph:'文'},'読解':{en:'Reading',glyph:'読'}};
 const IC=(d,extra='')=>`<svg class="ico" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"${extra}>${d}</svg>`;
@@ -288,10 +288,9 @@ function rdHTML(m){return [m.onyomi.length?onHTML(m.onyomi,1):'',m.kunyomi.lengt
 function diffMark(g,D){let t=esc(g.difference||'');const parts=new Set();g.members.forEach(m=>{const d=D[m.kanji];if(!d)return;(d.by.match(/[\u2E80-\u2FDF\u31C0-\u31EF\u3400-\u9FFF\uF900-\uFAFF\u{20000}-\u{2FFFF}]/gu)||[]).forEach(c=>{if(c!==m.kanji&&!(g.shared_part||'').includes(c))parts.add(c)})});
   if(!parts.size)return t;const re=new RegExp('(['+[...parts].join('')+'])','gu');return t.replace(re,'<b class="dp">$1</b>')}
 function kBadges(x){return `<div class="kbadges">${lvBadge(x)}<span class="gb">${gradeTxt(x.grade)}</span></div>`}
-function kStats(x){return `<div class="kstats"><div class="st"><span class="lbl rlon">音 On</span><div>${onHTML(x.onyomi)}</div></div>
+function kStats(x){return `<div class="kstats k3"><div class="st"><span class="lbl rlon">音 On</span><div>${onHTML(x.onyomi)}</div></div>
    <div class="st"><span class="lbl rlkun">訓 Kun</span><div>${kunHTML(x.kunyomi)}</div></div>
-   <div class="st"><span class="lbl">画数 Strokes</span><div class="sv">${x.stroke_count}</div></div>
-   <div class="st"><span class="lbl">部首 Radical</span><div class="sv">${esc(x.radical)} <small class="mut">#${x.radical_number}</small></div></div></div>`}
+   <div class="st sx"><span class="sv">${x.stroke_count}<small>画</small></span><span class="sv">${esc(x.radical)} <small class="mut">#${x.radical_number}</small></span></div></div>`}
 function markKanji(c){const kv=store.get('kanjiViewed',[]);if(!kv.includes(c)){kv.push(c);store.set('kanjiViewed',kv)}}
 const VS={},ORDER={vocab:null,kanji:null};
 // v52: deck order/index/hint saved per history entry so Back restores exactly that screen (shared state let a later Words visit overwrite it)
@@ -485,7 +484,7 @@ function wireSamples(root){root.querySelectorAll('.showall').forEach(b=>{b.oncli
 function kanjiDetail(c){
   const x=K.find(k=>k.kanji===c);if(!x){app.innerHTML='<div class="card">Kanji not found.</div>';return}
   markKanji(c);const words=V.filter(v=>(v.kanji||[]).includes(c));
-  app.innerHTML=`<div class="card kb"><div class="khead"><div class="kbig">${esc(x.kanji)}</div><div><div class="kmean">${esc(x.meaning_en)}</div>${kBadges(x)}</div></div>${kStats(x)}</div>
+  app.innerHTML=`<div class="card kb">${kHead(x)}${kStats(x)}${kExtra(x)}</div>
    ${x.mnemonic?`<div class="card mnc">${storyHTML(c)}</div>`:''}<div class="card">${sampleWords(c,0)}</div>${simOf(c).length?`<h2 class="sec-t">Look-alike kanji 似ている漢字</h2>${simOf(c).map(g=>simCard(g,true,c)).join('')}`:''}`;
   wireSim(app);
 }
@@ -528,7 +527,7 @@ function deck(kind,focus){
       <div class="ex"><div class="ja">${F(x,'example_ja')}</div><div class="mut">${esc(x.example_en)}</div></div>
       <div class="foot">${x.kanji&&x.kanji.length?`<span class="lbl">漢字</span>${x.kanji.map(c=>`<a class="chip" href="#kanji/${encodeURIComponent(c)}">${esc(c)}</a>`).join('')}`:''}
       <span class="lbl">From</span><span class="mut">${(x.source_question_ids||[]).map(i=>'Q'+i).join(', ')}</span></div>`
-    :`<div class="khead"><div class="kbig">${esc(x.kanji)}</div><div><div class="kmean">${esc(x.meaning_en)}</div>${kBadges(x)}</div></div>${kStats(x)}
+    :`${kHead(x)}${kStats(x)}${kExtra(x)}
       ${storyHTML(x.kanji)}${sampleWords(x.kanji,4)}`;
     if(!isV)wireSamples($('#fbk'));
     fc.querySelectorAll('a').forEach(a=>{a.onclick=e=>e.stopPropagation();a.onpointerdown=e=>e.stopPropagation()});
@@ -591,7 +590,7 @@ function openSettings(){if(sheet)return;const qo=store.get('quizOpts',{}),cfg=sr
    <label class="srow"><span>Focus mode <small class="mut">hide bars in quiz &amp; study</small></span><input type="checkbox" id="sfm" ${store.get('focus',false)?'checked':''}></label>
    <div class="srow"><span>Study session size</span>${seg3('sss',[[10,'10'],[20,'20'],[30,'30'],[50,'50']],cfg.ss)}</div>
    <div class="srow sraud"><span>Offline audio <small class="mut">teacher &amp; question audio</small></span><div id="aud"><span class="mut sm">…</span></div></div>
-   <div class="slinks2"><a href="#studyguide">How to study →</a><a href="#progress">Backup &amp; restore →</a></div></div>`;
+   <p class="mut sm scred">Stroke order data: <a href="https://kanjivg.tagaini.net" target="_blank" rel="noopener">KanjiVG</a> © Ulrich Apel, <a href="https://creativecommons.org/licenses/by-sa/3.0/" target="_blank" rel="noopener">CC BY-SA 3.0</a></p><div class="slinks2"><a href="#studyguide">How to study →</a><a href="#progress">Backup &amp; restore →</a></div></div>`;
   document.body.appendChild(sheet);requestAnimationFrame(()=>sheet&&sheet.classList.add('show'));ovOpen(closeSheetRaw);
   const q=s=>sheet.querySelector(s);q('#ssx').onclick=closeSheet;q('.ssbg').onclick=closeSheet;
   q('#hf').onchange=e=>{furiOn=e.target.checked;store.set('furigana',furiOn);applyFuri()};
@@ -663,7 +662,42 @@ const DAYMS=864e5,dn=()=>{const t=new Date();return Math.floor((t.getTime()-t.ge
 const KSET=new Set(K.map(x=>x.kanji)),KBY=Object.fromEntries(K.map(x=>[x.kanji,x])),VBY=Object.fromEntries(V.map(x=>[x.id,x])),VW={};V.forEach(v=>{if(!VW[v.word])VW[v.word]=v});
 const kOfW=v=>(v.kanji||[]).filter(c=>KSET.has(c));
 const hira=s=>String(s||'').replace(/[\u30a1-\u30f6]/g,c=>String.fromCharCode(c.charCodeAt(0)-96)).replace(/[\s　・.]/g,'');
-const say=t=>{try{if(!window.speechSynthesis||!t)return;speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(t);u.lang='ja-JP';u.rate=.9;speechSynthesis.speak(u)}catch(e){}};
+const say=window.__say=t=>{try{if(!window.speechSynthesis||!t)return;speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(t);u.lang='ja-JP';u.rate=.9;speechSynthesis.speak(u)}catch(e){}};
+// v94: kanji back enhancements — key word, stroke order (KanjiVG), tappable parts, look-alike strip, progress, listen
+function kHead(x){const v=sampleV(x.kanji);
+  return `<div class="khead"><button type="button" class="kbig kstroke ja" data-k="${esc(x.kanji)}" aria-label="Play stroke order for ${esc(x.kanji)}" title="Tap to see stroke order">${esc(x.kanji)}</button><div><div class="kmean">${esc(x.meaning_en)}</div>
+   ${v?`<div class="kkw"><a href="#vocab/${encodeURIComponent(v.word)}" class="ja">${esc(v.word)}</a> <span class="ja mut">${esc(v.reading)}</span> <span class="mut">${esc(v.meaning_en.split(';')[0])}</span></div>`:''}
+   <div class="kbrow">${kBadges(x)}<button type="button" class="klisten" data-k="${esc(x.kanji)}" aria-label="Listen to readings">🔈</button></div></div></div>`}
+function kProg(c){const e=srsDB()['k'+c],t=dn(),out=[];
+  if(e){out.push(`Seen ${e.seen||0}×`);const d=(e.d||t)-t;out.push(d<=0?'review due now':`next review in ${ivLabel(d)}`)}
+  const ms=store.get('missed',[]).filter(id=>{const q=QBY&&QBY[id];return q&&((q.answer_word||'')+(q.complete_sentence||'')).includes(c)}).slice(0,3);
+  if(ms.length)out.push('missed in '+ms.map(id=>`<a href="#rq/${id}">Q${id}</a>`).join(', '));
+  return out.length?out.join(' · '):'Not studied yet'}
+function kExtra(x){const c=x.kanji,gs=simOf(c);
+  const strip=gs.length?`<div class="klk"><span class="lbl">Look-alike</span><div class="klkr">${gs.flatMap(g=>g.members).filter((m,i,a)=>a.findIndex(y=>y.kanji===m.kanji)===i).map(m=>{const inK=KBY[m.kanji],cur=m.kanji===c;const dif=(m.diff_by||'').split(' ')[0];
+    const body=`<b class="ja">${esc(m.kanji)}</b><small class="ja dp">${esc(dif)}</small>`;return cur?`<span class="klm cur">${body}</span>`:inK?`<a class="klm" href="#kanji/${encodeURIComponent(m.kanji)}">${body}</a>`:`<span class="klm">${body}</span>`}).join('')}</div></div>`:'';
+  return `<p class="kprog">${kProg(c)}</p>${strip}`}
+const KVG={};
+function kvgLoad(c){const h=c.codePointAt(0).toString(16).padStart(5,'0');if(!KVG[c])KVG[c]=fetch('kvg/'+h+'.txt').then(r=>{if(!r.ok)throw 0;return r.text()}).then(t=>t.split('\n').filter(Boolean)).catch(()=>{delete KVG[c];return null});return KVG[c]}
+let KCOMP=null;const kcompLoad=()=>KCOMP||(KCOMP=fetch('kvg/comp.json').then(r=>r.json()).catch(()=>{KCOMP=null;return {}}));
+async function playStroke(b){const c=b.dataset.k,ds=await kvgLoad(c);if(!ds){b.classList.add('nokvg');setTimeout(()=>b.classList.remove('nokvg'),600);return}
+  const red=matchMedia('(prefers-reduced-motion: reduce)').matches;
+  b.innerHTML=`<svg viewBox="0 0 109 109" class="kvgsvg" aria-hidden="true">${ds.map(d=>`<path d="${d}" class="ghost"/>`).join('')}${ds.map((d,i)=>`<path d="${d}" class="ink" data-i="${i}"/>`).join('')}</svg>`;b.classList.add('drawing');
+  const ps=[...b.querySelectorAll('path.ink')];let t=0;
+  ps.forEach(p=>{const L=p.getTotalLength();p.style.strokeDasharray=L;p.style.strokeDashoffset=0;const dur=red?0:Math.max(250,L/90*1000);
+    if(!red&&p.animate){p.animate([{strokeDashoffset:L},{strokeDashoffset:0}],{duration:dur,delay:t,fill:'backwards',easing:'linear'});t+=dur+80}});t/=1000;
+  clearTimeout(b._t);b._t=setTimeout(()=>b.classList.remove('drawing'),t*1000+50)}
+function partsSheet(p){kcompLoad().then(cm=>{const hits=K.filter(k=>k.kanji!==p&&(cm[k.kanji]||[]).includes(p)).slice(0,60);
+  const el=document.createElement('div');el.className='psheet';el.setAttribute('role','dialog');el.setAttribute('aria-label','Kanji containing '+p);
+  el.innerHTML=`<div class="psbg"></div><div class="pspanel"><div class="psh"><b><span class="ja">${esc(p)}</span> appears in</b><button class="hb icon psx" aria-label="Close">✕</button></div>${hits.length?`<div class="psl">${hits.map(k=>`<a href="#kanji/${encodeURIComponent(k.kanji)}" class="psk"><b class="ja">${esc(k.kanji)}</b><small>${esc(k.meaning_en.split(';')[0])}</small></a>`).join('')}</div>`:'<p class="mut sm">No bank kanji use this part.</p>'}</div>`;
+  document.body.appendChild(el);const raw=()=>el.remove();ovOpen(raw);const close=()=>{raw();ovDrop()};el.querySelector('.psbg').onclick=close;el.querySelector('.psx').onclick=close;
+  el.querySelectorAll('a').forEach(a=>a.addEventListener('click',()=>setTimeout(raw,0)))})}
+document.addEventListener('click',e=>{const t=e.target.closest&&e.target.closest('.kstroke,.klisten,.mpc[data-p]');if(!t)return;e.preventDefault();e.stopPropagation();
+  if(t.classList.contains('kstroke'))return playStroke(t);
+  if(t.classList.contains('klisten')){const x=KBY[t.dataset.k];if(!x)return;const v=sampleV(x.kanji);const kun=(x.kunyomi||[]).map(r=>r.replace(/[.\-]/g,''));
+    window.__say([x.kanji,x.onyomi.length?'音読み、'+x.onyomi.join('、'):'',kun.length?'訓読み、'+kun.join('、'):'',v?v.word:''].filter(Boolean).join('。'));return}
+  const p=t.dataset.p,mn=t.closest('.mnemo'),own=mn&&mn.dataset.c;if(KBY[p]&&p!==own){location.hash='kanji/'+encodeURIComponent(p);return}partsSheet(p)},true);
+document.addEventListener('pointerdown',e=>{if(e.target.closest&&e.target.closest('.kstroke,.klisten,.mpc[data-p]'))e.stopPropagation()},true);
 const srsDB=()=>store.get('srs',{}),srsCfg=()=>{const c=store.get('srsCfg',{});return {ss:[10,20,30,50].includes(c.ss)?c.ss:20}};
 const simGroup=c=>SIM.find(g=>g.kanji.includes(c)&&g.kanji.length>=2);
 const sampleV=c=>V.find(v=>(v.kanji||[]).includes(c)&&v.word.length>1)||V.find(v=>(v.kanji||[]).includes(c));
@@ -800,7 +834,7 @@ function toast(msg,act,fn){let t=document.querySelector('.toast');if(t)t.remove(
   const kill=()=>{t.classList.remove('show');setTimeout(()=>t.remove(),250)};const tm=setTimeout(kill,4000);if(act)t.querySelector('button').onclick=()=>{clearTimeout(tm);kill();fn()}}
 function storyHTML(c){const x=KBY[c],m=x&&x.mnemonic;if(!m)return'';const own=store.get('mnemo',{})[c];
   return `<div class="mnemo" data-c="${esc(c)}"><div class="mh"><b>🧠 Memory story</b><button class="mned" aria-label="Write my own story" title="Write my own">✏️</button></div>
-   <div class="mparts">${m.parts.map(p=>`<span class="mpc"><b class="ja">${esc(p.part)}</b><small>${esc(p.meaning)}</small></span>`).join('<i>+</i>')}${m.parts.length===1&&m.parts[0].part===c?'':`<i>→</i><span class="mpc res"><b class="ja">${esc(c)}</b><small>${esc((x.meaning_en||'').split(';')[0])}</small></span>`}</div>
+   <div class="mparts">${m.parts.map(p=>`<button type="button" class="mpc" data-p="${esc(p.part.split('@')[0])}" aria-label="Part ${esc(p.part)}: ${esc(p.meaning)}"><b class="ja">${esc(p.part)}</b><small>${esc(p.meaning)}</small></button>`).join('<i>+</i>')}${m.parts.length===1&&m.parts[0].part===c?'':`<i>→</i><span class="mpc res"><b class="ja">${esc(c)}</b><small>${esc((x.meaning_en||'').split(';')[0])}</small></span>`}</div>
    <p class="mstory">${own?`<span class="mown">your story</span> ${esc(own)}`:esc(m.story)}</p>
    ${m.reading_hook?`<p class="mhook">🔉 ${esc(m.reading_hook)}</p>`:''}${m.distinguish?`<p class="mdist">👀 ${esc(m.distinguish)}</p>`:''}
    <div class="medit" hidden><textarea rows="3" placeholder="Write a story that links the parts to the meaning…">${esc(own||'')}</textarea><div class="mbtns"><button class="btn sm primary msave">Save</button><button class="btn sm ghost mcancel">Cancel</button>${own?'<button class="btn sm ghost mreset">Reset to default</button>':''}</div></div></div>`}
