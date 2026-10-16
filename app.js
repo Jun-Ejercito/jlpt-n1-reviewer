@@ -1,6 +1,6 @@
 (function(){
 'use strict';
-const APP_VERSION='v89';
+const APP_VERSION='v90';
 const SECTIONS=['文字・語彙','文法','読解'];
 const SEC_INFO={'文字・語彙':{en:'Kanji & Vocabulary',glyph:'字'},'文法':{en:'Grammar',glyph:'文'},'読解':{en:'Reading',glyph:'読'}};
 const IC=(d,extra='')=>`<svg class="ico" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"${extra}>${d}</svg>`;
@@ -500,15 +500,15 @@ function deck(kind,focus){
     shuffle:'<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 3h5v5M4 20 21 3M21 16v5h-5M15 15l6 6M4 4l5 5"/></svg>'};
   const showHint=ent&&ent.hint!=null?ent.hint:!store.get('hintSeen_'+kind,false);if(!ent||ent.o.length!==src.length)saveOrd();DECKS[dkk].hint=showHint;
   app.innerHTML=`<div class="ph deck-ph"><h1 class="pt">${isV?'Words 語彙':'Kanji 漢字'}</h1>${isV?'':seg(false)}<a class="btn sm primary stbtn" href="#study/${isV?'words':'kanji'}">▶ Study</a></div>
-  <div class="toolbar"><div class="search"><input type="search" id="s" placeholder="Search ${isV?'words':'kanji'}…" aria-label="Search ${isV?'word, reading, romaji, meaning':'kanji, reading, meaning'}"><span class="mut sm" id="cnt"></span></div>
+  <div class="toolbar"><div class="search"><input type="search" id="s" placeholder="Search ${isV?'words':'kanji'}…" aria-label="Search ${isV?'word, reading, romaji, meaning':'kanji, reading, meaning'}"></div>
    ${isV?`<button class="ibtn${onlyUnknown?' active':''}" id="ou" aria-pressed="${onlyUnknown}" aria-label="Show only words not marked Know" title="Only not-known words">${ICON.filter}<i class="dot"></i></button>`:''}
-   <button class="ibtn" id="sh" aria-label="Shuffle" title="Shuffle">${ICON.shuffle}</button></div>
+</div>
   ${isV?'':levelBar(K)}
   <div class="stage" id="stage"><div class="hint hint-l">✕ Don't know</div><div class="hint hint-r">✓ Know</div>
    <div class="flip" id="fc"><div class="face front" id="ff"></div><div class="face backf" id="fbk"></div></div></div>
-  <p class="taphint${showHint?'':' faded'}">${isV?'Tap to flip · swipe → know · ← don\'t know':'Tap to flip · swipe to move'}</p>
-  <div class="ctrls"><button class="rbtn" id="pv" aria-label="Previous">←</button>${isV?`<button class="rbtn no" id="dk" aria-label="Don't know">✕</button><button class="rbtn yes" id="kn" aria-label="Know">✓</button>`:''}<button class="rbtn" id="nx" aria-label="Next">→</button></div>
-  <details class="card listbox" id="lb"><summary>All ${isV?'words':'kanji'} <span class="mut" id="lbn"></span></summary><div class="list" id="ls"></div></details>`;
+  <div class="cgrade" role="group" aria-label="Grade this card"><button class="gb ag" data-g="1">Again</button><button class="gb un" data-g="2">Unsure</button><button class="gb kn" data-g="3">Know</button></div>
+  <div class="cnav"><button class="nb" id="pv" aria-label="Previous">←</button><span class="pos" id="cnt" aria-live="polite"></span><button class="nb" id="nx" aria-label="Next">→</button><button class="nb shb" id="sh" aria-label="Shuffle" title="Shuffle">${ICON.shuffle}</button></div>
+  <p class="cprog" id="cpg"></p>${showHint?`<p class="taphint">${isV?'Tap to flip · swipe → know · ← don\'t know':'Tap to flip · swipe to move'}</p>`:''}`;
   fitCard();if(showHint)store.set('hintSeen_'+kind,true);
   const match=(x,t)=>!t||(isV?[x.word,x.reading,x.romaji,x.meaning_en]:[x.kanji,...x.onyomi,...x.kunyomi,x.meaning_en,...(x.common_words||[])]).join(' ').toLowerCase().includes(t);
   const vs=()=>store.get('vocabStatus',{});
@@ -518,9 +518,9 @@ function deck(kind,focus){
   function render(){
     if(OV){const f=OV;ovDrop();f()}  // v52: card re-render removes an open story editor/popover, so drop its history step too
     VS[vsKey]=Object.assign(VS[vsKey]||{},{idx});if(DECKS[dkk])DECKS[dkk].idx=idx;
-    $('#cnt').textContent=filt.length?`${idx+1}/${filt.length}`:'0';if($('#lbn'))$('#lbn').textContent=`(${filt.length})`;
+    $('#cnt').textContent=filt.length?`${idx+1} / ${filt.length}`:'0';$('#cpg').innerHTML=cardProg(filt,isV,!isV&&store.get('kanjiLevel','all'));
     const x=filt[idx],fc=$('#fc');fc.classList.toggle('flipped',flipped);
-    if(!x){$('#ff').innerHTML='<span class="mut">No cards</span>';$('#fbk').innerHTML='';$('#ls').innerHTML='';return}
+    if(!x){$('#ff').innerHTML='<span class="mut">No cards</span>';$('#fbk').innerHTML='';return}
     if(!isV&&flipped)markKanji(x.kanji);
     $('#ff').innerHTML=isV?`<div class="fw">${F(x,'word')}</div>${tag(x)}`:`<div class="kfront">${esc(x.kanji)}</div>${lvBadge(x)}`;
     $('#fbk').innerHTML=isV?`<div class="vhead"><div class="vword">${F(x,'word')}</div><div><div class="ja">${RD(x,"")} <span class="mut">${esc(x.romaji)}</span></div><span class="pill">${esc(x.part_of_speech)}</span> ${tag(x)}</div></div>
@@ -532,8 +532,8 @@ function deck(kind,focus){
       ${storyHTML(x.kanji)}${sampleWords(x.kanji,4)}`;
     if(!isV)wireSamples($('#fbk'));
     fc.querySelectorAll('a').forEach(a=>{a.onclick=e=>e.stopPropagation();a.onpointerdown=e=>e.stopPropagation()});
-    $('#ls').innerHTML=filt.slice(0,300).map((y,i)=>`<div class="li${i===idx?' cur':''}" data-i="${i}">${isV?`<b>${F(y,'word')}</b> ${RD(y)} — ${esc(y.meaning_en)} ${tag(y)}`:`<b>${esc(y.kanji)}</b> ${esc(y.meaning_en)}`}</div>`).join('');
-    $('#ls').querySelectorAll('[data-i]').forEach(d=>d.onclick=()=>{idx=+d.dataset.i;flipped=false;render();window.scrollTo({top:0,behavior:reduced()?'auto':'smooth'})});
+    if(0)$('#ls').innerHTML=filt.slice(0,300).map((y,i)=>`<div class="li${i===idx?' cur':''}" data-i="${i}">${isV?`<b>${F(y,'word')}</b> ${RD(y)} — ${esc(y.meaning_en)} ${tag(y)}`:`<b>${esc(y.kanji)}</b> ${esc(y.meaning_en)}`}</div>`).join('');
+    if(0)$('#ls').querySelectorAll('[data-i]').forEach(d=>d.onclick=()=>{idx=+d.dataset.i;flipped=false;render();window.scrollTo({top:0,behavior:reduced()?'auto':'smooth'})});
   }
   const go=d=>{if(!filt.length)return;idx=(idx+d+filt.length)%filt.length;flipped=false;render()};
   const mark=v=>{const x=filt[idx];if(!x)return;const s=vs();s[x.id]=v;store.set('vocabStatus',s);logActivity();if(onlyUnknown&&v==='know')apply();else go(1)};
@@ -559,7 +559,11 @@ function deck(kind,focus){
   stage.addEventListener('click',e=>{if(suppressClick||e.target.closest('a,button,.mnemo'))return;flipped=!flipped;render()});
   $('#pv').onclick=()=>go(-1);$('#nx').onclick=()=>go(1);
   $('#sh').onclick=()=>{data=ORDER[kind]=shuffle(isV?V:K);saveOrd();idx=0;flipped=false;apply()};$('#s').oninput=()=>{idx=0;flipped=false;apply()};
-  if(isV){$('#kn').onclick=()=>mark('know');$('#dk').onclick=()=>mark('dont');$('#ou').onclick=e=>{onlyUnknown=!onlyUnknown;const b=$('#ou');b.classList.toggle('active',onlyUnknown);b.setAttribute('aria-pressed',onlyUnknown);store.set('wordsFilter',onlyUnknown);idx=0;apply()}}
+  document.querySelectorAll('.cgrade .gb').forEach(b=>b.onclick=()=>{const x=filt[idx];if(!x)return;const g=+b.dataset.g;cardGrade(isV?'w'+x.id:'k'+x.kanji,g);
+    b.classList.add('hit');setTimeout(()=>b.classList.remove('hit'),350);
+    if(isV){const st=vs();if(g===3)st[x.id]='know';else if(g===1)st[x.id]='dont';store.set('vocabStatus',st)}
+    if(isV&&onlyUnknown&&g===3)apply();else go(1)});
+  if(isV){$('#ou').onclick=e=>{onlyUnknown=!onlyUnknown;const b=$('#ou');b.classList.toggle('active',onlyUnknown);b.setAttribute('aria-pressed',onlyUnknown);store.set('wordsFilter',onlyUnknown);idx=0;apply()}}
   else{$('#lvb').querySelectorAll('.lvf').forEach(b=>b.onclick=()=>{store.set('kanjiLevel',b.dataset.l);$('#lvb').querySelectorAll('.lvf').forEach(x=>x.classList.toggle('on',x===b));idx=0;flipped=false;apply()})}
   if(!isV){$('#tg').onclick=()=>{store.set('kanjiMode','grid');location.hash='kanji'};wireSeg()}
   if(VS[cur]&&VS[cur].q)$('#s').value=VS[cur].q;
@@ -669,6 +673,15 @@ function sched(st,g){st=Object.assign({ef:2.5,iv:0,reps:0,lap:0,seen:0},st||{});
   else{const b=st.iv;iv=g===2?Math.max(b+1,Math.round(b*1.2)):g===3?Math.max(b+2,Math.round(b*st.ef)):Math.max(b+3,Math.round(b*st.ef*1.3))}
   if(g===2)st.ef=Math.max(1.3,st.ef-.15);if(g===4)st.ef=Math.min(2.8,st.ef+.15);
   if(g>1)st.reps++;st.seen++;st.iv=Math.min(3650,iv);st.d=t+st.iv;st.last=t;return st}
+// v90: grade from Cards view into the same SRS store Study uses (Again=1, Unsure=2, Know=3)
+function cardGrade(key,g){const db=srsDB(),was=db[key];db[key]=sched(was,g);store.set('srs',db);const d=dn();
+  if(!was){const n=store.get('srsNew',{});n[d]=n[d]||{w:0,k:0};n[d][key[0]]++;for(const k in n)if(+k<d-30)delete n[k];store.set('srsNew',n);if(key[0]==='w')store.set('srsPri',store.get('srsPri',[]).filter(k=>k!==key))}
+  const lg=store.get('srsLog',{});lg[d]=lg[d]||{r:0,ok:0,n:0};if(was&&was.iv>=1){lg[d].r++;if(g>1)lg[d].ok++}else lg[d].n++;store.set('srsLog',lg);logActivity()}
+// known = SRS interval >= 7 days (or Words marked Know with no SRS entry); learning = in SRS below that, or marked Don't know; new = never graded
+function cardProg(list,isV,lv){const db=srsDB(),st=isV?store.get('vocabStatus',{}):{};let kn=0,le=0,nw=0;
+  for(const x of list){const e=db[isV?'w'+x.id:'k'+x.kanji];if(e){if(e.iv>=7)kn++;else le++}else if(isV&&st[x.id]==='know')kn++;else if(isV&&st[x.id]==='dont')le++;else nw++}
+  const lab=isV?'Words':(lv&&lv!=='all'?String(lv).toUpperCase():'All');
+  return `<span class="cpl">${esc(lab)}:</span> <b>${kn}</b> known · <b>${le}</b> learning · <b>${nw}</b> new`}
 const ivLabel=d=>d<1?'<10m':d<31?d+'d':d<365?(d/30).toFixed(d<60?1:0)+'mo':(d/365).toFixed(1)+'y';
 function newToday(){const n=store.get('srsNew',{})[dn()]||{w:0,k:0};return n}
 function buildQueue(mode){const db=srsDB(),t=dn(),cfg=srsCfg(),nt=newToday(),wantW=mode!=='kanji',wantK=mode!=='words';
@@ -1096,12 +1109,12 @@ loadSess();route();
 function fitCard(){const st=document.getElementById('stage'),fc=document.getElementById('fc');if(!st||!fc)return;
   const vh=(window.visualViewport&&visualViewport.height)||innerHeight,top=st.getBoundingClientRect().top+scrollY-((window.visualViewport&&visualViewport.offsetTop)||0);
   const hdr=document.querySelector('header'),hh=hdr?hdr.getBoundingClientRect().height:0;
-  const th=document.querySelector('.taphint'),ct=document.querySelector('.ctrls'),tb=document.getElementById('tabs');
+  const th=document.querySelector('.cgrade'),ct=document.querySelector('.cnav'),cp=document.querySelector('.cprog'),tb=document.getElementById('tabs');
   const mb=el=>{if(!el)return 0;const c=getComputedStyle(el);return el.getBoundingClientRect().height+parseFloat(c.marginTop)+parseFloat(c.marginBottom)};
   let tab=0;if(tb&&getComputedStyle(tb).display!=='none'){const r=tb.getBoundingClientRect();if(r.width<innerWidth*0.5&&innerWidth>=1000)tab=0;else tab=Math.max(0,innerHeight-r.top)}
   const sm=parseFloat(getComputedStyle(st).marginBottom)||0;
   // the page scrolls so the stage sits just below the sticky header; card fills the rest
-  const avail=vh-top-mb(th)-mb(ct)-tab-sm-8,h=Math.round(Math.max(100,Math.min(560,avail)));
+  const avail=vh-top-mb(th)-mb(ct)-mb(cp)-tab-sm-8,h=Math.round(Math.max(100,Math.min(560,avail)));
   if(fc.style.getPropertyValue('--cardh')!==h+'px')fc.style.setProperty('--cardh',h+'px');
   window.__fitTop=top-hh-8}
 (()=>{let r=0;const go=()=>{cancelAnimationFrame(r);r=requestAnimationFrame(fitCard)};addEventListener('resize',go);addEventListener('orientationchange',go);

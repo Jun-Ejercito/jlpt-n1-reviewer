@@ -960,3 +960,20 @@ details.more>summary small{font-size:.75em;overflow:hidden;text-overflow:ellipsi
 .face.front .fw{font-size:min(3em,26cqh);line-height:1.4;max-width:100%;overflow-wrap:anywhere}
 .face.front .lv{position:absolute;bottom:12px;left:50%;transform:translateX(-50%);margin:0}
 .face.front .tag{position:absolute;bottom:12px;left:50%;transform:translateX(-50%)}
+/* v90: compact card controls */
+.stage{margin-bottom:6px}
+.cgrade{display:flex;gap:8px;margin:0 0 6px}
+.cgrade .gb{flex:1;font:inherit;font-size:.85em;font-weight:600;padding:8px 0;border-radius:12px;border:1px solid var(--line);background:var(--card);color:var(--ink);cursor:pointer;transition:background .2s,color .2s,transform .1s}
+.cgrade .gb:active{transform:scale(.97)}
+.cgrade .ag{color:var(--bad)}.cgrade .un{color:var(--mut)}.cgrade .kn{color:var(--ok)}
+.cgrade .ag.hit{background:var(--bad-soft)}.cgrade .un.hit{background:color-mix(in srgb,var(--line) 70%,transparent)}.cgrade .kn.hit{background:var(--ok-soft)}
+.cnav{display:flex;align-items:center;justify-content:center;gap:4px;margin:0;height:36px}
+.cnav .nb{font:inherit;width:40px;height:36px;display:grid;place-items:center;border:0;border-radius:10px;background:transparent;color:var(--ink);cursor:pointer;font-size:1.1em}
+.cnav .nb:hover{background:color-mix(in srgb,var(--line) 50%,transparent)}
+.cnav .pos{min-width:96px;text-align:center;font-size:.85em;color:var(--mut);font-variant-numeric:tabular-nums}
+.cnav .shb{margin-left:6px;color:var(--mut)}.cnav .shb svg{width:18px;height:18px}
+.cprog{text-align:center;font-size:.78em;color:var(--mut);margin:2px 0 0}.cprog b{color:var(--ink);font-weight:600}
+.cprog+.taphint{margin:2px 0 0;font-size:.7em;opacity:.7}
+[data-theme=dark] .seg button.on{color:var(--ink)}
+@media(prefers-color-scheme:dark){:root:not([data-theme=light]) .seg button.on{color:var(--ink)}}
+.face.front .fw{font-size:min(4em,28cqh,14cqw)}
