@@ -951,3 +951,12 @@ details.more>summary small{font-size:.75em;overflow:hidden;text-overflow:ellipsi
 .mktot{display:flex;align-items:baseline;gap:6px;justify-content:center}.mktot b{font-size:2.2em}.mktot span{color:var(--mut)}
 .mkch{width:100%;height:auto}.mkb{fill:var(--accent);opacity:.75}.mkb.ok{fill:var(--ok)}.mkpl{stroke:var(--mut);stroke-dasharray:3 3;stroke-width:1}.mkpt{font-size:9px;fill:var(--mut)}
 .mkh{display:grid;gap:4px;margin-top:8px}.mkhr{display:grid;grid-template-columns:1fr auto auto;gap:12px;align-items:baseline}
+
+/* v89: card fits the viewport; front content dead-centred; decorative corner blob removed */
+.stage .flip{display:block;height:var(--cardh,min(58vh,460px));min-height:0}
+.stage .flip>.face{position:absolute;inset:0;overflow:auto;overscroll-behavior:contain}
+.stage .face.front{min-height:0;display:flex;flex-direction:column;align-items:center;justify-content:center;background:var(--card);container-type:size;overflow:hidden}
+.face.front .kfront{font-size:min(8em,56cqh,70cqw);line-height:1;margin:0}
+.face.front .fw{font-size:min(3em,26cqh);line-height:1.4;max-width:100%;overflow-wrap:anywhere}
+.face.front .lv{position:absolute;bottom:12px;left:50%;transform:translateX(-50%);margin:0}
+.face.front .tag{position:absolute;bottom:12px;left:50%;transform:translateX(-50%)}

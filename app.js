@@ -1,6 +1,6 @@
 (function(){
 'use strict';
-const APP_VERSION='v88';
+const APP_VERSION='v89';
 const SECTIONS=['文字・語彙','文法','読解'];
 const SEC_INFO={'文字・語彙':{en:'Kanji & Vocabulary',glyph:'字'},'文法':{en:'Grammar',glyph:'文'},'読解':{en:'Reading',glyph:'読'}};
 const IC=(d,extra='')=>`<svg class="ico" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"${extra}>${d}</svg>`;
@@ -509,7 +509,7 @@ function deck(kind,focus){
   <p class="taphint${showHint?'':' faded'}">${isV?'Tap to flip · swipe → know · ← don\'t know':'Tap to flip · swipe to move'}</p>
   <div class="ctrls"><button class="rbtn" id="pv" aria-label="Previous">←</button>${isV?`<button class="rbtn no" id="dk" aria-label="Don't know">✕</button><button class="rbtn yes" id="kn" aria-label="Know">✓</button>`:''}<button class="rbtn" id="nx" aria-label="Next">→</button></div>
   <details class="card listbox" id="lb"><summary>All ${isV?'words':'kanji'} <span class="mut" id="lbn"></span></summary><div class="list" id="ls"></div></details>`;
-  if(showHint)store.set('hintSeen_'+kind,true);
+  fitCard();if(showHint)store.set('hintSeen_'+kind,true);
   const match=(x,t)=>!t||(isV?[x.word,x.reading,x.romaji,x.meaning_en]:[x.kanji,...x.onyomi,...x.kunyomi,x.meaning_en,...(x.common_words||[])]).join(' ').toLowerCase().includes(t);
   const vs=()=>store.get('vocabStatus',{});
   function apply(){const t=$('#s').value.trim().toLowerCase(),st=vs();filt=data.filter(x=>(isV||lvOk(x))&&match(x,t)&&(!onlyUnknown||st[x.id]!=='know'));idx=Math.min(idx,Math.max(0,filt.length-1));render()}
@@ -1091,3 +1091,19 @@ function viewStep(){showQ();restoreStep(S.si);const w=$('#nxw');if(w)w.innerHTML
 loadSess();route();
 })();
 
+
+// v89: size the flash card to the visible viewport (minus header, toolbar, controls, tab bar, safe areas) so it never hides behind the tab bar
+function fitCard(){const st=document.getElementById('stage'),fc=document.getElementById('fc');if(!st||!fc)return;
+  const vh=(window.visualViewport&&visualViewport.height)||innerHeight,top=st.getBoundingClientRect().top+scrollY-((window.visualViewport&&visualViewport.offsetTop)||0);
+  const hdr=document.querySelector('header'),hh=hdr?hdr.getBoundingClientRect().height:0;
+  const th=document.querySelector('.taphint'),ct=document.querySelector('.ctrls'),tb=document.getElementById('tabs');
+  const mb=el=>{if(!el)return 0;const c=getComputedStyle(el);return el.getBoundingClientRect().height+parseFloat(c.marginTop)+parseFloat(c.marginBottom)};
+  let tab=0;if(tb&&getComputedStyle(tb).display!=='none'){const r=tb.getBoundingClientRect();if(r.width<innerWidth*0.5&&innerWidth>=1000)tab=0;else tab=Math.max(0,innerHeight-r.top)}
+  const sm=parseFloat(getComputedStyle(st).marginBottom)||0;
+  // the page scrolls so the stage sits just below the sticky header; card fills the rest
+  const avail=vh-top-mb(th)-mb(ct)-tab-sm-8,h=Math.round(Math.max(100,Math.min(560,avail)));
+  if(fc.style.getPropertyValue('--cardh')!==h+'px')fc.style.setProperty('--cardh',h+'px');
+  window.__fitTop=top-hh-8}
+(()=>{let r=0;const go=()=>{cancelAnimationFrame(r);r=requestAnimationFrame(fitCard)};addEventListener('resize',go);addEventListener('orientationchange',go);
+  if(window.visualViewport)visualViewport.addEventListener('resize',go);if(window.ResizeObserver)new ResizeObserver(go).observe(document.documentElement);
+  document.addEventListener('click',e=>{if(e.target.closest&&e.target.closest('.aats,.seg3,#sts'))setTimeout(go,30)})})();
