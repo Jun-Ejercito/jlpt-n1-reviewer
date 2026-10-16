@@ -1,7 +1,10 @@
 // JLPT N1 Reviewer service worker: app shell cached; audio cached on demand (Range-aware)
-const V='n1-shell-v94',AUD='n1-audio-v82';
+const V='n1-shell-v95',AUD='n1-audio-v82';
 self.addEventListener('install',e=>{self.skipWaiting();e.waitUntil(caches.open(V).then(c=>c.addAll(['./','index.html','style.css','app.js','data.js','tips.js']).catch(()=>{})))});
-self.addEventListener('activate',e=>e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>(k.startsWith('n1-shell-')&&k!==V)||(k.startsWith('n1-audio')&&k!==AUD)).map(k=>caches.delete(k)))).then(()=>self.clients.claim())));
+// v95: audio files regenerated in place (same names) — purge just these from the audio cache
+const STALE=['audio/q191.mp3','audio/teacher/q191.mp3','audio/teacher/q191_w1.mp3','audio/teacher/q191_w2.mp3','audio/teacher/q191_w3.mp3','audio/teacher/q191_w4.mp3','audio/q209.mp3','audio/teacher/q209.mp3','audio/teacher/q209_w1.mp3','audio/teacher/q209_w2.mp3','audio/teacher/q209_w3.mp3','audio/teacher/q209_w4.mp3'];
+const purge=()=>caches.open(AUD).then(c=>Promise.all(STALE.map(p=>c.delete(new URL(p,self.registration.scope).href))));
+self.addEventListener('activate',e=>e.waitUntil(purge().catch(()=>{}).then(()=>caches.keys()).then(ks=>Promise.all(ks.filter(k=>(k.startsWith('n1-shell-')&&k!==V)||(k.startsWith('n1-audio')&&k!==AUD)).map(k=>caches.delete(k)))).then(()=>self.clients.claim())));
 const strip=u=>{const x=new URL(u);x.search='';return x.href};
 async function audio(req){const c=await caches.open(AUD),key=strip(req.url);let r=await c.match(key);
   if(!r){const net=fetch(key).then(async res=>{if(res.ok&&res.status===200)await c.put(key,res.clone());return res});
