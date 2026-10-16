@@ -976,4 +976,4 @@ details.more>summary small{font-size:.75em;overflow:hidden;text-overflow:ellipsi
 .cprog+.taphint{margin:2px 0 0;font-size:.7em;opacity:.7}
 [data-theme=dark] .seg button.on{color:var(--ink)}
 @media(prefers-color-scheme:dark){:root:not([data-theme=light]) .seg button.on{color:var(--ink)}}
-.face.front .fw{font-size:min(4em,28cqh,14cqw)}
+.face.front .fw{font-size:min(4em,28cqh,18cqw)}
