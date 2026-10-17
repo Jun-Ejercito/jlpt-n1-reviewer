@@ -1,8 +1,8 @@
 // JLPT N1 Reviewer service worker: app shell cached; audio cached on demand (Range-aware)
-const V='n1-shell-v96',AUD='n1-audio-v82';
+const V='n1-shell-v97',AUD='n1-audio-v82';
 self.addEventListener('install',e=>{self.skipWaiting();e.waitUntil(caches.open(V).then(c=>c.addAll(['./','index.html','style.css','app.js','data.js','tips.js']).catch(()=>{})))});
 // v96: audio files regenerated in place (same names) — purge just these from the audio cache
-const STALE=['audio/teacher/q138.mp3','audio/teacher/q138_w1.mp3','audio/teacher/q138_w3.mp3','audio/teacher/q138_w4.mp3'];
+const STALE=[];
 const purge=()=>caches.open(AUD).then(c=>Promise.all(STALE.map(p=>c.delete(new URL(p,self.registration.scope).href))));
 self.addEventListener('activate',e=>e.waitUntil(purge().catch(()=>{}).then(()=>caches.keys()).then(ks=>Promise.all(ks.filter(k=>(k.startsWith('n1-shell-')&&k!==V)||(k.startsWith('n1-audio')&&k!==AUD)).map(k=>caches.delete(k)))).then(()=>self.clients.claim())));
 const strip=u=>{const x=new URL(u);x.search='';return x.href};
