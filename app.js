@@ -1,6 +1,6 @@
 (function(){
 'use strict';
-const APP_VERSION='v102';
+const APP_VERSION='v103';
 const SECTIONS=['文字・語彙','文法','読解'];
 const SEC_INFO={'文字・語彙':{en:'Kanji & Vocabulary',glyph:'字'},'文法':{en:'Grammar',glyph:'文'},'読解':{en:'Reading',glyph:'読'}};
 const IC=(d,extra='')=>`<svg class="ico" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"${extra}>${d}</svg>`;
@@ -760,7 +760,7 @@ function studyDone(){const r=SS?SS.res:{1:0,2:0,3:0,4:0},n=r[1]+r[2]+r[3]+r[4];
    ${tdAfterStudy(SS&&SS.mode,n)}<div class="td-a"><a class="btn${n?'':' primary'}" href="#home">Home</a><a class="btn" href="#study">Study options</a></div></div>`;
   const kg=$('#kgo');if(kg)kg.onclick=()=>studyStart(SS?SS.mode:'mixed')}
 function pkHint(){return store.get('peekSeen',0)?'':'<p class="pkh mut sm">Tap card to peek</p>'}
-function pkWord(v,mean){return `${pkHint()}<div class="speek" id="pk" hidden aria-live="polite"><div class="pkw ja">${v.word_ruby?v.word_ruby:esc(v.word)}</div><p class="pkr"><span class="ja">${esc(v.reading)}</span>${mean?`<span class="pkm"> · ${esc(v.meaning_en)}</span>`:''}</p></div>`}
+function pkWord(v,mean){const hk=hasKanji(v.word),r=hk?`<span class="ja">${esc(v.reading)}</span>`:'',m=mean?`<span class="pkm">${hk?' · ':''}${esc(v.meaning_en)}</span>`:'';return `${pkHint()}<div class="speek" id="pk" hidden aria-live="polite"><div class="pkw ja">${hk&&v.word_ruby?v.word_ruby:esc(v.word)}</div>${r||m?`<p class="pkr">${r}${m}</p>`:''}</div>`}
 function frontHTML(it){const k=it.key,isW=k[0]==='w',t=it.type;
   if(isW){const v=VBY[+k.slice(1)];
     if(t==='wr')return `<p class="sp">${hasKanji(v.word)?'Read it — recall the <b>reading</b> and <b>meaning</b>':'Recall the <b>meaning</b>'}</p><div class="sbig ja">${esc(v.word)}</div>${pkHint()}<div class="speek" id="pk" hidden aria-live="polite"><p class="pkr"><span class="ja">${esc(v.reading)}</span><span class="pkm"> · ${esc(v.meaning_en)}</span></p>${v.example_ja?`<p class="pkx ja">${furi&&v.example_ja_ruby?v.example_ja_ruby:esc(v.example_ja)}</p><p class="pke mut sm">${esc(v.example_en||'')}</p>`:''}</div>`;
@@ -778,8 +778,9 @@ function backHTML(it){const k=it.key,isW=k[0]==='w',st=srsDB()[k]||{},leech=(st.
   const lb=leech?`<div class="leech"><b>🩹 Leech</b> — missed ${st.lap} times. ${(()=>{const cs=isW?kOfW(VBY[+k.slice(1)]):[k.slice(1)],withS=cs.filter(c=>KBY[c]&&KBY[c].mnemonic),rest=cs.filter(c=>!withS.includes(c));
    return (withS.length?'<p class="sm">Re-read the memory story above and picture it vividly.</p>':'')+(rest.length?`Break it down:<ul>${mnemo(rest)}</ul>`:'')})()}<textarea id="mn" rows="2" placeholder="Write your own mnemonic…">${esc(note)}</textarea></div>`:'';
   if(isW){const v=VBY[+k.slice(1)];
-    return `<div class="sans"><div class="sbig ja">${furi&&v.word_ruby?v.word_ruby:esc(v.word)}</div><div class="srd">${esc(v.reading)} <button class="say" data-t="${esc(v.word)}" aria-label="Say word">🔊</button></div>
-     <div class="smean">${esc(v.meaning_en)}</div><p class="mut sm">${esc(v.part_of_speech||'')}</p>
+    const hk=hasKanji(v.word),sayW=`<button class="say" data-t="${esc(v.word)}" aria-label="Say word">🔊</button>`;
+    return `<div class="sans"><div class="sbig ja">${hk&&v.word_ruby?(furi?v.word_ruby:esc(v.word)):esc(v.word)}${hk?'':' '+sayW}</div>${hk?`<div class="srd">${esc(v.reading)} ${sayW}</div>`:''}
+     <div class="smean">${esc(v.meaning_en)}${v.part_of_speech?` <span class="spos">${esc(v.part_of_speech)}</span>`:''}</div>
      ${v.example_ja?`<div class="sex"><div class="ja">${furi&&v.example_ja_ruby?v.example_ja_ruby:esc(v.example_ja)} <button class="say" data-t="${esc(v.example_ja)}" aria-label="Say example">🔊</button></div><div class="mut sm">${esc(v.example_en)}</div></div>`:''}
      <div class="slinks">${kOfW(v).map(c=>`<a class="chip ja" href="#kanji/${encodeURIComponent(c)}">${esc(c)}</a>`).join('')}<a class="sm" href="#vocab/${encodeURIComponent(v.word)}">Open card →</a></div>${kOfW(v).filter(c=>KBY[c].mnemonic).map(c=>storyHTML(c)).join('')}${lb}</div>`}
   const c=k.slice(1),x=KBY[c],g=simGroup(c),sw=V.filter(v=>(v.kanji||[]).includes(c)).slice(0,3);

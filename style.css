@@ -1056,3 +1056,9 @@ button.mpc{font:inherit;color:inherit;cursor:pointer}
 /* v102 peek on every front */
 .speek .pkw{font-size:calc(var(--pfs,17px)*1.9);line-height:1.5;margin:0 0 2px}.speek .pkw rt{font-size:.42em}
 .scard .pkh{opacity:.55}
+/* v103 revealed back: show each piece once */
+.scard.revealed .sfront>*:not(.tyw):not(.kopts){display:none}.scard.revealed .sfront{opacity:1}
+.scard.revealed .sans{border-top:0;padding-top:0;margin-top:0;text-align:center}
+.sans>.sbig{text-align:center}.sans .sbig .say{font-size:.42em;vertical-align:middle}
+.sans .smean{text-align:center;margin:6px 0 14px}.spos{display:inline-block;font-size:.68em;color:var(--mut,#888);border:1px solid var(--line);border-radius:999px;padding:0 .6em;margin-left:.3em;vertical-align:.12em;white-space:nowrap}
+.sans .sex,.sans .leech,.sans .story,.sans ul{text-align:left}
