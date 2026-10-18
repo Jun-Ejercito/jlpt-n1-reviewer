@@ -1043,3 +1043,12 @@ button.mpc{font:inherit;color:inherit;cursor:pointer}
 .psl{display:grid;grid-template-columns:repeat(auto-fill,minmax(64px,1fr));gap:8px}
 .psk{display:flex;flex-direction:column;align-items:center;padding:6px 4px;border:1px solid var(--line);border-radius:10px;color:var(--ink);text-decoration:none;min-width:0}
 .psk b{font-family:var(--serif);font-size:1.5em;line-height:1.2}.psk small{font-size:.65em;color:var(--mut);max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+/* v100: back-after-know bar */
+.kbar{display:flex;flex-direction:column;gap:6px;background:var(--bg);border-radius:16px;padding:6px 0 0;box-shadow:0 -10px 14px -6px var(--bg)}
+.kmsg{display:flex;align-items:center;justify-content:center;gap:10px;margin:0;font-size:.86em;color:color-mix(in srgb,var(--ok) 75%,var(--ink))}
+.klink{font:inherit;background:none;border:0;color:var(--mut);text-decoration:underline;cursor:pointer;padding:4px 6px}
+.kchg{display:flex;align-items:center;justify-content:center;gap:6px;flex-wrap:wrap}
+.kg{font:inherit;font-size:.8em;border:1px solid var(--line);background:transparent;color:var(--ink);border-radius:999px;padding:5px 10px;cursor:pointer}
+.kg small{color:var(--mut)}.kg.g1{border-color:color-mix(in srgb,var(--accent) 50%,var(--line))}
+.knext{width:100%;min-height:48px}

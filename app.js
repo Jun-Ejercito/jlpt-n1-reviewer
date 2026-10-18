@@ -1,6 +1,6 @@
 (function(){
 'use strict';
-const APP_VERSION='v99';
+const APP_VERSION='v100';
 const SECTIONS=['文字・語彙','文法','読解'];
 const SEC_INFO={'文字・語彙':{en:'Kanji & Vocabulary',glyph:'字'},'文法':{en:'Grammar',glyph:'文'},'読解':{en:'Reading',glyph:'読'}};
 const IC=(d,extra='')=>`<svg class="ico" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"${extra}>${d}</svg>`;
@@ -731,7 +731,10 @@ function buildQueue(mode){const db=srsDB(),t=dn(),cfg=srsCfg(),nt=newToday(),wan
   const dueW=due.filter(k=>k[0]==='w'),dueK=due.filter(k=>k[0]==='k');
   const batch=weave(nw,nk).slice(0,cfg.ss),bw=batch.filter(k=>k[0]==='w').length;
   return {items:[...weave(dueW,dueK),...batch],due:due.length,nw:bw,nk:batch.length-bw,avail:nw.length+nk.length,pri:Math.min(15,pri.length)}}
-function wordTypes(v){const t=['wr','mw','ty'];if(v.example_ja&&v.example_ja.includes(v.word))t.splice(2,0,'cz');return t}
+// v100: no 'type the reading' card when the headword has no kanji (e.g. あせる)
+const hasKanji=w=>/[\u3400-\u9fff\uf900-\ufaff々]/.test(w||'');
+function wordTypes(v){const t=hasKanji(v.word)?['wr','mw','ty']:['wr','mw'];if(v.example_ja&&v.example_ja.includes(v.word))t.splice(2,0,'cz');return t}
+window.__n1test={hasKanji,wordTypes:v=>wordTypes(v),words:()=>V};
 function kanjiTypes(c){const t=['km'];if(sampleV(c))t.push('kw');if(simGroup(c)&&sampleV(c))t.push('ks');return t}
 function pickType(key,st){const ts=key[0]==='w'?wordTypes(VBY[+key.slice(1)]):kanjiTypes(key.slice(1));if(!st||!st.seen)return ts[0];return ts[(st.seen+key.length)%ts.length]}
 let SS=null;
@@ -758,7 +761,7 @@ function studyDone(){const r=SS?SS.res:{1:0,2:0,3:0,4:0},n=r[1]+r[2]+r[3]+r[4];
   const kg=$('#kgo');if(kg)kg.onclick=()=>studyStart(SS?SS.mode:'mixed')}
 function frontHTML(it){const k=it.key,isW=k[0]==='w',t=it.type;
   if(isW){const v=VBY[+k.slice(1)];
-    if(t==='wr')return `<p class="sp">Read it — recall the <b>reading</b> and <b>meaning</b></p><div class="sbig ja">${esc(v.word)}</div><p class="pkh mut sm">Tap the card to peek</p><div class="speek" id="pk" hidden aria-live="polite"><p class="pkr"><span class="ja">${esc(v.reading)}</span><span class="pkm"> · ${esc(v.meaning_en)}</span></p>${v.example_ja?`<p class="pkx ja">${furi&&v.example_ja_ruby?v.example_ja_ruby:esc(v.example_ja)}</p><p class="pke mut sm">${esc(v.example_en||'')}</p>`:''}</div>`;
+    if(t==='wr')return `<p class="sp">${hasKanji(v.word)?'Read it — recall the <b>reading</b> and <b>meaning</b>':'Recall the <b>meaning</b>'}</p><div class="sbig ja">${esc(v.word)}</div><p class="pkh mut sm">Tap the card to peek</p><div class="speek" id="pk" hidden aria-live="polite"><p class="pkr"><span class="ja">${esc(v.reading)}</span><span class="pkm"> · ${esc(v.meaning_en)}</span></p>${v.example_ja?`<p class="pkx ja">${furi&&v.example_ja_ruby?v.example_ja_ruby:esc(v.example_ja)}</p><p class="pke mut sm">${esc(v.example_en||'')}</p>`:''}</div>`;
     if(t==='mw')return `<p class="sp">Recall the <b>Japanese word</b></p><div class="smean">${esc(v.meaning_en)}</div><p class="mut sm">${esc(v.part_of_speech||'')}</p>`;
     if(t==='cz')return `<p class="sp">Fill the blank — recall the <b>word</b></p><div class="scloze ja">${esc(v.example_ja).replace(esc(v.word),'<b class="blank">＿＿＿</b>')}</div><p class="mut sm">${esc(v.example_en)}</p>`;
     return `<p class="sp">Type the <b>reading</b> in kana</p><div class="sbig ja">${esc(v.word)}</div><div class="tyw"><input id="ty" lang="ja" inputmode="text" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="ひらがなで…"><button class="btn primary" id="tyc">Check</button></div>`}
@@ -785,6 +788,7 @@ function backHTML(it){const k=it.key,isW=k[0]==='w',st=srsDB()[k]||{},leech=(st.
    <div class="slinks"><a class="sm" href="#kanji/${encodeURIComponent(c)}">Open card →</a></div>${lb}</div>`}
 function studyCard(){const it0=SS.items[SS.i];if(!it0)return studyDone();
   const it=typeof it0==='string'?{key:it0}:it0;SS.items[SS.i]=it;const db=srsDB();if(!it.type)it.type=pickType(it.key,db[it.key]);
+  if(it.type==='ty'&&it.key[0]==='w'&&!hasKanji((VBY[+it.key.slice(1)]||{}).word))it.type=pickType(it.key,db[it.key]);
   const st=db[it.key],isNew=!st,tot=SS.items.length;
   app.innerHTML=`<div class="qtop">${fmBtns()}<div class="qprog"><div style="width:${SS.i*100/tot}%"></div></div><span class="mut sm">${SS.i+1}/${tot}</span>${aaBtn()}</div>
   <div class="scard" id="sc"><div class="stag"><span class="pill${it.key[0]==='w'?'':' sub'}">${it.key[0]==='w'?'語 word':'漢 kanji'}</span>${isNew?'<span class="pill n">new</span>':''}${st&&st.lap>=4?'<span class="pill red">leech</span>':''}${it.re?'<span class="pill sub">again</span>':''}</div>
@@ -812,23 +816,35 @@ function reveal(it,auto){if(SS.shown)return;closePeek();SS.shown=true;{const t=d
   const mn=$('#mn');if(mn)mn.onchange=()=>{const n=store.get('srsNote',{});n[it.key]=mn.value;store.set('srsNote',n)};
   if(it.key[0]==='w'&&store.get('srsSpeak',false))say(VBY[+it.key.slice(1)].word);
 }
-function grade(it,g){if(!SS||SS.graded)return;SS.graded=true;const db=srsDB(),was=db[it.key];db[it.key]=sched(was,g);store.set('srs',db);
+function grade(it,g,stay){if(!SS||SS.graded)return;SS.graded=true;const db=srsDB(),was=db[it.key];db[it.key]=sched(was,g);store.set('srs',db);
   if(!was){const n=store.get('srsNew',{}),d=dn();n[d]=n[d]||{w:0,k:0};n[d][it.key[0]]++;for(const k in n)if(+k<d-30)delete n[k];store.set('srsNew',n);
     if(it.key[0]==='w')store.set('srsPri',store.get('srsPri',[]).filter(k=>k!==it.key))}
   const lg=store.get('srsLog',{}),d=dn();lg[d]=lg[d]||{r:0,ok:0,n:0};if(was&&was.iv>=1){lg[d].r++;if(g>1)lg[d].ok++}else lg[d].n++;store.set('srsLog',lg);
   logActivity();SS.res[g]++;it.g=g;
   if(g===1&&(SS.again[it.key]||0)<3){SS.again[it.key]=(SS.again[it.key]||0)+1;SS.items.splice(Math.min(SS.items.length,SS.i+5),0,{key:it.key,re:true})}
-  const sc=$('#sc');const next=()=>{SS.i++;SS.shown=false;SS.graded=false;studyCard();window.scrollTo(0,0)};
+  if(stay)return;
+  const sc=$('#sc');const next=()=>{SS.i++;SS.shown=false;SS.graded=false;SS.known=null;studyCard();window.scrollTo(0,0)};
   if(sc&&!reduced()){sc.classList.add(g===1?'out-l':'out-r');setTimeout(next,180)}else next()}
 document.addEventListener('keydown',e=>{if(!SS||SS.view!=null||!(cur||'').startsWith('study/')||e.target.tagName==='INPUT'||e.target.tagName==='TEXTAREA')return;
+  if(SS.known){if(e.key===' '||e.key==='Enter'||e.key==='ArrowRight'){e.preventDefault();knownNext()}else if(/^[1-3]$/.test(e.key)){const b=document.querySelector('.kg.g'+e.key);if(b)b.click()}return}
   if(!SS.shown&&(e.key===' '||e.key==='Enter')){e.preventDefault();const it=SS.items[SS.i];if(it&&!$('#ty')&&!$('.kopt'))reveal(it)}else if(SS.shown&&/^[1-4]$/.test(e.key))grade(SS.items[SS.i],+e.key);else if(!SS.shown&&/^[kK]$/.test(e.key)&&SS.items[SS.i])knowIt(SS.items[SS.i])});
 // v45: "I know this" — new card → first interval 21d (high ease) as a one-time check; review card → Easy. Undo restores everything.
 function knowIt(it_){closePeek();return knowIt0(it_)}
+// v100: "I know this" records the know grade, then shows the back (like Show answer) with Next →; Undo or change the grade from there.
 function knowIt0(it){if(!SS||SS.graded||!it)return;const keys=['srs','srsNew','srsLog','srsPri'],snap={};keys.forEach(k=>snap[k]=localStorage.getItem('n1_'+k));
   const ss={i:SS.i,res:{...SS.res},again:{...SS.again},items:SS.items.slice()},was=srsDB()[it.key],isNew=!was||!(was.iv>=1);
-  grade(it,4);if(isNew){const db=srsDB(),t=dn(),st=db[it.key];Object.assign(st,{ef:2.8,iv:21,d:t+21,known:1});db[it.key]=st;store.set('srs',db)}
-  toast(`Marked as known · ${isNew?'back in 21 days':'Easy'}`,'Undo',()=>{keys.forEach(k=>snap[k]==null?localStorage.removeItem('n1_'+k):localStorage.setItem('n1_'+k,snap[k]));
-    delete it.g;if(!SS)return;Object.assign(SS,ss,{shown:false,graded:false});if((cur||'').startsWith('study/'))studyCard()})}
+  grade(it,4,true);if(isNew){const db=srsDB(),t=dn(),st=db[it.key];Object.assign(st,{ef:2.8,iv:21,d:t+21,known:1});db[it.key]=st;store.set('srs',db)}
+  const restore=()=>{keys.forEach(k=>snap[k]==null?localStorage.removeItem('n1_'+k):localStorage.setItem('n1_'+k,snap[k]));delete it.g;Object.assign(SS,ss,{graded:false})};
+  SS.known={it,restore,was};reveal(it);knownBar(it,isNew)}
+function knownBar(it,isNew){const K=SS.known;if(!K)return;
+  $('#sbar').innerHTML=`<div class="kbar"><p class="kmsg"><span>✓ Marked as known · ${isNew?'back in 21 days':'Easy'}</span><button type="button" class="klink" id="kundo">Undo</button></p>
+  <div class="kchg" role="group" aria-label="Change grade"><span class="mut sm">Change:</span>${[[1,'Again'],[2,'Hard'],[3,'Good']].map(([g,l])=>`<button type="button" class="kg g${g}" data-g="${g}">${l} <small>${ivLabel(sched(K.was,g).iv)}</small></button>`).join('')}</div>
+  <button type="button" class="btn primary knext" id="knext">Next →</button></div>`;
+  $('#knext').onclick=knownNext;
+  $('#kundo').onclick=()=>{K.restore();SS.known=null;SS.shown=false;studyCard()};
+  app.querySelectorAll('.kg').forEach(b=>b.onclick=()=>{K.restore();SS.known=null;grade(it,+b.dataset.g)})}
+function knownNext(){if(!SS||!SS.known)return;SS.known=null;const sc=$('#sc'),next=()=>{SS.i++;SS.shown=false;SS.graded=false;studyCard();window.scrollTo(0,0)};
+  if(sc&&!reduced()){sc.classList.add('out-r');setTimeout(next,180)}else next()}
 function toast(msg,act,fn){let t=document.querySelector('.toast');if(t)t.remove();t=document.createElement('div');t.className='toast';t.setAttribute('role','status');
   t.innerHTML=`<span>${esc(msg)}</span>${act?`<button type="button">${esc(act)}</button>`:''}`;document.body.appendChild(t);requestAnimationFrame(()=>t.classList.add('show'));
   const kill=()=>{t.classList.remove('show');setTimeout(()=>t.remove(),250)};const tm=setTimeout(kill,4000);if(act)t.querySelector('button').onclick=()=>{clearTimeout(tm);kill();fn()}}
