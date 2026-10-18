@@ -1,6 +1,6 @@
 (function(){
 'use strict';
-const APP_VERSION='v101';
+const APP_VERSION='v102';
 const SECTIONS=['文字・語彙','文法','読解'];
 const SEC_INFO={'文字・語彙':{en:'Kanji & Vocabulary',glyph:'字'},'文法':{en:'Grammar',glyph:'文'},'読解':{en:'Reading',glyph:'読'}};
 const IC=(d,extra='')=>`<svg class="ico" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"${extra}>${d}</svg>`;
@@ -734,7 +734,7 @@ function buildQueue(mode){const db=srsDB(),t=dn(),cfg=srsCfg(),nt=newToday(),wan
 // v100: no 'type the reading' card when the headword has no kanji (e.g. あせる)
 const hasKanji=w=>/[\u3400-\u9fff\uf900-\ufaff々]/.test(w||'');
 function wordTypes(v){const t=hasKanji(v.word)?['wr','mw','ty']:['wr','mw'];if(v.example_ja&&v.example_ja.includes(v.word))t.splice(2,0,'cz');return t}
-window.__n1test={hasKanji,wordTypes:v=>wordTypes(v),words:()=>V};
+window.__n1test={hasKanji,wordTypes:v=>wordTypes(v),words:()=>V,force:(w,t)=>{const v=V.find(x=>x.word===w);if(!SS||!v)return false;SS.items[SS.i]={key:'w'+v.id,type:t};SS.shown=false;SS.known=null;SS.graded=false;studyCard();return true}};
 function kanjiTypes(c){const t=['km'];if(sampleV(c))t.push('kw');if(simGroup(c)&&sampleV(c))t.push('ks');return t}
 function pickType(key,st){const ts=key[0]==='w'?wordTypes(VBY[+key.slice(1)]):kanjiTypes(key.slice(1));if(!st||!st.seen)return ts[0];return ts[(st.seen+key.length)%ts.length]}
 let SS=null;
@@ -759,16 +759,18 @@ function studyDone(){const r=SS?SS.res:{1:0,2:0,3:0,4:0},n=r[1]+r[2]+r[3]+r[4];
    ${(()=>{const nq=buildQueue(SS?SS.mode:'mixed');return nq.items.length?`<p class="sm">${nq.due?nq.due+' due · ':''}${nq.avail} new cards still available</p><div class="td-a"><button class="btn primary" id="kgo">Keep going → next ${Math.min(nq.items.length,nq.due+srsCfg().ss)}</button></div>`:''})()}
    ${tdAfterStudy(SS&&SS.mode,n)}<div class="td-a"><a class="btn${n?'':' primary'}" href="#home">Home</a><a class="btn" href="#study">Study options</a></div></div>`;
   const kg=$('#kgo');if(kg)kg.onclick=()=>studyStart(SS?SS.mode:'mixed')}
+function pkHint(){return store.get('peekSeen',0)?'':'<p class="pkh mut sm">Tap card to peek</p>'}
+function pkWord(v,mean){return `${pkHint()}<div class="speek" id="pk" hidden aria-live="polite"><div class="pkw ja">${v.word_ruby?v.word_ruby:esc(v.word)}</div><p class="pkr"><span class="ja">${esc(v.reading)}</span>${mean?`<span class="pkm"> · ${esc(v.meaning_en)}</span>`:''}</p></div>`}
 function frontHTML(it){const k=it.key,isW=k[0]==='w',t=it.type;
   if(isW){const v=VBY[+k.slice(1)];
-    if(t==='wr')return `<p class="sp">${hasKanji(v.word)?'Read it — recall the <b>reading</b> and <b>meaning</b>':'Recall the <b>meaning</b>'}</p><div class="sbig ja">${esc(v.word)}</div><p class="pkh mut sm">Tap the card to peek</p><div class="speek" id="pk" hidden aria-live="polite"><p class="pkr"><span class="ja">${esc(v.reading)}</span><span class="pkm"> · ${esc(v.meaning_en)}</span></p>${v.example_ja?`<p class="pkx ja">${furi&&v.example_ja_ruby?v.example_ja_ruby:esc(v.example_ja)}</p><p class="pke mut sm">${esc(v.example_en||'')}</p>`:''}</div>`;
-    if(t==='mw')return `<p class="sp">Recall the <b>Japanese word</b></p><div class="smean">${esc(v.meaning_en)}</div><p class="mut sm">${esc(v.part_of_speech||'')}</p>`;
-    if(t==='cz')return `<p class="sp">Fill the blank — recall the <b>word</b></p><div class="scloze ja">${esc(v.example_ja).replace(esc(v.word),'<b class="blank">＿＿＿</b>')}</div><p class="mut sm">${esc(v.example_en)}</p>`;
+    if(t==='wr')return `<p class="sp">${hasKanji(v.word)?'Read it — recall the <b>reading</b> and <b>meaning</b>':'Recall the <b>meaning</b>'}</p><div class="sbig ja">${esc(v.word)}</div>${pkHint()}<div class="speek" id="pk" hidden aria-live="polite"><p class="pkr"><span class="ja">${esc(v.reading)}</span><span class="pkm"> · ${esc(v.meaning_en)}</span></p>${v.example_ja?`<p class="pkx ja">${furi&&v.example_ja_ruby?v.example_ja_ruby:esc(v.example_ja)}</p><p class="pke mut sm">${esc(v.example_en||'')}</p>`:''}</div>`;
+    if(t==='mw')return `<p class="sp">Recall the <b>Japanese word</b></p><div class="smean">${esc(v.meaning_en)}</div><p class="mut sm">${esc(v.part_of_speech||'')}</p>${pkWord(v,0)}`;
+    if(t==='cz')return `<p class="sp">Fill the blank — recall the <b>word</b></p><div class="scloze ja">${esc(v.example_ja).replace(esc(v.word),'<b class="blank">＿＿＿</b>')}</div><p class="mut sm">${esc(v.example_en)}</p>${pkWord(v,1)}`;
     return `<p class="sp">Type the <b>reading</b> in kana</p><div class="sbig ja">${esc(v.word)}</div><div class="tyw"><input id="ty" lang="ja" inputmode="text" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="ひらがなで…"><button class="btn primary" id="tyc">Check</button></div>`}
   const c=k.slice(1),x=KBY[c],sv=sampleV(c);
-  if(t==='km')return `<p class="sp">Recall the <b>meaning</b> and <b>on/kun</b> readings</p><div class="sbig kj">${esc(c)}</div>`;
+  if(t==='km')return `<p class="sp">Recall the <b>meaning</b> and <b>on/kun</b> readings</p><div class="sbig kj">${esc(c)}</div>${pkHint()}<div class="speek kpeek" id="pk" hidden aria-live="polite"><p class="pkr"><span class="pkm">${esc(x.meaning_en)}</span></p><p class="pkk">${x.onyomi.length?onHTML(x.onyomi,1):''} ${x.kunyomi.length?kunHTML(x.kunyomi,1):''}</p></div>`;
   if(t==='kw'){const v=V.find(w=>w.word===sv.word)||sv;  // v57: kanji-card peek
-    return `<p class="sp">Read this word — focus on <b>${esc(c)}</b></p><div class="sbig ja">${esc(sv.word).replace(esc(c),`<span class="kh">${esc(c)}</span>`)}</div><p class="pkh mut sm">Tap the card to peek</p><div class="speek kpeek" id="pk" hidden aria-live="polite"><p class="pkr"><span class="ja">${esc(v.reading||sv.reading||'')}</span><span class="pkm"> · ${esc(v.meaning_en||sv.meaning_en||'')}</span></p><p class="pkk"><b class="ja">${esc(c)}</b> ${x.onyomi.length?onHTML(x.onyomi,1):''} ${x.kunyomi.length?kunHTML(x.kunyomi,1):''}</p>${v.example_ja?`<p class="pkx ja">${furi&&v.example_ja_ruby?v.example_ja_ruby:esc(v.example_ja)}</p><p class="pke mut sm">${esc(v.example_en||'')}</p>`:''}</div>`}
+    return `<p class="sp">Read this word — focus on <b>${esc(c)}</b></p><div class="sbig ja">${esc(sv.word).replace(esc(c),`<span class="kh">${esc(c)}</span>`)}</div>${pkHint()}<div class="speek kpeek" id="pk" hidden aria-live="polite"><p class="pkr"><span class="ja">${esc(v.reading||sv.reading||'')}</span><span class="pkm"> · ${esc(v.meaning_en||sv.meaning_en||'')}</span></p><p class="pkk"><b class="ja">${esc(c)}</b> ${x.onyomi.length?onHTML(x.onyomi,1):''} ${x.kunyomi.length?kunHTML(x.kunyomi,1):''}</p>${v.example_ja?`<p class="pkx ja">${furi&&v.example_ja_ruby?v.example_ja_ruby:esc(v.example_ja)}</p><p class="pke mut sm">${esc(v.example_en||'')}</p>`:''}</div>`}
   const g=simGroup(c);return `<p class="sp">Which kanji completes the word?</p><div class="sbig ja">${esc(sv.word).replace(esc(c),'<span class="kq">◯</span>')}</div><p class="mut">${esc(sv.reading)} · ${esc(sv.meaning_en)}</p>
    <div class="kopts">${shuffle(g.kanji).map(o=>`<button class="kopt" data-c="${esc(o)}">${esc(o)}</button>`).join('')}</div>`}
 function mnemo(cs){return cs.map(c=>{const x=KBY[c];if(!x)return'';return `<li><b class="ja">${esc(c)}</b> ${esc((x.meaning_en||'').split(';')[0])} — radical <b class="ja">${esc(x.radical||'?')}</b>${x.stroke_count?` · ${x.stroke_count} strokes`:''}${x.onyomi&&x.onyomi.length?` · 音 ${esc(x.onyomi.join('、'))}`:''}</li>`}).join('')}
@@ -795,7 +797,7 @@ function studyCard(){const it0=SS.items[SS.i];if(!it0)return studyDone();
    <div class="sfront">${frontHTML(it)}</div><div class="sback"></div></div>
   <div class="stbar" id="sbar"><div class="frow"><button class="btn knw" id="knw" type="button">I know this ✓</button><button class="btn primary" id="rv">Show answer</button></div></div>`;
   $('#knw').onclick=()=>knowIt(SS.items[SS.i]);
-  if(it.type==='wr'||it.type==='kw')$('#sc').addEventListener('click',e=>{if(SS.shown||e.target.closest('a,button,input,.say,rt'))return;togglePeek()});
+  if($('#pk'))$('#sc').addEventListener('click',e=>{if(SS.shown||e.target.closest('a,button,input,.say,rt'))return;togglePeek()});
   $('#rv').onclick=()=>reveal(it);
   const ty=$('#ty');if(ty){const v=VBY[+it.key.slice(1)],ok=()=>hira(ty.value)===hira(v.reading);let comp=false;ty.focus({preventScroll:true});
     ty.addEventListener('compositionstart',()=>comp=true);ty.addEventListener('compositionend',()=>{comp=false;if(ok())reveal(it,true)});
@@ -805,7 +807,7 @@ function studyCard(){const it0=SS.items[SS.i];if(!it0)return studyDone();
 // v50 peek (word→reading/meaning front): tap blank card area toggles reading + example; one history step; never grades
 function peekRaw(){const p=document.getElementById('pk');if(p){p.hidden=true;const sc=document.getElementById('sc');if(sc)sc.classList.remove('peeking')}}
 function closePeek(){const p=document.getElementById('pk');if(p&&!p.hidden){peekRaw();ovDrop()}}
-function togglePeek(){const p=document.getElementById('pk');if(!p)return;if(p.hidden){p.hidden=false;$('#sc').classList.add('peeking');ovOpen(peekRaw)}else closePeek()}
+function togglePeek(){const p=document.getElementById('pk');if(!p)return;if(p.hidden){p.hidden=false;store.set('peekSeen',1);$('#sc').classList.add('peeking');ovOpen(peekRaw)}else closePeek()}
 function reveal(it,auto){if(SS.shown)return;closePeek();SS.shown=true;{const t=document.activeElement;if(t&&t.id==='ty')t.blur()}requestAnimationFrame(()=>{if(window.scrollY>0&&$('#sc'))window.scrollTo(0,0)});const db=srsDB(),st=db[it.key];
   const sc=$('#sc');sc.classList.add('revealed');sc.querySelector('.sback').innerHTML=(auto===true?'<p class="verd ok">✓ Correct</p>':auto===false?'<p class="verd bad">✕ Not quite</p>':'')+backHTML(it);
   const sug=auto===true?3:auto===false?1:0;
@@ -827,7 +829,7 @@ function grade(it,g,stay){if(!SS||SS.graded)return;SS.graded=true;const db=srsDB
   if(sc&&!reduced()){sc.classList.add(g===1?'out-l':'out-r');setTimeout(next,180)}else next()}
 document.addEventListener('keydown',e=>{if(!SS||SS.view!=null||!(cur||'').startsWith('study/')||e.target.tagName==='INPUT'||e.target.tagName==='TEXTAREA')return;
   if(SS.known){if(e.key===' '||e.key==='Enter'||e.key==='ArrowRight'){e.preventDefault();knownNext()}else if(/^[1-3]$/.test(e.key)){const b=document.querySelector('.kg.g'+e.key);if(b)b.click()}return}
-  if(!SS.shown&&(e.key===' '||e.key==='Enter')){e.preventDefault();const it=SS.items[SS.i];if(it&&!$('#ty')&&!$('.kopt'))reveal(it)}else if(SS.shown&&/^[1-4]$/.test(e.key))grade(SS.items[SS.i],+e.key);else if(!SS.shown&&/^[kK]$/.test(e.key)&&SS.items[SS.i])knowIt(SS.items[SS.i])});
+  if(!SS.shown&&(e.key===' '||e.key==='Enter')){e.preventDefault();const it=SS.items[SS.i];if(it&&!$('#ty')&&!$('.kopt'))reveal(it)}else if(SS.shown&&/^[1-4]$/.test(e.key))grade(SS.items[SS.i],+e.key);else if(!SS.shown&&/^[kK]$/.test(e.key)&&SS.items[SS.i])knowIt(SS.items[SS.i]);else if(!SS.shown&&/^[pP]$/.test(e.key)&&!e.ctrlKey&&!e.metaKey&&!e.altKey&&$('#pk')){e.preventDefault();togglePeek()}});
 // v45: "I know this" — new card → first interval 21d (high ease) as a one-time check; review card → Easy. Undo restores everything.
 function knowIt(it_){closePeek();return knowIt0(it_)}
 // v100: "I know this" records the know grade, then shows the back (like Show answer) with Next →; Undo or change the grade from there.
@@ -876,7 +878,7 @@ function studyGuide(){app.innerHTML=`<div class="ph"><h1 class="pt">How to study
  <div class="card guidec"><h3>Why this works</h3><p><b>Active recall</b> — trying to pull the answer out of memory <i>before</i> you see it strengthens memory far more than re-reading. Every card asks you to produce something: a reading, a meaning, a word, the right kanji.</p>
  <p><b>Spaced repetition</b> — each card comes back just as you're about to forget it. Good answers push it further out (1d → 3d → 8d → 3 weeks…); Again brings it back today. A few minutes a day beats hours of cramming.</p>
  <p><b>Variety</b> — the same word is tested in different ways (read it, write it from English, fill a blank, type the kana), and kanji are shown right after the words that use them, so knowledge connects instead of staying isolated.</p></div>
- <div class="card guidec"><h3>Daily routine · ~15 min</h3><ol><li><b>Reviews first</b> — clear everything due. Don't skip days; reviews pile up.</li><li><b>New cards</b> — no daily limit. They come in batches (session size, default 20); tap “Keep going” for more. Remember: every new card means reviews in the coming days, so add more only if your reviews stay under ~15 min.</li><li><b>Quiz mistakes</b> — words from questions you miss are queued automatically as priority cards.</li><li>Finish with a short quiz or one 読解 passage to see words in context.</li><li><b>Shortcuts</b> — swipe left = next (an unanswered card is skipped and comes back later, no grade), swipe right = look at the previous card (read-only); tap the card front to peek at the reading and an example; on a keyboard, Space shows the answer and 1–4 grade.</li></ol></div>
+ <div class="card guidec"><h3>Daily routine · ~15 min</h3><ol><li><b>Reviews first</b> — clear everything due. Don't skip days; reviews pile up.</li><li><b>New cards</b> — no daily limit. They come in batches (session size, default 20); tap “Keep going” for more. Remember: every new card means reviews in the coming days, so add more only if your reviews stay under ~15 min.</li><li><b>Quiz mistakes</b> — words from questions you miss are queued automatically as priority cards.</li><li>Finish with a short quiz or one 読解 passage to see words in context.</li><li><b>Shortcuts</b> — swipe left = next (an unanswered card is skipped and comes back later, no grade), swipe right = look at the previous card (read-only); tap the empty part of the card front to peek at the hidden word, reading or meaning (tap again to hide; peeking never grades); on a keyboard, P peeks, Space shows the answer and 1–4 grade.</li></ol></div>
  <div class="card guidec"><h3>Grading honestly</h3><ul><li><b>Again</b> — you didn't recall it (or only after seeing it).</li><li><b>Hard</b> — recalled with real effort or partly wrong.</li><li><b>Good</b> — recalled after a moment's thought. Most answers.</li><li><b>Easy</b> — instant, effortless.</li></ul><p class="mut sm">Swipe right = Good, left = Again. Say the word out loud — 🔊 plays it.</p></div>
  <div class="card guidec"><h3>Tips</h3><ul><li>Say readings aloud and picture the kanji before revealing.</li><li>Cards missed 4+ times become <b>leeches</b>: read the kanji breakdown and write your own mnemonic in the box.</li><li>Look-alike kanji cards train you to spot the difference — study the 👀 note.</li><li>Back up your progress from Progress → Export backup now and then.</li></ul></div>
  <a class="btn primary full" href="#study/mixed">▶ Start today's session</a>`}

@@ -1052,3 +1052,7 @@ button.mpc{font:inherit;color:inherit;cursor:pointer}
 .kg{font:inherit;font-size:.8em;border:1px solid var(--line);background:transparent;color:var(--ink);border-radius:999px;padding:5px 10px;cursor:pointer}
 .kg small{color:var(--mut)}.kg.g1{border-color:color-mix(in srgb,var(--accent) 50%,var(--line))}
 .knext{width:100%;min-height:48px}
+
+/* v102 peek on every front */
+.speek .pkw{font-size:calc(var(--pfs,17px)*1.9);line-height:1.5;margin:0 0 2px}.speek .pkw rt{font-size:.42em}
+.scard .pkh{opacity:.55}
