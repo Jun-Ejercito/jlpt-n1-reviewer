@@ -1,5 +1,5 @@
 // JLPT N1 Reviewer service worker: app shell cached; audio cached on demand (Range-aware)
-const V='n1-shell-v98',AUD='n1-audio-v82';
+const V='n1-shell-v99',AUD='n1-audio-v82';
 self.addEventListener('install',e=>{self.skipWaiting();e.waitUntil(caches.open(V).then(c=>c.addAll(['./','index.html','style.css','app.js','data.js','tips.js']).catch(()=>{})))});
 // v96: audio files regenerated in place (same names) — purge just these from the audio cache
 const STALE=[];
