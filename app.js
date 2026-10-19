@@ -1,6 +1,6 @@
 (function(){
 'use strict';
-const APP_VERSION='v109';
+const APP_VERSION='v110';
 const SECTIONS=['文字・語彙','文法','読解'];
 const SEC_INFO={'文字・語彙':{en:'Kanji & Vocabulary',glyph:'字'},'文法':{en:'Grammar',glyph:'文'},'読解':{en:'Reading',glyph:'読'}};
 const IC=(d,extra='')=>`<svg class="ico" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"${extra}>${d}</svg>`;
@@ -69,6 +69,7 @@ function home(){
   const sk=streak(),acc=pct(st.correct,st.answered);
   app.innerHTML=`<p class="hgreet mut">${dateJa} · ${greet}</p>
   ${todayBtn()}
+  ${bkNeedRemind()?`<div class="bkrem" id="bkrem"><span>${bkAgeDays()>=1e8?'No backup yet':'No backup for '+bkAgeDays()+' days'}</span><button class="lnk" id="bkgo">Back up</button><button class="lnk mut" id="bkno" aria-label="Remind me later">Later</button></div>`:''}
   <nav class="hsc">${[['#mistakes','✕','Mistakes',Object.keys(mistDB()).filter(id=>QBY[id]).length||''],['#gpairs','文','Grammar pairs',''],['#mock','模','Mock exam',''],['#search','<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/></svg>','Search','']].map(([h,i,l,n])=>`<a href="${h}" class="hsl"><span class="hsi ja">${i}</span><span>${l}</span>${n?`<small class="mut">${n}</small>`:''}</a>`).join('')}</nav>
   <details class="hsec"><summary>Study details 学習</summary>${todayCard(buildQueue('mixed'))}</details>
   <div class="hq"><button class="btn ghost" id="qqs">${ICONS.bolt} Quick quiz <small class="mut">10 questions</small></button>${missed.length?`<button class="btn ghost" id="qms">${ICONS.redo} Review missed <small class="mut">${missed.length}</small></button>`:''}</div>
@@ -96,6 +97,7 @@ function home(){
   </div></details>
   <a class="hrow" href="#tips"><span>${ICONS.bulb}</span><b>読解 Tips</b><small class="mut">Workflow, question types, signal words, traps</small><span class="chev">${ICONS.chev}</span></a>
   <p class="ver">JLPT N1 Reviewer · ${APP_VERSION}</p>`;
+  if($('#bkgo')){$('#bkgo').onclick=()=>bkExport().then(ok=>{if(ok)home()});$('#bkno').onclick=()=>{store.set('bkSnooze',Date.now()+3*864e5);$('#bkrem').remove()}}
   $('#gm').onclick=()=>{store.set('goal',Math.max(5,goal-5));home()};$('#gp').onclick=()=>{store.set('goal',Math.min(200,goal+5));home()};
   const o=store.get('quizOpts',{cat:'',shuffle:true,n:10,autoplay:false});
   $('#qq').onclick=()=>{nav('quiz/play',()=>{start(smartPick(Q,10,'all'),{...o,shuffle:true},false,10);S.rkey='all'})};
@@ -599,7 +601,8 @@ function openSettings(){if(sheet)return;const qo=store.get('quizOpts',{}),cfg=sr
    <label class="srow"><span>Focus mode <small class="mut">hide bars in quiz &amp; study</small></span><input type="checkbox" id="sfm" ${store.get('focus',false)?'checked':''}></label>
    <div class="srow"><span>Study session size</span>${seg3('sss',[[10,'10'],[20,'20'],[30,'30'],[50,'50']],cfg.ss)}</div>
    <div class="srow sraud"><span>Offline audio <small class="mut">teacher &amp; question audio</small></span><div id="aud"><span class="mut sm">…</span></div></div>
-   <p class="mut sm scred">Stroke order data: <a href="https://kanjivg.tagaini.net" target="_blank" rel="noopener">KanjiVG</a> © Ulrich Apel, <a href="https://creativecommons.org/licenses/by-sa/3.0/" target="_blank" rel="noopener">CC BY-SA 3.0</a></p><div class="slinks2"><a href="#studyguide">How to study →</a><a href="#progress">Backup &amp; restore →</a></div></div>`;
+   <div class="srow sbk"><span>Backup &amp; restore <small class="mut" id="bkl">${bkLastHTML()}</small></span><div class="bkbtns"><button class="btn sm" id="bkx">Export</button><label class="btn sm">Import<input type="file" id="bki" accept="application/json,.json" hidden></label></div></div>
+   <p class="mut sm scred">Stroke order data: <a href="https://kanjivg.tagaini.net" target="_blank" rel="noopener">KanjiVG</a> © Ulrich Apel, <a href="https://creativecommons.org/licenses/by-sa/3.0/" target="_blank" rel="noopener">CC BY-SA 3.0</a></p><div class="slinks2"><a href="#studyguide">How to study →</a><a href="#progress">Progress →</a></div></div>`;
   document.body.appendChild(sheet);requestAnimationFrame(()=>sheet&&sheet.classList.add('show'));ovOpen(closeSheetRaw);
   const q=s=>sheet.querySelector(s);q('#ssx').onclick=closeSheet;q('.ssbg').onclick=closeSheet;
   q('#hf').onchange=e=>{furiOn=e.target.checked;store.set('furigana',furiOn);applyFuri()};
@@ -608,7 +611,7 @@ function openSettings(){if(sheet)return;const qo=store.get('quizOpts',{}),cfg=sr
   segw('sts',v=>{store.set('ts',v);document.documentElement.dataset.ts=v;document.querySelectorAll('.aats i').forEach(i=>i.textContent=v.toUpperCase())});
   segw('sss',v=>{store.set('srsCfg',{ss:+v})});
   q('#ssc').onchange=e=>store.set('quizOpts',{...store.get('quizOpts',{}),sc:e.target.checked});
-  q('#sfm').onchange=e=>{store.set('focus',e.target.checked);applyFocus()};offlineRow(sheet)}
+  q('#sfm').onchange=e=>{store.set('focus',e.target.checked);applyFocus()};offlineRow(sheet);wireBackup(sheet)}
 function applyFocus(){const on=store.get('focus',false)&&/^(quiz\/play|study\/)/.test(cur||'');document.documentElement.classList.toggle('focusm',on);document.querySelectorAll('.fmt').forEach(b=>b.setAttribute('aria-pressed',store.get('focus',false)))}
 const fmBtns=()=>`<button class="aa fonly fbk" type="button" aria-label="Back">←</button><button class="aa fmt" type="button" aria-pressed="${store.get('focus',false)}" aria-label="Focus mode" title="Focus mode">⛶</button>`;
 document.addEventListener('click',e=>{if(e.target.closest&&e.target.closest('.fbk')){goBack();return}const b=e.target.closest&&e.target.closest('.fmt');if(!b)return;store.set('focus',!store.get('focus',false));applyFocus()});
@@ -880,10 +883,53 @@ function srsStatsHTML(){const db=srsDB(),t=dn(),ks=Object.keys(db),lg=store.get(
    <h3 class="sm">Reviews due · next 7 days</h3><div class="chart">${fc.map((n,i)=>{const dd=new Date(Date.now()+i*DAYMS);return `<div class="bar-c"><span class="bv">${n||''}</span><div class="bar" style="height:${n?Math.max(6,n*100/mx):2}%"></div><span class="bl">${i?'日月火水木金土'[dd.getDay()]:'今'}</span></div>`}).join('')}</div>
    <p class="mut sm">Mastered = interval ≥ 21 days. Retention = reviews answered Hard/Good/Easy.</p>
    <div class="two"><button class="btn sm" id="bkx">⬇ Export backup</button><label class="btn sm">⬆ Import backup<input type="file" id="bki" accept="application/json,.json" hidden></label></div></div>`}
-function wireBackup(){const x=$('#bkx');if(!x)return;x.onclick=()=>{const o={};for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);if(k.startsWith('n1_'))o[k]=localStorage.getItem(k)}
-   const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([JSON.stringify({app:'jlpt-n1-reviewer',v:APP_VERSION,at:new Date().toISOString(),data:o},null,1)],{type:'application/json'}));a.download=`n1-backup-${dayKey()}.json`;a.click()};
-  $('#bki').onchange=e=>{const f=e.target.files[0];if(!f)return;f.text().then(t=>{const j=JSON.parse(t);if(!j.data)throw 0;if(!confirm('Replace your current progress with this backup?'))return;
-   Object.keys(localStorage).filter(k=>k.startsWith('n1_')).forEach(k=>localStorage.removeItem(k));for(const k in j.data)if(k.startsWith('n1_'))localStorage.setItem(k,j.data[k]);location.reload()}).catch(()=>alert('That file is not a valid backup.'))}}
+/* v110 backup & restore: every n1_* localStorage key -> dated json; import validates, then Merge or Replace */
+const BK_APP='jlpt-n1-reviewer';
+function bkCollect(){const o={};for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);if(k&&k.startsWith('n1_'))o[k]=localStorage.getItem(k)}return o}
+function bkJSON(){const at=new Date().toISOString();return {name:`n1-backup-${dayKey()}.json`,text:JSON.stringify({app:BK_APP,v:APP_VERSION,at,data:bkCollect()},null,1)}}
+async function bkExport(){const {name,text}=bkJSON();let shared=false;
+  try{const f=new File([text],name,{type:'application/json'});if(navigator.canShare&&navigator.canShare({files:[f]})&&/Android|iPhone|iPad|Mobile/i.test(navigator.userAgent)){await navigator.share({files:[f],title:'JLPT N1 Reviewer backup'});shared=true}}catch(e){if(e&&e.name==='AbortError')return false}
+  if(!shared){const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([text],{type:'application/json'}));a.download=name;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},1000)}
+  store.set('lastBackup',new Date().toISOString());toast('Backup saved · '+name);return true}
+// returns {ok,err,info} ; info = {at,v,keys,answered}
+function bkParse(t){let j;try{j=JSON.parse(t)}catch(e){return{ok:false,err:'This file isn’t valid JSON.'}}
+  if(!j||j.app!==BK_APP||!j.data||typeof j.data!=='object')return{ok:false,err:'This isn’t a JLPT N1 Reviewer backup.'};
+  const ks=Object.keys(j.data).filter(k=>k.startsWith('n1_'));if(!ks.length)return{ok:false,err:'The backup is empty.'};
+  for(const k of ks){if(typeof j.data[k]!=='string')return{ok:false,err:'The backup is damaged ('+k+').'};try{JSON.parse(j.data[k])}catch(e){return{ok:false,err:'The backup is damaged ('+k+').'}}}
+  let ans=0;try{ans=(JSON.parse(j.data.n1_stats||'{}').answered)||0}catch(e){}
+  return{ok:true,j,info:{at:j.at||'',v:j.v||'',keys:ks.length,answered:ans}}}
+const bkIsObj=x=>x&&typeof x==='object'&&!Array.isArray(x);
+const bkRec=x=>bkIsObj(x)&&('d' in x||'iv' in x||'s' in x)&&!Object.values(x).some(bkIsObj);
+const bkW=x=>(x.reps||0)+(x.seen||0)+(x.n||0)+(x.lap||0);
+// merge: union of keys; numbers -> max; arrays -> union; schedule records (srs/mistakes/recall) -> the more-practised one; other scalars -> keep this device
+function bkMergeVal(a,b){if(a===undefined)return b;if(b===undefined)return a;
+  if(typeof a==='number'&&typeof b==='number')return Math.max(a,b);
+  if(Array.isArray(a)&&Array.isArray(b)){const seen=new Set(a.map(x=>JSON.stringify(x)));return a.concat(b.filter(x=>!seen.has(JSON.stringify(x))))}
+  if(bkRec(a)&&bkRec(b))return bkW(b)>bkW(a)||(bkW(b)===bkW(a)&&(b.d||0)>(a.d||0))?b:a;
+  if(bkIsObj(a)&&bkIsObj(b)){const o={...a};for(const k in b)o[k]=bkMergeVal(a[k],b[k]);return o}
+  return a}
+const BK_KEEP=new Set(['n1_theme','n1_ts','n1_furigana','n1_focus','n1_schema']);
+function bkApply(j,mode){const d=j.data;
+  if(mode==='replace'){Object.keys(localStorage).filter(k=>k.startsWith('n1_')).forEach(k=>localStorage.removeItem(k));for(const k in d)if(k.startsWith('n1_'))localStorage.setItem(k,d[k]);return}
+  for(const k in d){if(!k.startsWith('n1_'))continue;const cur=localStorage.getItem(k);if(cur==null){localStorage.setItem(k,d[k]);continue}if(BK_KEEP.has(k))continue;
+    try{localStorage.setItem(k,JSON.stringify(bkMergeVal(JSON.parse(cur),JSON.parse(d[k]))))}catch(e){}}}
+function bkImportFile(f){if(!f)return;f.text().then(t=>{const r=bkParse(t);if(!r.ok){alert(r.err);return}bkConfirm(r)})}
+function bkConfirm(r){const old=document.querySelector('.bksheet');if(old)old.remove();const el=document.createElement('div');el.className='ssheet bksheet show';el.setAttribute('role','dialog');el.setAttribute('aria-label','Restore backup');
+  const at=r.info.at?new Date(r.info.at):null;
+  el.innerHTML=`<div class="ssbg"></div><div class="sspanel"><div class="ssh"><b>Restore backup 復元</b><button class="hb icon" data-a="x" aria-label="Close">✕</button></div>
+   <p class="bkinfo">Backup from <b>${at&&!isNaN(at)?esc(at.toLocaleString()):'unknown date'}</b><br><span class="mut sm">${esc(r.info.v||'')} · ${r.info.keys} items · ${r.info.answered} answers</span></p>
+   <div class="bkopt"><button class="btn" data-a="merge"><b>Merge</b><small class="mut">Combine with this device: keeps the more-practised record of each card and mistake</small></button>
+   <button class="btn" data-a="replace"><b>Replace</b><small class="mut">Erase this device’s progress and use the backup</small></button>
+   <button class="btn ghost" data-a="x">Cancel</button></div></div>`;
+  document.body.appendChild(el);const close=()=>el.remove();
+  el.querySelectorAll('[data-a]').forEach(b=>b.onclick=()=>{const a=b.dataset.a;if(a==='x')return close();if(a==='replace'&&!confirm('Replace all progress on this device with the backup?'))return;bkApply(r.j,a);close();location.reload()});
+  el.querySelector('.ssbg').onclick=close;return el}
+function bkLastHTML(){const l=store.get('lastBackup','');if(!l)return 'Never backed up';const d=new Date(l);return 'Last backup '+d.toLocaleDateString(undefined,{year:'numeric',month:'short',day:'numeric'})}
+function bkAgeDays(){const l=store.get('lastBackup','');return l?Math.floor((Date.now()-new Date(l))/864e5):1e9}
+function bkNeedRemind(){const st=store.get('stats',{answered:0});if(!(st.answered>0)&&!Object.keys(store.get('srs',{})).length)return false;
+  if(bkAgeDays()<7)return false;const sn=store.get('bkSnooze',0);return !(sn&&Date.now()<sn)}
+function wireBackup(root=document){const x=root.querySelector('#bkx');if(!x)return;x.onclick=()=>bkExport().then(ok=>{if(ok){const l=root.querySelector('#bkl');if(l)l.textContent=bkLastHTML()}});
+  const i=root.querySelector('#bki');if(i)i.onchange=e=>{bkImportFile(e.target.files[0]);e.target.value=''}}
 function studyGuide(){app.innerHTML=`<div class="ph"><h1 class="pt">How to study 学習法</h1></div>
  <div class="card guidec"><h3>Why this works</h3><p><b>Active recall</b> — trying to pull the answer out of memory <i>before</i> you see it strengthens memory far more than re-reading. Every card asks you to produce something: a reading, a meaning, a word, the right kanji.</p>
  <p><b>Spaced repetition</b> — each card comes back just as you're about to forget it. Good answers push it further out (1d → 3d → 8d → 3 weeks…); Again brings it back today. A few minutes a day beats hours of cramming.</p>
@@ -1116,7 +1162,7 @@ function offlineRow(root){const box=root.querySelector('#aud');if(!box)return;
   paint()}
 
 window.addEventListener('hashchange',route);
-window.__n1q=Q;window.__sim=SIM;window.__simDiff=simDiff;window.__n1={kt:kanjiTypes,pick:smartPick,nav:()=>NAV,ss:()=>SS,state:()=>S,start:(ids)=>nav('quiz/play',()=>start(Q.filter(q=>ids.includes(q.id)),store.get("quizOpts",{}),false))};
+window.__n1q=Q;window.__sim=SIM;window.__simDiff=simDiff;window.__n1={bk:{collect:bkCollect,json:bkJSON,parse:bkParse,apply:bkApply,confirm:bkConfirm,remind:bkNeedRemind},kt:kanjiTypes,pick:smartPick,nav:()=>NAV,ss:()=>SS,state:()=>S,start:(ids)=>nav('quiz/play',()=>start(Q.filter(q=>ids.includes(q.id)),store.get("quizOpts",{}),false))};
 // ---- v51 swipe: ← next, → previous on Study and Quiz (play) screens. Ignores left-edge (system back), vertical scrolls, h-scrollable areas, inputs.
 const SWX=24,SWT=60;
 function hScrollable(t){for(let n=t;n&&n!==app&&n.nodeType===1;n=n.parentElement){const o=getComputedStyle(n).overflowX;if((o==='auto'||o==='scroll')&&n.scrollWidth>n.clientWidth+2)return true}return false}
