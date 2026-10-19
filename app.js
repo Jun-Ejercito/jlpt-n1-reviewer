@@ -1,6 +1,6 @@
 (function(){
 'use strict';
-const APP_VERSION='v112';
+const APP_VERSION='v113';
 const SECTIONS=['文字・語彙','文法','読解'];
 const SEC_INFO={'文字・語彙':{en:'Kanji & Vocabulary',glyph:'字'},'文法':{en:'Grammar',glyph:'文'},'読解':{en:'Reading',glyph:'読'}};
 const IC=(d,extra='')=>`<svg class="ico" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"${extra}>${d}</svg>`;
@@ -122,6 +122,7 @@ function progress(){
   <div class="card"><h3>Last 7 days</h3><div class="chart">${days.map(x=>`<div class="bar-c"><span class="bv">${x.n||''}</span><div class="bar" style="height:${x.n?Math.max(6,x.n*100/mx):2}%"></div><span class="bl">${x.l}</span></div>`).join('')}</div></div>
   <details class="card dsc"><summary><h3>Accuracy by section</h3></summary>${rows.map(r=>`<div class="cat"><div class="cat-h"><span>${esc(r.c)}</span><span class="mut">${r.a?`${pct(r.k,r.a)}% · ${r.k}/${r.a}`:'not tried'}</span></div><div class="hbar"><div style="width:${r.a?pct(r.k,r.a):0}%;background:${r.a&&r.k/r.a<.6?'var(--accent)':'var(--indigo)'}"></div></div></div>`).join('')}
    <p class="mut sm">Section stats are counted from this version onward; overall totals include earlier answers.</p></details>
+  ${paceHTML()}
   ${srsStatsHTML()}
   <button class="btn danger" id="reset">Reset all progress</button><p class="ver">App version ${APP_VERSION} · ${Q.length} questions · ${V.length} words · ${K.length} kanji</p>`;
   $('#reset').onclick=()=>{if(confirm('Reset ALL quiz, word, kanji and streak progress? This cannot be undone.')){['missed','stats','qAtt','vocabStatus','catStats','daily','kanjiViewed','last','srs','srsNew','srsLog','srsPri','srsNote','mnemo'].forEach(k=>localStorage.removeItem('n1_'+k));progress()}};
@@ -217,6 +218,28 @@ function questionHTML(q){
   return `<p class="q">${body}</p>${isReadingQ(q)?'<p class="qhint">Choose the correct reading of the underlined word</p>':''}`}
 function choiceHTML(q,k,answered){if(answered&&isUsageQ(q)&&q.choices_hl_w&&q.choices_hl_w[k])return hlHTML(q.choices_hl[k],q.choices_hl_w[k]);if(answered&&q.choices_w&&q.choices_w[k])return q.choices_w[k];if(isUsageQ(q)&&q.choices_hl&&q.choices_hl[k])return hlHTML(q.choices_hl[k],q.choices_hl_ruby&&q.choices_hl_ruby[k]);const r=q.choices_ruby&&q.choices_ruby[k];return furi&&r&&(answered||!isKanjiQ(q))?r:esc(q.choices[k])}
 function stepLabel(){const[st,n]=S.steps[S.si];return n>1?`Q${st+1}–${st+n}`:`Q${st+1}`}
+/* v113 reading pace: a timer per 読解 step (passage group or single passage); pauses while the app is hidden.
+   Targets are app heuristics (not official JLPT numbers): the whole 言語知識・読解 paper is 110 min (official), and prep guides
+   commonly budget ~1.5–2 min per short-passage question, a little more for long, integrated and info-retrieval passages. */
+const PACE_T=q=>/情報検索|information/.test(q.category)?180:/統合理解|integrated/.test(q.category)?150:q.passage_group?150:120;
+let PT=null,PTI=0;
+const ptNow=()=>PT?PT.acc+(PT.run?Date.now()-PT.run:0):0;
+document.addEventListener('visibilitychange',()=>{if(!PT)return;if(document.hidden){if(PT.run){PT.acc+=Date.now()-PT.run;PT.run=0}}else if(!PT.done&&!PT.run)PT.run=Date.now()});
+function ptStart(qs){clearInterval(PTI);PT=null;if(!qs.length||secOf(qs[0])!=='読解'||(S.past&&S.past[S.si]))return;
+  PT={si:S.si,sid:S.sid,acc:0,run:Date.now(),tgt:qs.reduce((a,q)=>a+PACE_T(q),0),n:qs.length,cat:qs[0].category,g:qs[0].passage_group||('q'+qs[0].id)};
+  const c=app.querySelector('.qcardq');if(c)c.insertAdjacentHTML('afterbegin',`<p class="ptimer mut sm" id="ptm" aria-live="off">⏱ <b>0:00</b> · target ${fmtT(PT.tgt)}</p>`);
+  PTI=setInterval(()=>{const e=document.getElementById('ptm');if(!e||!PT||PT.done){clearInterval(PTI);return}e.querySelector('b').textContent=fmtT(ptNow()/1000)},1000)}
+function ptFinish(){if(!PT||PT.done||PT.si!==S.si||PT.sid!==S.sid)return'';PT.done=1;clearInterval(PTI);const sec=Math.round(ptNow()/1000),r=sec/PT.tgt;
+  const L=store.get('pace',[]);L.push({d:dayKey(),n:PT.n,s:sec,t:PT.tgt,c:PT.cat,g:PT.g,ok:qsOk()});store.set('pace',L.slice(-200));
+  const e=document.getElementById('ptm');if(e)e.querySelector('b').textContent=fmtT(sec);
+  const v=r<=.6?['fast','Fast — make sure accuracy holds']:r<=1?['ok','On pace ✓']:r<=1.3?['slow',`A bit slow (+${fmtT(sec-PT.tgt)})`]:['slow',`Too slow (+${fmtT(sec-PT.tgt)}) — skim the questions first`];
+  return `<p class="pacefb ${v[0]}">⏱ ${fmtT(sec)} for ${PT.n} question${PT.n>1?'s':''} · target ${fmtT(PT.tgt)} · <b>${v[1]}</b></p>`}
+function qsOk(){const[st,n]=S.steps[S.si];let c=0;for(let j=0;j<n;j++)if(S.ans[j]!=null&&S.ans[j]===String(S.list[st+j].answer))c++;return c}
+function paceHTML(){const L=store.get('pace',[]);if(!L.length)return'';const h=L.slice(-14),W=300,Hh=110,bw=W/Math.max(h.length,7),mx=Math.max(1.6,...h.map(x=>x.s/x.t));
+  const last=L.slice(-10),avg=last.reduce((a,x)=>a+x.s/x.t,0)/last.length,acc=last.reduce((a,x)=>a+(x.ok||0),0),tq=last.reduce((a,x)=>a+x.n,0);
+  return `<div class="card pace"><h3>Reading pace 読解ペース</h3><p class="mut sm">Last ${last.length} passages: <b>${Math.round(avg*100)}%</b> of target time · ${acc}/${tq} correct</p>
+  <svg viewBox="0 0 ${W} ${Hh+14}" class="pchart" role="img" aria-label="Time used vs target per passage"><line x1="0" x2="${W}" y1="${Hh-Hh/mx}" y2="${Hh-Hh/mx}" class="ptl"/>${h.map((x,i)=>{const v=x.s/x.t,hh=Math.max(3,Hh*v/mx);return `<rect x="${i*bw+bw*.2}" y="${Hh-hh}" width="${bw*.6}" height="${hh}" rx="3" class="${v<=1?'pok':'pslow'}"><title>${fmtT(x.s)} / ${fmtT(x.t)}</title></rect>`}).join('')}<text x="${W}" y="${Hh-Hh/mx-4}" text-anchor="end" class="ptx">target</text></svg>
+  <p class="mut sm">Targets (app guide, not official): 2:00 per short-passage question, 2:30 per question for longer and integrated passages, 3:00 for information retrieval. The official 言語知識・読解 paper is 110 minutes. <a href="#mock">Timed full paper: Mock exam ›</a></p></div>`}
 function showQ(){S.ans={};const[st,n]=S.steps[S.si];S.i=st;const qs=S.list.slice(st,st+n),q0=qs[0];markSeen(qs);
   app.innerHTML=`<div class="qtop">${fmBtns()}<div class="qprog"><div style="width:${S.si*100/S.steps.length}%"></div></div><span class="mut sm">${S.si+1}/${S.steps.length}${n>1?` · ${stepLabel()}`:''}</span><button class="aa qend" id="qend" aria-label="End quiz" title="End quiz">✕</button>${aaBtn()}</div>
   ${n>1?`<div class="card qcardq gpass"><p class="qmeta">${esc(secOf(q0))} · ${esc(q0.category)} · ${n} questions${S.missedMode?' · review':''}</p>${passageHTML(q0,true)}${q0.reading_guide?'':techHTML(q0)}</div>`:''}
@@ -225,6 +248,7 @@ function showQ(){S.ans={};const[st,n]=S.steps[S.si];S.i=st;const qs=S.list.slice
   <div class="choices${isLongQ(q)?' usage long':''}">${corder(q).map(k=>`<button class="choice" data-k="${esc(k)}" data-j="${j}"><span class="ck">${esc(dk(q,k))}</span><span class="cv">${choiceHTML(q,k,false)}</span></button>`).join('')}</div><div class="fbw"></div></div>`).join('')}
   <div id="nxw"></div>`;
   app.querySelectorAll('.choice').forEach(b=>b.onclick=()=>answer(b.dataset.k,+b.dataset.j));
+  ptStart(qs);
 }
 function answer(k,j=0){
   if(S.ans[j]!=null)return;
@@ -265,7 +289,7 @@ function renderAnswered(j,anim){
   if(q.teacher)bindTeacher(box.querySelector('.tch'),q,ok?null:k);
   const done=Object.keys(S.ans).length>=n;
   if(done){$('.qprog div').style.width=`${(S.si+1)*100/S.steps.length}%`;
-    $('#nxw').innerHTML=`<div class="nextbar"><button class="btn primary big full" id="nx">${S.si+1<S.steps.length?'Next →':'See results'}</button></div>`;
+    $('#nxw').innerHTML=ptFinish()+`<div class="nextbar"><button class="btn primary big full" id="nx">${S.si+1<S.steps.length?'Next →':'See results'}</button></div>`;
     $('#nx').onclick=()=>{if(audio)audio.pause();S.si++;S.si<S.steps.length?(showQ(),window.scrollTo(0,0)):results()}}
   else if(n>1)$('#nxw').innerHTML=`<p class="mut sm gleft">${n-Object.keys(S.ans).length} more question(s) in this passage ↑↓</p>`;
   if(anim){const nxt=done?$('#nxw'):box.querySelector('.fbw');nxt.scrollIntoView({behavior:reduced()?'auto':'smooth',block:'nearest'})}
@@ -1229,7 +1253,7 @@ function offlineRow(root){const box=root.querySelector('#aud');if(!box)return;
   paint()}
 
 window.addEventListener('hashchange',route);
-window.__n1q=Q;window.__sim=SIM;window.__simDiff=simDiff;window.__n1={plan:{next:nextJLPT,exam:examDate,left:daysLeft,day:dayPlan},dr:{rank:drRank,pick:drPick,recall:drRecall,spots:drSpots},bk:{collect:bkCollect,json:bkJSON,parse:bkParse,apply:bkApply,confirm:bkConfirm,remind:bkNeedRemind},kt:kanjiTypes,pick:smartPick,nav:()=>NAV,ss:()=>SS,state:()=>S,start:(ids)=>nav('quiz/play',()=>start(Q.filter(q=>ids.includes(q.id)),store.get("quizOpts",{}),false))};
+window.__n1q=Q;window.__sim=SIM;window.__simDiff=simDiff;window.__n1={pace:{tgt:PACE_T,now:()=>PT&&{...PT,ms:ptNow()}},plan:{next:nextJLPT,exam:examDate,left:daysLeft,day:dayPlan},dr:{rank:drRank,pick:drPick,recall:drRecall,spots:drSpots},bk:{collect:bkCollect,json:bkJSON,parse:bkParse,apply:bkApply,confirm:bkConfirm,remind:bkNeedRemind},kt:kanjiTypes,pick:smartPick,nav:()=>NAV,ss:()=>SS,state:()=>S,start:(ids)=>nav('quiz/play',()=>start(Q.filter(q=>ids.includes(q.id)),store.get("quizOpts",{}),false))};
 // ---- v51 swipe: ← next, → previous on Study and Quiz (play) screens. Ignores left-edge (system back), vertical scrolls, h-scrollable areas, inputs.
 const SWX=24,SWT=60;
 function hScrollable(t){for(let n=t;n&&n!==app&&n.nodeType===1;n=n.parentElement){const o=getComputedStyle(n).overflowX;if((o==='auto'||o==='scroll')&&n.scrollWidth>n.clientWidth+2)return true}return false}

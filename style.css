@@ -1100,3 +1100,7 @@ a.drow,a.drow *{text-decoration:none;color:inherit}a.drow .t-bad{color:var(--acc
 .pli.ok .plb i{background:var(--ok,#4a9)}
 .plx{margin:0}
 .sdate{font:inherit;color:var(--ink);background:var(--bg2);border:1px solid var(--line);border-radius:10px;padding:6px 8px;color-scheme:light dark}
+/* v113 reading pace */
+.ptimer{margin:0 0 6px;font-variant-numeric:tabular-nums}.ptimer b{font-weight:600;color:var(--ink)}
+.pacefb{margin:0 0 10px;font-size:.88em;color:var(--mut);text-align:center}.pacefb.ok b{color:var(--ok,#4a9)}.pacefb.slow b{color:var(--accent)}
+.pchart{width:100%;height:auto;margin:6px 0}.pchart .pok{fill:var(--ok,#4a9);opacity:.75}.pchart .pslow{fill:var(--accent);opacity:.8}.pchart .ptl{stroke:var(--mut);stroke-dasharray:4 4;stroke-width:1}.pchart .ptx{fill:var(--mut);font-size:10px}
