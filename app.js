@@ -1,6 +1,6 @@
 (function(){
 'use strict';
-const APP_VERSION='v111';
+const APP_VERSION='v112';
 const SECTIONS=['文字・語彙','文法','読解'];
 const SEC_INFO={'文字・語彙':{en:'Kanji & Vocabulary',glyph:'字'},'文法':{en:'Grammar',glyph:'文'},'読解':{en:'Reading',glyph:'読'}};
 const IC=(d,extra='')=>`<svg class="ico" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"${extra}>${d}</svg>`;
@@ -601,6 +601,7 @@ function openSettings(){if(sheet)return;const qo=store.get('quizOpts',{}),cfg=sr
    <label class="srow"><span>Focus mode <small class="mut">hide bars in quiz &amp; study</small></span><input type="checkbox" id="sfm" ${store.get('focus',false)?'checked':''}></label>
    <div class="srow"><span>Study session size</span>${seg3('sss',[[10,'10'],[20,'20'],[30,'30'],[50,'50']],cfg.ss)}</div>
    <div class="srow sraud"><span>Offline audio <small class="mut">teacher &amp; question audio</small></span><div id="aud"><span class="mut sm">…</span></div></div>
+   <div class="srow"><span>JLPT exam date <small class="mut">${esc(fmtExam(examDate()))}${store.get('examDate','')?'':' · next JLPT'}</small></span><input type="date" id="sed" class="sdate" value="${examDate()}" min="${dayKey()}"></div>
    <div class="srow sbk"><span>Backup &amp; restore <small class="mut" id="bkl">${bkLastHTML()}</small></span><div class="bkbtns"><button class="btn sm" id="bkx">Export</button><label class="btn sm">Import<input type="file" id="bki" accept="application/json,.json" hidden></label></div></div>
    <p class="mut sm scred">Stroke order data: <a href="https://kanjivg.tagaini.net" target="_blank" rel="noopener">KanjiVG</a> © Ulrich Apel, <a href="https://creativecommons.org/licenses/by-sa/3.0/" target="_blank" rel="noopener">CC BY-SA 3.0</a></p><div class="slinks2"><a href="#studyguide">How to study →</a><a href="#progress">Progress →</a></div></div>`;
   document.body.appendChild(sheet);requestAnimationFrame(()=>sheet&&sheet.classList.add('show'));ovOpen(closeSheetRaw);
@@ -611,7 +612,7 @@ function openSettings(){if(sheet)return;const qo=store.get('quizOpts',{}),cfg=sr
   segw('sts',v=>{store.set('ts',v);document.documentElement.dataset.ts=v;document.querySelectorAll('.aats i').forEach(i=>i.textContent=v.toUpperCase())});
   segw('sss',v=>{store.set('srsCfg',{ss:+v})});
   q('#ssc').onchange=e=>store.set('quizOpts',{...store.get('quizOpts',{}),sc:e.target.checked});
-  q('#sfm').onchange=e=>{store.set('focus',e.target.checked);applyFocus()};offlineRow(sheet);wireBackup(sheet)}
+  q('#sfm').onchange=e=>{store.set('focus',e.target.checked);applyFocus()};offlineRow(sheet);wireBackup(sheet);q('#sed').onchange=e=>{const v=e.target.value;store.set('examDate',v&&v>=dayKey()?v:'');const sm=e.target.previousElementSibling.querySelector('small');if(sm)sm.textContent=fmtExam(examDate())+(store.get('examDate','')?'':' · next JLPT');if(cur==='today')todayView()}}
 function applyFocus(){const on=store.get('focus',false)&&/^(quiz\/play|study\/)/.test(cur||'');document.documentElement.classList.toggle('focusm',on);document.querySelectorAll('.fmt').forEach(b=>b.setAttribute('aria-pressed',store.get('focus',false)))}
 const fmBtns=()=>`<button class="aa fonly fbk" type="button" aria-label="Back">←</button><button class="aa fmt" type="button" aria-pressed="${store.get('focus',false)}" aria-label="Focus mode" title="Focus mode">⛶</button>`;
 document.addEventListener('click',e=>{if(e.target.closest&&e.target.closest('.fbk')){goBack();return}const b=e.target.closest&&e.target.closest('.fmt');if(!b)return;store.set('focus',!store.get('focus',false));applyFocus()});
@@ -949,7 +950,7 @@ const qSnip=(q,n=46)=>{const t=secOf(q)==='読解'?q.question:(q.complete_senten
 function mistDB(){let m=store.get('mist',null);if(!m){m={};store.get('missed',[]).forEach(id=>{if(QBY[id])m[id]={n:1,l:0,s:0,t:Date.now()}})}
   let ch=!store.get('mist',null);for(const id in m){const e=m[id];if(e.d==null){e.s=Math.min(e.s||0,2);e.d=dn();ch=true}}if(ch)store.set('mist',m);return m}
 const mistDue=()=>{const m=mistDB(),t=dn();return Object.keys(m).filter(id=>QBY[id]&&m[id].d<=t).map(id=>QBY[id])};
-function mistRec(q,ok){const m=mistDB(),e=m[q.id];
+function mistRec(q,ok){const m=mistDB(),e=m[q.id];if(e&&e.d<=dn())dlog('mr');
   if(ok){if(!e)return;e.l=1;e.t=Date.now();if(e.d<=dn()){e.s=(e.s||0)+1;if(e.s>=RIV.length){delete m[q.id];store.set('mist',m);store.set('missed',store.get('missed',[]).filter(x=>x!==q.id));toast('Mastered · removed from Mistakes');return}e.d=dn()+RIV[e.s]}}
   else m[q.id]={n:(e?e.n:0)+1,l:0,s:0,t:Date.now(),d:dn()+RIV[0]};store.set('mist',m)}
 function mistRemove(id){const m=mistDB();delete m[id];store.set('mist',m);store.set('missed',store.get('missed',[]).filter(x=>x!==+id))}
@@ -970,7 +971,7 @@ function mistakesView(){const m=mistDB(),f=store.get('mistF','');
   app.querySelectorAll('.mrm').forEach(b=>b.onclick=e=>{e.preventDefault();const id=b.dataset.id;mistRemove(id);mistakesView();toast('Removed from Mistakes','Undo',()=>{const m=mistDB();m[id]={n:1,l:0,s:0,t:Date.now(),d:dn()+1};store.set('mist',m);if(cur==='mistakes')mistakesView()})})}
 // ---- v84 recall cards: a wrong choice schedules a mini meaning card for that distractor on the 1/3/7-day schedule
 /* v111 weak-point drills: per-question [answered, correct] in n1_qRes (older history estimated from qAtt and the Mistakes count) */
-function qResAdd(q,ok){const r=store.get('qRes',{}),e=r[q.id]||qResOld(q.id);e[0]++;if(ok)e[1]++;r[q.id]=e;store.set('qRes',r)}
+function qResAdd(q,ok){if((store.get('qAtt',{})[q.id]||0)<=1)dlog('nq');const r=store.get('qRes',{}),e=r[q.id]||qResOld(q.id);e[0]++;if(ok)e[1]++;r[q.id]=e;store.set('qRes',r)}
 function qResOld(id){const a=store.get('qAtt',{})[id]||0,m=(store.get('mist',{})[id]||{}).n||0;return [a,Math.max(0,a-m)]}
 function qResAll(){const r=store.get('qRes',{}),a=store.get('qAtt',{}),m=store.get('mist',{}),o={};for(const id in a){o[id]=r[id]?r[id].slice():[a[id],Math.max(0,a[id]-((m[id]||{}).n||0))]}for(const id in r)if(!o[id])o[id]=r[id].slice();return o}
 const DR_T={g:'Grammar',s:'Look-alike',c:'Category',x:'Section'};
@@ -1109,16 +1110,33 @@ function reviewQ(id){const q=QBY[+id];if(!q){app.innerHTML='<div class="card">Qu
 /* ---- Today: reviews → quiz (10, 60% least-tried) → new cards ---- */
 function tdState(){let t=store.get('today',null);if(!t||t.d!==dayKey())t={d:dayKey(),step:0,r:{rev:0,quiz:null,nw:0}};return t}
 const tdSave=t=>store.set('today',t);
+/* v112 exam countdown + daily plan. Default exam = next JLPT (first Sunday of July / December). */
+function dlog(k,n=1){const L=store.get('dayLog',{}),d=dayKey();L[d]=L[d]||{};L[d][k]=(L[d][k]||0)+n;const ks=Object.keys(L).sort();while(ks.length>120)delete L[ks.shift()];store.set('dayLog',L)}
+function firstSunday(y,m){const d=new Date(y,m,1);d.setDate(1+(7-d.getDay())%7);return d}
+function nextJLPT(now=new Date()){const t=new Date(now.getFullYear(),now.getMonth(),now.getDate());for(let y=t.getFullYear();;y++)for(const m of [6,11]){const d=firstSunday(y,m);if(d>=t)return dayKey(d)}}
+const examDate=()=>{const e=store.get('examDate','');return /^\d{4}-\d{2}-\d{2}$/.test(e)&&e>=dayKey()?e:nextJLPT()};
+function daysLeft(){const [y,m,d]=examDate().split('-').map(Number),t=new Date(),a=new Date(t.getFullYear(),t.getMonth(),t.getDate());return Math.round((new Date(y,m-1,d)-a)/864e5)}
+// plan: unseen questions and unseen cards spread over the days left, keeping the final week for review; reviews = everything due today
+function dayPlan(){const D=daysLeft(),Dn=Math.max(1,D>14?D-7:D),att=store.get('qAtt',{}),db=srsDB(),t=dn(),L=store.get('dayLog',{})[dayKey()]||{},lg=store.get('srsLog',{})[t]||{r:0,n:0};
+  const unseenQ=Q.filter(q=>!att[q.id]).length,unseenC=V.filter(v=>!db['w'+v.id]).length+K.filter(k=>!db['k'+k.kanji]).length;
+  const dueC=Object.keys(db).filter(k=>db[k].d<=t).length,dueM=mistDue().length,dueR=rcDue().length;
+  const doneQ=L.nq||0,doneC=lg.n||0,doneR=(lg.r||0)+(L.mr||0);
+  const tQ=unseenQ+doneQ?Math.ceil((unseenQ+doneQ)/Dn):0,tC=unseenC+doneC?Math.ceil((unseenC+doneC)/Dn):0,tR=doneR+dueC+dueM;
+  return {D,date:examDate(),unseenQ,unseenC,dueR,rows:[['New questions','新しい問題',doneQ,tQ],['Reviews','復習',doneR,tR],['New cards','新しいカード',doneC,tC]]}}
+function fmtExam(d){const [y,m,dd]=d.split('-').map(Number);return new Date(y,m-1,dd).toLocaleDateString(undefined,{day:'numeric',month:'short',year:'numeric'})}
+function planHTML(){const p=dayPlan();return `<div class="card plan"><div class="plh"><b class="pld">${p.D<=0?'Exam day':p.D}</b><span>${p.D<=0?'がんばって！':`day${p.D===1?'':'s'} left`}<small class="mut">JLPT N1 · ${esc(fmtExam(p.date))}</small></span></div>
+  <div class="plr">${p.rows.map(([en,ja,d,t])=>{const ok=d>=t;return `<div class="pli${ok?' ok':''}"><span class="plk">${ok?'✓':''}</span><span class="plt">${en} <small class="mut ja">${ja}</small></span><span class="pln">${d}<small class="mut"> / ${t}</small></span><span class="plb"><i style="width:${t?Math.min(100,d*100/t):100}%"></i></span></div>`}).join('')}</div>
+  <p class="mut sm plx">${p.unseenQ} questions and ${p.unseenC} cards left, spread over ${p.D>14?'the days before the final review week':'the days left'}.</p></div>`}
 const TD_STEPS=[['Reviews','復習'],['Quiz','問題'],['New cards','新しい']];
 function tdDots(step){return `<span class="tdots" aria-label="Step ${Math.min(step+1,3)} of 3">${[0,1,2].map(i=>`<i class="${i<step?'done':i===step?'on':''}"></i>`).join('')}</span>`}
 function todayBtn(){const t=tdState(),q=buildQueue('mixed'),nw=q.items.length-q.due;
   const lbl=t.step>=3?'Today complete ✓':t.step===0?'Start today':'Continue today';
-  return `<a class="btn primary todayb" href="#today"><span class="tdl"><b>▶ ${lbl}</b><small>${q.due} review${q.due===1?'':'s'} · 10 quiz · ${nw} new</small></span>${tdDots(t.step)}</a>`}
+  return `<a class="btn primary todayb" href="#today"><span class="tdl"><b>▶ ${lbl}</b><small>${q.due} review${q.due===1?'':'s'} · 10 quiz · ${nw} new · ${Math.max(0,daysLeft())}d to N1</small></span>${tdDots(t.step)}</a>`}
 function todayView(){const t=tdState(),q=buildQueue('mixed'),nw=q.items.length-q.due;
   if(t.step===0&&q.due===0){t.step=1;tdSave(t)}
   const cnt=[`${q.due} due`,(()=>{const k=mistDue().length;return k?`10 questions · ${Math.min(k,10)} mistake${k>1?'s':''} due`:'10 questions'})(),`${nw} cards`],res=[t.r.rev?`${t.r.rev} reviewed`:'',t.r.quiz?`${t.r.quiz.s}/${t.r.quiz.n} correct`:'',t.r.nw?`${t.r.nw} learned`:''];
   const sum=t.step>=3;
-  app.innerHTML=`<div class="ph"><h1 class="pt">Today 今日</h1>${tdDots(t.step)}</div>
+  app.innerHTML=`<div class="ph"><h1 class="pt">Today 今日</h1>${tdDots(t.step)}</div>${planHTML()}
   <div class="card tdsteps">${TD_STEPS.map(([en,ja],i)=>`<div class="tds${i<t.step?' done':i===t.step?' on':''}"><span class="tdn">${i<t.step?'✓':i+1}</span><span class="tdt"><b>${en}</b> <span class="mut ja">${ja}</span><small class="mut">${i<t.step?(res[i]||(i===0&&q.due===0?'none due':'skipped')):cnt[i]}</small></span></div>`).join('')}</div>
   ${sum?`<div class="card res tdsum"><h2>お疲れさま · Today's summary</h2><div class="totals">${[['Reviewed',t.r.rev],['Quiz',t.r.quiz?`${t.r.quiz.s}/${t.r.quiz.n}`:'—'],['New learned',t.r.nw],['Streak',streak()+'🔥']].map(([l,v])=>`<div class="tot"><b>${v}</b><span>${l}</span></div>`).join('')}</div>
     <div class="row center">${nw?`<button class="btn primary" id="tdk">Keep going · ${Math.min(nw,srsCfg().ss)} new</button>`:''}<a class="btn ghost" href="#home">Home</a></div></div>`
@@ -1211,7 +1229,7 @@ function offlineRow(root){const box=root.querySelector('#aud');if(!box)return;
   paint()}
 
 window.addEventListener('hashchange',route);
-window.__n1q=Q;window.__sim=SIM;window.__simDiff=simDiff;window.__n1={dr:{rank:drRank,pick:drPick,recall:drRecall,spots:drSpots},bk:{collect:bkCollect,json:bkJSON,parse:bkParse,apply:bkApply,confirm:bkConfirm,remind:bkNeedRemind},kt:kanjiTypes,pick:smartPick,nav:()=>NAV,ss:()=>SS,state:()=>S,start:(ids)=>nav('quiz/play',()=>start(Q.filter(q=>ids.includes(q.id)),store.get("quizOpts",{}),false))};
+window.__n1q=Q;window.__sim=SIM;window.__simDiff=simDiff;window.__n1={plan:{next:nextJLPT,exam:examDate,left:daysLeft,day:dayPlan},dr:{rank:drRank,pick:drPick,recall:drRecall,spots:drSpots},bk:{collect:bkCollect,json:bkJSON,parse:bkParse,apply:bkApply,confirm:bkConfirm,remind:bkNeedRemind},kt:kanjiTypes,pick:smartPick,nav:()=>NAV,ss:()=>SS,state:()=>S,start:(ids)=>nav('quiz/play',()=>start(Q.filter(q=>ids.includes(q.id)),store.get("quizOpts",{}),false))};
 // ---- v51 swipe: ← next, → previous on Study and Quiz (play) screens. Ignores left-edge (system back), vertical scrolls, h-scrollable areas, inputs.
 const SWX=24,SWT=60;
 function hScrollable(t){for(let n=t;n&&n!==app&&n.nodeType===1;n=n.parentElement){const o=getComputedStyle(n).overflowX;if((o==='auto'||o==='scroll')&&n.scrollWidth>n.clientWidth+2)return true}return false}

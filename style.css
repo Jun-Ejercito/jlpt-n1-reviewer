@@ -1089,3 +1089,14 @@ button.mpc{font:inherit;color:inherit;cursor:pointer}
 a.drow,a.drow *{text-decoration:none;color:inherit}a.drow .t-bad{color:var(--accent)}
 .drcard .totals{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
 .drcard>.mut.sm:first-child{margin:0}
+/* v112 exam countdown + daily plan */
+.plan{display:flex;flex-direction:column;gap:12px}
+.plh{display:flex;align-items:baseline;gap:10px}.pld{font-family:var(--serif);font-size:2.1em;line-height:1}.plh span{display:flex;flex-direction:column}.plh small{font-size:.78em}
+.plr{display:flex;flex-direction:column;gap:10px}
+.pli{display:grid;grid-template-columns:18px 1fr auto;align-items:center;column-gap:8px;row-gap:5px}
+.plk{color:var(--ok,#4a9);font-weight:700;text-align:center}
+.pln{font-variant-numeric:tabular-nums}
+.plb{grid-column:2/4;height:4px;border-radius:4px;background:var(--bg2);overflow:hidden}.plb i{display:block;height:100%;background:var(--accent);border-radius:4px}
+.pli.ok .plb i{background:var(--ok,#4a9)}
+.plx{margin:0}
+.sdate{font:inherit;color:var(--ink);background:var(--bg2);border:1px solid var(--line);border-radius:10px;padding:6px 8px;color-scheme:light dark}
