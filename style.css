@@ -1104,3 +1104,9 @@ a.drow,a.drow *{text-decoration:none;color:inherit}a.drow .t-bad{color:var(--acc
 .ptimer{margin:0 0 6px;font-variant-numeric:tabular-nums}.ptimer b{font-weight:600;color:var(--ink)}
 .pacefb{margin:0 0 10px;font-size:.88em;color:var(--mut);text-align:center}.pacefb.ok b{color:var(--ok,#4a9)}.pacefb.slow b{color:var(--accent)}
 .pchart{width:100%;height:auto;margin:6px 0}.pchart .pok{fill:var(--ok,#4a9);opacity:.75}.pchart .pslow{fill:var(--accent);opacity:.8}.pchart .ptl{stroke:var(--mut);stroke-dasharray:4 4;stroke-width:1}.pchart .ptx{fill:var(--mut);font-size:10px}
+/* v114 daily goal line */
+.gline{display:flex;align-items:center;flex-wrap:wrap;gap:10px;padding:6px 4px;margin:0 0 var(--s3,12px);text-decoration:none;color:inherit;font-size:.9em}
+.gline .ring{flex:none}.gline .ring-t{display:none}
+.gtx{flex:1}.gtx b{font-variant-numeric:tabular-nums}.gsk{white-space:nowrap}
+.gline.met .ring-fg{stroke:var(--ok,#4a9)!important}
+.gwarn{flex-basis:100%;font-size:.86em;color:var(--accent);padding-left:40px}

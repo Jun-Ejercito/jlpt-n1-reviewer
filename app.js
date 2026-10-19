@@ -1,6 +1,6 @@
 (function(){
 'use strict';
-const APP_VERSION='v113';
+const APP_VERSION='v114';
 const SECTIONS=['文字・語彙','文法','読解'];
 const SEC_INFO={'文字・語彙':{en:'Kanji & Vocabulary',glyph:'字'},'文法':{en:'Grammar',glyph:'文'},'読解':{en:'Reading',glyph:'読'}};
 const IC=(d,extra='')=>`<svg class="ico" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"${extra}>${d}</svg>`;
@@ -55,6 +55,19 @@ function logActivity(n=1){const d=store.get('daily',{});d[dayKey()]=(d[dayKey()]
 function streak(){const d=store.get('daily',{});let s=0;const t=new Date();
   if(!(d[dayKey(t)]>0))t.setDate(t.getDate()-1);
   while(d[dayKey(t)]>0){s++;t.setDate(t.getDate()-1)}return s}
+/* v114 daily minutes goal + streak: active study time counts only while the app is visible and you touched/typed/scrolled in the last 90 s */
+const GM_IDLE=90000;let gmLast=Date.now();
+['pointerdown','keydown','touchstart','wheel','scroll'].forEach(e=>window.addEventListener(e,()=>{gmLast=Date.now()},{passive:true,capture:true}));
+const goalMin=()=>store.get('goalMin',20);
+function gmAdd(sec){const m=store.get('mins',{}),d=dayKey(),was=(m[d]||0)/60;m[d]=(m[d]||0)+sec;const ks=Object.keys(m).sort();while(ks.length>400)delete m[ks.shift()];store.set('mins',m);
+  if(was<goalMin()&&m[d]/60>=goalMin()&&!document.hidden)toast(`Daily goal reached · ${goalMin()} min 🎉`)}
+function gmTick(){if(!document.hidden&&Date.now()-gmLast<GM_IDLE)gmAdd(5)}
+setInterval(gmTick,5000);
+const minsOn=(d=new Date())=>Math.floor((store.get('mins',{})[dayKey(d)]||0)/60);
+function goalStreak(){const m=store.get('mins',{}),g=goalMin()*60,t=new Date();let s=0;if(!((m[dayKey(t)]||0)>=g))t.setDate(t.getDate()-1);while((m[dayKey(t)]||0)>=g){s++;t.setDate(t.getDate()-1)}return s}
+function goalLine(h=new Date().getHours()){const g=goalMin(),n=minsOn(),sk=goalStreak(),met=n>=g,left=g-n;
+  const risk=!met&&h>=19?`<span class="gwarn">${sk?`Streak at risk · ${left} min to go`:`${left} min to reach today’s goal`}</span>`:'';
+  return `<a class="gline${met?' met':''}" href="#progress" aria-label="Study time today ${n} of ${g} minutes, ${sk} day streak">${ring(g?n*100/g:0,'','',30)}<span class="gtx"><b>${n}</b><small class="mut"> / ${g} min today</small></span><span class="gsk">🔥 ${sk}<small class="mut"> day${sk===1?'':'s'}</small></span>${risk}</a>`}
 function ring(p,label,sub,size=96,color='var(--accent)'){const r=40,C=2*Math.PI*r,v=Math.max(0,Math.min(100,p));
   return `<div class="ring" style="width:${size}px;height:${size}px"><svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="${r}" class="ring-bg"/><circle cx="50" cy="50" r="${r}" class="ring-fg" style="stroke:${color};stroke-dasharray:${C};stroke-dashoffset:${C*(1-v/100)}"/></svg><div class="ring-t"><b>${label}</b>${sub?`<small>${sub}</small>`:''}</div></div>`}
 
@@ -69,6 +82,7 @@ function home(){
   const sk=streak(),acc=pct(st.correct,st.answered);
   app.innerHTML=`<p class="hgreet mut">${dateJa} · ${greet}</p>
   ${todayBtn()}
+  ${goalLine()}
   ${bkNeedRemind()?`<div class="bkrem" id="bkrem"><span>${bkAgeDays()>=1e8?'No backup yet':'No backup for '+bkAgeDays()+' days'}</span><button class="lnk" id="bkgo">Back up</button><button class="lnk mut" id="bkno" aria-label="Remind me later">Later</button></div>`:''}
   <nav class="hsc">${[['#mistakes','✕','Mistakes',Object.keys(mistDB()).filter(id=>QBY[id]).length||''],['#gpairs','文','Grammar pairs',''],['#mock','模','Mock exam',''],['#search','<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/></svg>','Search','']].map(([h,i,l,n])=>`<a href="${h}" class="hsl"><span class="hsi ja">${i}</span><span>${l}</span>${n?`<small class="mut">${n}</small>`:''}</a>`).join('')}</nav>
   <details class="hsec"><summary>Study details 学習</summary>${todayCard(buildQueue('mixed'))}</details>
@@ -625,6 +639,7 @@ function openSettings(){if(sheet)return;const qo=store.get('quizOpts',{}),cfg=sr
    <label class="srow"><span>Focus mode <small class="mut">hide bars in quiz &amp; study</small></span><input type="checkbox" id="sfm" ${store.get('focus',false)?'checked':''}></label>
    <div class="srow"><span>Study session size</span>${seg3('sss',[[10,'10'],[20,'20'],[30,'30'],[50,'50']],cfg.ss)}</div>
    <div class="srow sraud"><span>Offline audio <small class="mut">teacher &amp; question audio</small></span><div id="aud"><span class="mut sm">…</span></div></div>
+   <div class="srow"><span>Daily goal <small class="mut">active study minutes</small></span>${seg3('sgm',[[10,'10'],[20,'20'],[30,'30'],[45,'45'],[60,'60']],goalMin())}</div>
    <div class="srow"><span>JLPT exam date <small class="mut">${esc(fmtExam(examDate()))}${store.get('examDate','')?'':' · next JLPT'}</small></span><input type="date" id="sed" class="sdate" value="${examDate()}" min="${dayKey()}"></div>
    <div class="srow sbk"><span>Backup &amp; restore <small class="mut" id="bkl">${bkLastHTML()}</small></span><div class="bkbtns"><button class="btn sm" id="bkx">Export</button><label class="btn sm">Import<input type="file" id="bki" accept="application/json,.json" hidden></label></div></div>
    <p class="mut sm scred">Stroke order data: <a href="https://kanjivg.tagaini.net" target="_blank" rel="noopener">KanjiVG</a> © Ulrich Apel, <a href="https://creativecommons.org/licenses/by-sa/3.0/" target="_blank" rel="noopener">CC BY-SA 3.0</a></p><div class="slinks2"><a href="#studyguide">How to study →</a><a href="#progress">Progress →</a></div></div>`;
@@ -634,7 +649,7 @@ function openSettings(){if(sheet)return;const qo=store.get('quizOpts',{}),cfg=sr
   const segw=(id,fn)=>q('#'+id).querySelectorAll('button').forEach(b=>b.onclick=()=>{q('#'+id).querySelectorAll('button').forEach(x=>x.classList.toggle('on',x===b));fn(b.dataset.v)});
   segw('sth',v=>{store.set('theme',v);applyTheme()});
   segw('sts',v=>{store.set('ts',v);document.documentElement.dataset.ts=v;document.querySelectorAll('.aats i').forEach(i=>i.textContent=v.toUpperCase())});
-  segw('sss',v=>{store.set('srsCfg',{ss:+v})});
+  segw('sss',v=>{store.set('srsCfg',{ss:+v})});segw('sgm',v=>{store.set('goalMin',+v);if(cur==='home')home()});
   q('#ssc').onchange=e=>store.set('quizOpts',{...store.get('quizOpts',{}),sc:e.target.checked});
   q('#sfm').onchange=e=>{store.set('focus',e.target.checked);applyFocus()};offlineRow(sheet);wireBackup(sheet);q('#sed').onchange=e=>{const v=e.target.value;store.set('examDate',v&&v>=dayKey()?v:'');const sm=e.target.previousElementSibling.querySelector('small');if(sm)sm.textContent=fmtExam(examDate())+(store.get('examDate','')?'':' · next JLPT');if(cur==='today')todayView()}}
 function applyFocus(){const on=store.get('focus',false)&&/^(quiz\/play|study\/)/.test(cur||'');document.documentElement.classList.toggle('focusm',on);document.querySelectorAll('.fmt').forEach(b=>b.setAttribute('aria-pressed',store.get('focus',false)))}
@@ -1253,7 +1268,7 @@ function offlineRow(root){const box=root.querySelector('#aud');if(!box)return;
   paint()}
 
 window.addEventListener('hashchange',route);
-window.__n1q=Q;window.__sim=SIM;window.__simDiff=simDiff;window.__n1={pace:{tgt:PACE_T,now:()=>PT&&{...PT,ms:ptNow()}},plan:{next:nextJLPT,exam:examDate,left:daysLeft,day:dayPlan},dr:{rank:drRank,pick:drPick,recall:drRecall,spots:drSpots},bk:{collect:bkCollect,json:bkJSON,parse:bkParse,apply:bkApply,confirm:bkConfirm,remind:bkNeedRemind},kt:kanjiTypes,pick:smartPick,nav:()=>NAV,ss:()=>SS,state:()=>S,start:(ids)=>nav('quiz/play',()=>start(Q.filter(q=>ids.includes(q.id)),store.get("quizOpts",{}),false))};
+window.__n1q=Q;window.__sim=SIM;window.__simDiff=simDiff;window.__n1={goal:{add:gmAdd,tick:gmTick,line:goalLine,streak:goalStreak,mins:minsOn,idle:()=>gmLast},pace:{tgt:PACE_T,now:()=>PT&&{...PT,ms:ptNow()}},plan:{next:nextJLPT,exam:examDate,left:daysLeft,day:dayPlan},dr:{rank:drRank,pick:drPick,recall:drRecall,spots:drSpots},bk:{collect:bkCollect,json:bkJSON,parse:bkParse,apply:bkApply,confirm:bkConfirm,remind:bkNeedRemind},kt:kanjiTypes,pick:smartPick,nav:()=>NAV,ss:()=>SS,state:()=>S,start:(ids)=>nav('quiz/play',()=>start(Q.filter(q=>ids.includes(q.id)),store.get("quizOpts",{}),false))};
 // ---- v51 swipe: ← next, → previous on Study and Quiz (play) screens. Ignores left-edge (system back), vertical scrolls, h-scrollable areas, inputs.
 const SWX=24,SWT=60;
 function hScrollable(t){for(let n=t;n&&n!==app&&n.nodeType===1;n=n.parentElement){const o=getComputedStyle(n).overflowX;if((o==='auto'||o==='scroll')&&n.scrollWidth>n.clientWidth+2)return true}return false}
