@@ -1,6 +1,6 @@
 (function(){
 'use strict';
-const APP_VERSION='v115';
+const APP_VERSION='v116';
 const SECTIONS=['文字・語彙','文法','読解'];
 const SEC_INFO={'文字・語彙':{en:'Kanji & Vocabulary',glyph:'字'},'文法':{en:'Grammar',glyph:'文'},'読解':{en:'Reading',glyph:'読'}};
 const IC=(d,extra='')=>`<svg class="ico" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"${extra}>${d}</svg>`;
@@ -291,13 +291,13 @@ function renderAnswered(j,anim){
   ${q.teacher?teacherHTML(q,ok?null:k):''}
   <details class="more"><summary><span class="lbl">More</span><small class="mut">sentence · note · other choices · example</small></summary>
   <p class="ja sent">${sent}</p><p class="mut sm en">${esc(q.complete_sentence_en)}</p>
-  ${ex?`<p class="anote">${esc(rmap(q,stripW(ex.answer_note,q.answer_word)))}</p>
+  ${ex?`<p class="anote">${furiText(rmap(q,stripW(ex.answer_note,q.answer_word)))}</p>
    <details class="others dsc${isLongQ(q)?' usage':''}"><summary><span class="lbl">Other choices (${ex.others.length})</span></summary>${ex.others.slice().sort((a,b)=>corder(q).indexOf(String(a.key))-corder(q).indexOf(String(b.key))).map(o=>{const cn=(q.choice_notes||{})[o.key]||null;
      const fake=cn?/not a real word|wrong reading|does not connect|not natural|not a (common|natural|correct)/.test(cn.note)&&!cn.example_ja:o.fake;
-     const mean=stripW(cn?(cn.meaning_en&&cn.meaning_en.trim()!==String(q.choices[o.key]).trim()?cn.meaning_en:''):(o.form?o.form+' ':'')+o.note,q.choices[o.key],cn&&cn.reading), form=cn&&cn.form?`<span class="of">${esc(cn.form)}</span> `:'';
-     return `<div class="orow${fake?' fake':''}"><span class="badge">${esc(dk(q,o.key))}</span><div class="obody"><div class="oline"><span class="ow">${choiceHTML(q,o.key,true)}</span>${mean?`<span class="on2">${form}${esc(rmap(q,mean))}</span>`:''}${cn&&cn.note&&!/^\s*wrong\s*$/i.test(cn.note)?`<span class="onote">${esc(rmap(q,cn.note))}</span>`:''}</div>
+     const ls=lemmaSplit(stripW(cn?(cn.meaning_en&&cn.meaning_en.trim()!==String(q.choices[o.key]).trim()?cn.meaning_en:''):(o.form?o.form+' ':'')+o.note,q.choices[o.key],cn&&cn.reading),q.choices[o.key]),mean=ls.gloss, form=cn&&cn.form?`<span class="of">${esc(cn.form)}</span> `:'';
+     return `<div class="orow${fake?' fake':''}"><span class="badge">${esc(dk(q,o.key))}</span><div class="obody"><div class="oline"><span class="ow">${choiceHTML(q,o.key,true)}</span>${mean?`<span class="on2">${form}— ${furiText(rmap(q,mean))}${ls.lem?` <small class="olem mut ja">(${furiText(ls.lem)})</small>`:''}</span>`:''}${cn&&cn.note&&!/^\s*wrong\s*$/i.test(cn.note)?`<span class="onote">${furiText(rmap(q,cn.note))}</span>`:''}</div>
       ${cn&&cn.example_ja?`<div class="oex"><span class="rei">例</span><div><div class="ja">${furi&&cn.example_ja_ruby?cn.example_ja_ruby:esc(cn.example_ja)}</div><div class="oen">${esc(cn.example_en)}</div></div></div>`:''}</div></div>`}).join('')}</details>
-   ${ex.tip?`<p class="tip">💡 <b>Tip</b> ${esc(rmap(q,ex.tip))}</p>`:''}`:`<p class="anote">${esc(rmap(q,q.explanation_en))}</p>`}
+   ${ex.tip?`<p class="tip">💡 <b>Tip</b> ${furiText(rmap(q,ex.tip))}</p>`:''}`:`<p class="anote">${furiText(rmap(q,q.explanation_en))}</p>`}
   <div class="ex tight"><span class="lbl">Example 例文</span><div class="ja">${F(q,'example_ja')}</div><div class="mut sm">${esc(q.example_en)}</div></div></details></div>`;
   if(q.audio)box.querySelector('.abtn').onclick=()=>play(q.audio);
   if(q.teacher)bindTeacher(box.querySelector('.tch'),q,ok?null:k);
@@ -381,7 +381,7 @@ function tkLabel(q,ci,title){const ks=Object.keys(q.choices),wr=ks.filter(k=>k!=
   const lab=form&&!isK(txt)&&isK(form)?`${esc(form)}<small>（${esc(txt)}）</small>`:rd&&rd!==txt?`${esc(txt)}<small>（${esc(rd)}）</small>`:esc(txt);
   return `<i class="tkm ${ci?'x':'o'}">${ci?'✗':'✓'}</i>${lab}`}
 function trHTML(q,wk){const t=q.teacher,T=window.TEACHER&&window.TEACHER[q.id],Wa=wk&&t.w&&t.w[wk],Ws=Wa&&T&&T.w&&T.w[wk],D0=Wa?Wa[1]:0;
-  if(T&&T.sg){const ch=t.chapters||[{title:'',start:0}];return `<div class="ttx tkar${store.get('enAll',false)?' enall':''}"><button class="tken" type="button">${store.get('enAll',false)?'Hide English':'Show all English'}</button>${Ws?`<div class="tkc tkw"><div class="tkh"><i class="tkm x">✗</i>${esc(String(q.choices[wk]).length>12?'Your choice':q.choices[wk])} <small>· for you</small></div>${Ws.map(g=>`<span class="tsg" data-s="${g[0]}"><span class="tja">${g[1]}</span>${g[2]?`<span class="ten">${esc(g[2])}</span>`:''}</span>`).join('')}</div>`:''}${ch.map((c,ci)=>`<div class="tkc">${c.title?`<div class="tkh">${tkLabel(q,ci,c.title)}</div>`:''}${T.sg.filter(g=>g[1]===ci).map(g=>`<span class="tsg" data-s="${+(g[0]+D0).toFixed(2)}"><span class="tja">${g[2]}</span>${g[3]?`<span class="ten">${esc(g[3])}</span>`:''}</span>`).join('')}</div>`).join('')}</div>`}
+  if(T&&T.sg){const ch=t.chapters||[{title:'',start:0}];return `<div class="ttx tkar${store.get('enAll',false)?' enall':''}"><button class="tken" type="button">${store.get('enAll',false)?'Hide English':'Show all English'}</button>${Ws?`<div class="tkc tkw"><div class="tkh"><i class="tkm x">✗</i>${esc(String(q.choices[wk]).length>12?'Your choice':q.choices[wk])} <small>· for you</small></div>${Ws.map(g=>`<span class="tsg" data-s="${g[0]}"><span class="tja">${g[1]}</span>${g[2]?`<span class="ten">${furiText(g[2])}</span>`:''}</span>`).join('')}</div>`:''}${ch.map((c,ci)=>`<div class="tkc">${c.title?`<div class="tkh">${tkLabel(q,ci,c.title)}</div>`:''}${T.sg.filter(g=>g[1]===ci).map(g=>`<span class="tsg" data-s="${+(g[0]+D0).toFixed(2)}"><span class="tja">${g[2]}</span>${g[3]?`<span class="ten">${furiText(g[3])}</span>`:''}</span>`).join('')}</div>`).join('')}</div>`}
   const ph=T?'':' data-ph="1"';
   if(t.chapters)return `<div class="ttx"${ph}>${t.chapters.map((c,i)=>`<div class="tchap" data-s="${c.start}"><span class="tct">${esc(c.title)}</span><span class="tcx">${T?esc(T.ch[i]||'').replace(/\n/g,'<br>'):'…'}</span></div>`).join('')}</div>`;
   return `<div class="ttx"${ph}>${T?esc(T.script).replace(/\n/g,'<br>'):'…'}</div>`}
@@ -455,6 +455,14 @@ document.addEventListener('click',e=>{let w=e.target.closest&&e.target.closest('
 document.addEventListener('toggle',e=>{const d=e.target;if(d.classList&&d.classList.contains('wlist')&&d.open)renderWL(d)},true);
 window.addEventListener('hashchange',()=>{if(wsheet&&wsheet.classList.contains('show')){closeWordRaw()}});
 // strip a leading "WORD: " / "WORD (reading) — " that repeats the headword
+// v116: "大柄 — large build" after the choice 大柄に: drop the lemma when it is just the choice minus particles/okurigana;
+// if it genuinely differs (鍛えられた vs 鍛える) keep it small and muted after the meaning, never as a bold duplicate.
+const LEM_P=/(?:に|で|な|の|と|が|を|は|も|だ|して|とした|たる|として)+$/;
+function lemmaSplit(t,choice){const m=/^\s*([^\s—–:：=()（）]{1,20})\s*(?:[（(][^)）]{0,30}[)）])?\s*[—–:：=]\s*([\s\S]+)$/.exec(t||'');if(!m)return{gloss:t,lem:''};
+  const L=m[1],c=String(choice||'').trim(),cs=c.replace(LEM_P,''),Ls=L.replace(/な$/,'');
+  const Lc=L.replace(/^〜/,'');if(/^[a-z]+$/i.test(L)||L===c||c.startsWith(L)||Ls===cs||cs===L||L.startsWith(c)||c.startsWith(Lc)||Lc.startsWith(c)||(c.length>=2&&Lc.endsWith(c))||(Lc.length>=2&&c.includes(Lc)))return{gloss:m[2],lem:''};
+  if(!/[\u3400-\u9fff\u30a0-\u30ff]/.test(L))return{gloss:t,lem:''};
+  return{gloss:m[2],lem:L}}
 function stripW(t,...ws){if(!t)return t;const E=x=>x.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
   for(const w of ws.filter(Boolean).sort((a,b)=>b.length-a.length))for(const c of [w,w.replace(/な$/,'')]){const m=t.match(new RegExp('^'+E(c)+'な?\\s*(?:[（(][^)）]{0,30}[)）])?\\s*[:：—–=\\-]\\s*'));if(m&&t.length>m[0].length)return t.slice(m[0].length)}
   return t}
@@ -906,8 +914,8 @@ function toast(msg,act,fn){let t=document.querySelector('.toast');if(t)t.remove(
 function storyHTML(c){const x=KBY[c],m=x&&x.mnemonic;if(!m)return'';const own=store.get('mnemo',{})[c];
   return `<div class="mnemo" data-c="${esc(c)}"><div class="mh"><b>🧠 Memory story</b><button class="mned" aria-label="Write my own story" title="Write my own">✏️</button></div>
    <div class="mparts">${m.parts.map(p=>`<button type="button" class="mpc" data-p="${esc(p.part.split('@')[0])}" aria-label="Part ${esc(p.part)}: ${esc(p.meaning)}"><b class="ja">${esc(p.part)}</b><small>${esc(p.meaning)}</small></button>`).join('<i>+</i>')}${m.parts.length===1&&m.parts[0].part===c?'':`<i>→</i><span class="mpc res"><b class="ja">${esc(c)}</b><small>${esc((x.meaning_en||'').split(';')[0])}</small></span>`}</div>
-   <p class="mstory">${own?`<span class="mown">your story</span> ${esc(own)}`:esc(m.story)}</p>
-   ${m.reading_hook?`<p class="mhook">🔉 ${esc(m.reading_hook)}</p>`:''}${m.distinguish?`<p class="mdist">👀 ${esc(m.distinguish)}</p>`:''}
+   <p class="mstory">${own?`<span class="mown">your story</span> ${esc(own)}`:furiText(m.story)}</p>
+   ${m.reading_hook?`<p class="mhook">🔉 ${furiText(m.reading_hook)}</p>`:''}${m.distinguish?`<p class="mdist">👀 ${esc(m.distinguish)}</p>`:''}
    <div class="medit" hidden><textarea rows="3" placeholder="Write a story that links the parts to the meaning…">${esc(own||'')}</textarea><div class="mbtns"><button class="btn sm primary msave">Save</button><button class="btn sm ghost mcancel">Cancel</button>${own?'<button class="btn sm ghost mreset">Reset to default</button>':''}</div></div></div>`}
 document.addEventListener('click',e=>{const b=e.target.closest&&e.target.closest('.mned,.msave,.mcancel,.mreset');if(!b)return;const box=b.closest('.mnemo'),c=box.dataset.c,ed=box.querySelector('.medit');e.stopPropagation();
   if(b.classList.contains('mned')||b.classList.contains('mcancel')){if(ed.hidden){ed.hidden=false;ed.querySelector('textarea').focus();ovOpen(()=>{ed.hidden=true})}else{ed.hidden=true;ovDrop()}return}
@@ -983,6 +991,31 @@ function studyGuide(){app.innerHTML=`<div class="ph"><h1 class="pt">How to study
 const loadJS=(src,key)=>new Promise((ok,no)=>{if(window[key])return ok(window[key]);const sc=document.createElement('script');sc.src=src;sc.onload=()=>ok(window[key]);sc.onerror=no;document.head.appendChild(sc)});
 let gpP=null;const loadGP=()=>gpP||(gpP=loadJS('gpairs.js?v='+APP_VERSION.slice(1),'GPAIRS').catch(e=>{gpP=null;throw e}));
 const secGlyph=q=>SEC_INFO[secOf(q)].glyph;
+/* v116 furiText: adds furigana (常用 readings only) to Japanese words inside plain text, from the bank's reading data
+   (word list + tap-a-word glossary). Words with a non-常用 kanji, ambiguous readings or single bare kanji get none. Respects the toggle. */
+const JOYO=new Set('亜哀愛挨悪握圧扱宛安暗案闇以位依偉囲委威尉意慰易椅為畏異移維緯胃萎衣違遺医井域育一壱逸稲茨芋印咽員因姻引飲淫院陰隠韻右宇羽雨臼渦唄浦運雲餌営影映栄永泳英衛詠鋭液疫益駅悦謁越閲円園宴延怨援沿演炎煙猿縁艶遠鉛塩汚凹央奥往応押旺横欧殴王翁黄岡沖億屋憶臆乙俺卸恩温穏音下化仮何価佳加可夏嫁家寡科暇果架歌河火禍稼箇花苛荷華菓課貨過蚊我牙画芽賀雅餓介会解回塊壊快怪悔懐戒拐改械海灰界皆絵開階貝劾外害崖慨概涯蓋街該骸垣柿嚇各拡格核殻獲確穫覚角較郭閣隔革学岳楽額顎掛潟割喝括活渇滑葛褐轄且株釜鎌刈瓦乾冠寒刊勘勧巻喚堪完官寛干幹患感慣憾換敢棺款歓汗漢環甘監看管簡緩缶肝艦観貫還鑑間閑関陥韓館丸含岸玩眼岩頑顔願企伎危喜器基奇寄岐希幾忌揮机旗既期棋棄機帰気汽畿祈季紀規記貴起軌輝飢騎鬼亀偽儀宜戯技擬欺犠疑義議菊吉喫詰却客脚虐逆丘久休及吸宮弓急救朽求泣球究窮級糾給旧牛去居巨拒拠挙虚許距漁魚享京供競共凶協叫境峡強恐恭挟教橋況狂狭矯胸脅興郷鏡響驚仰凝暁業局曲極玉僅勤均巾錦斤琴禁筋緊菌襟謹近金吟銀九句区苦駆駒具愚虞空偶遇隅串屈掘窟靴熊繰桑勲君薫訓群軍郡係傾刑兄啓型契形径恵慶憩掲携敬景渓稽系経継茎蛍計詣警軽鶏芸迎鯨劇撃激隙桁傑欠決潔穴結血月件倹健兼券剣圏堅嫌建憲懸拳検権犬献研絹県肩見謙賢軒遣鍵険顕験元原厳幻弦減源玄現舷言限個古呼固孤己庫弧戸故枯湖股虎誇雇顧鼓五互午呉娯後御悟碁語誤護乞交侯候光公功効勾厚口向后喉坑好孔孝工巧幸広康恒慌抗拘控攻更校梗構江洪港溝甲皇硬稿紅絞綱耕考肯航荒行衡講貢購郊酵鉱鋼降項香高剛号合拷豪克刻告国穀酷黒獄腰骨込頃今困墾婚恨懇昆根混痕紺魂佐唆左差査沙砂詐鎖座挫債催再最塞妻宰彩才採栽歳済災采砕祭斎細菜裁載際剤在材罪財坂阪咲崎埼作削搾昨柵策索錯桜冊刷察拶撮擦札殺雑皿三傘参山惨散桟産算蚕賛酸斬暫残仕伺使刺司史嗣四士始姉姿子市師志思指支施旨枝止死氏祉私糸紙紫肢脂至視詞詩試誌諮資賜雌飼歯事似侍児字寺慈持時次滋治璽磁示耳自辞鹿式識軸七執失嫉室湿漆疾質実芝舎写射捨赦斜煮社者謝車遮蛇邪借尺爵酌釈若寂弱主取守手朱殊狩珠種腫趣酒首儒受呪寿授樹需囚収周宗就州修愁拾秀秋終習臭舟衆襲蹴週酬集醜住充十従柔汁渋獣縦重銃叔宿淑祝縮粛塾熟出術述俊春瞬准循旬殉準潤盾純巡遵順処初所暑庶緒署書諸助叙女序徐除傷償勝匠升召商唱奨宵将小少尚床彰承抄招掌昇昭晶松沼消渉焼焦照症省硝礁祥称章笑粧紹肖衝訟証詔詳象賞鐘障上丈乗冗剰城場壌嬢常情条浄状畳蒸譲醸錠嘱飾拭植殖織職色触食辱尻伸信侵唇娠寝審心慎振新森浸深申真神紳臣芯薪親診身辛進針震人仁刃尋甚尽腎迅陣須酢図吹垂帥推水炊睡粋衰遂酔随髄崇数枢据杉裾澄寸世瀬畝是凄制勢姓征性成政整星晴正清牲生盛精聖声製西誠誓請逝醒青静斉税隻席惜戚斥昔析石積籍績脊責赤跡切拙接摂折設窃節説雪絶舌仙先千占宣専川戦扇栓泉浅洗染潜煎旋線繊羨腺船薦詮践選遷銭鮮前善漸然全禅繕膳塑措曽狙疎礎祖租粗素組訴阻遡僧創双倉喪壮奏爽層想捜掃挿操早曹巣槽燥争痩相窓総草荘葬藻装走送遭霜騒像増憎臓蔵贈造促側則即息捉束測足速俗属賊族続卒袖存孫尊損村遜他多太汰唾堕妥惰打駄体堆対耐帯待怠態戴替泰滞胎袋貸退逮隊代台大第題滝卓宅択拓沢濯託濁諾但達奪脱棚谷誰丹単嘆担探旦淡炭短端綻胆誕鍛団壇弾断暖段男談値知地恥池痴稚置致遅築畜竹蓄逐秩窒茶嫡着中仲宙忠抽昼柱注虫衷酎鋳駐著貯丁兆帳庁弔張彫徴懲挑朝潮町眺聴腸調超跳長頂鳥勅捗直朕沈珍賃鎮陳津墜椎追痛通塚漬潰坪爪釣鶴亭低停偵貞呈堤定帝底庭廷弟抵提程締艇訂諦逓邸泥摘敵滴的笛適溺哲徹撤迭鉄典天展店添貼転点伝殿田電吐塗妬徒斗渡登賭途都努度土奴怒倒党冬凍刀唐塔島悼投搭東桃棟盗湯灯当痘等答筒糖統到藤討謄豆踏逃透陶頭騰闘働動同堂導憧洞瞳童胴道銅峠匿得徳特督篤毒独読栃凸突届屯豚頓曇鈍奈那内謎鍋縄南軟難二尼弐匂肉虹日乳入如尿任妊忍認寧猫熱年念捻燃粘悩濃納能脳農把覇波派破婆罵馬俳廃拝排敗杯背肺輩配倍培媒梅買売賠陪伯博拍泊白舶薄迫漠爆縛麦箱箸肌畑八鉢発髪伐罰抜閥伴判半反帆搬斑板氾汎版犯班畔繁般藩販範煩頒飯晩番盤蛮卑否妃彼悲扉批披比泌疲皮碑秘罷肥被費避非飛備尾微眉美鼻匹膝肘必筆姫媛百俵標氷漂票表評描病秒苗品浜貧賓頻敏瓶不付夫婦富布府怖扶敷普浮父符腐膚譜負賦赴阜附侮武舞部封風伏副復幅服福腹複覆払沸仏物分噴墳憤奮粉紛雰文聞丙併兵塀幣平弊柄並蔽閉陛米壁癖別蔑偏変片編辺返遍便勉弁保舗捕歩補穂募墓慕暮母簿倣俸包報奉宝峰崩抱放方法泡砲縫胞芳蜂褒訪豊邦飽乏亡傍剖坊妨帽忘忙房暴望某棒冒紡肪膨謀貌貿防北僕墨撲朴牧睦勃没堀奔本翻凡盆摩磨魔麻埋妹昧枚毎幕膜枕又抹末繭万慢満漫味未魅岬密蜜脈妙民眠務夢無矛霧婿娘冥名命明盟迷銘鳴滅免綿面麺模茂妄毛猛盲網耗木黙目餅戻問紋門冶夜野弥矢厄役約薬訳躍柳愉油癒諭輸唯優勇友幽悠憂有湧猶由裕誘遊郵雄融夕予余与誉預幼妖容庸揚揺擁曜様洋溶用窯羊葉要謡踊陽養抑欲沃浴翌翼羅裸来頼雷絡落酪乱卵嵐欄濫藍覧利吏履梨理璃痢裏里離陸律率立略流留硫粒隆竜侶慮旅虜了僚両寮料涼猟療瞭糧良量陵領力緑倫厘林臨輪隣瑠塁涙累類令例冷励礼鈴隷零霊麗齢暦歴列劣烈裂廉恋練連錬呂炉賂路露労廊弄朗楼浪漏老郎六麓録論和話賄脇惑枠湾腕丼傲刹哺喩嗅嘲毀彙恣惧慄憬拉摯曖楷鬱璧瘍箋籠緻羞訃諧貪踪辣錮塡頰𠮟剝');
+const FT_AMB=new Set(['今日','明日','一日','昨日','大家','上手','下手','人気','生物','最中','大事','色紙','風車','上方','下手','十分','一行','市場','工夫','気配','分別','目下','見物','心中','後生','大勢','一言','初日','強力','変化','今年','日本','大分','仮名','一人','二人','何人','生花','国境','文字']);
+// readings for grammar-pattern kanji that the glossary stores without a reading
+const FT_ADD={'始末':'しまつ','相まって':'あいまって','次第':'しだい','皮切り':'かわきり','最後':'さいご','否や':'いなや','末に':'すえに','末の':'すえの','機に':'きに','得ない':'えない','早いか':'はやいか','禁じ得ない':'きんじえない','踏まえて':'ふまえて'};
+let FTD=null,FTN=0;
+function ftAlign(w,r){const re=new RegExp('^'+[...w].reduce((a,c)=>{const k=/[\u3400-\u9fff々]/.test(c);if(k){if(a.length&&a[a.length-1].k)a[a.length-1].t+=c;else a.push({k:1,t:c})}else a.push({k:0,t:c});return a},[]).map(p=>p.k?'(.+?)':p.t.replace(/[\u30a1-\u30f6]/g,m=>String.fromCharCode(m.charCodeAt(0)-96))).join('')+'$');
+  const m=re.exec(r);if(!m)return null;let i=1;const segs=[];let cur=null;for(const c of w){if(/[\u3400-\u9fff々]/.test(c)){if(cur&&cur.k)cur.t+=c;else{cur={k:1,t:c};segs.push(cur)}}else{cur={k:0,t:c};segs.push(cur)}}
+  segs.forEach(s=>{if(s.k)s.r=m[i++]});return segs}
+function ftDict(){const n=(window.GLOSS||[]).length+V.length;if(FTD&&FTN===n)return FTD;const R={},add=(w,r)=>{if(!w||!r||!/[\u3400-\u9fff]/.test(w)||/[\u3400-\u9fff]/.test(r))return;(R[w]=R[w]||new Set()).add(r)};
+  V.forEach(v=>add(v.word,v.reading));for(const w in FT_ADD)add(w,FT_ADD[w]);(window.GLOSS||[]).forEach(g=>add(g[0],g[1]));const vw=new Set(V.map(v=>v.word));const D=new Map();
+  for(const w in R){if(R[w].size>1&&!vw.has(w))continue;if(FT_AMB.has(w))continue;if(/^[\u3400-\u9fff]$/.test(w))continue;if([...w].some(c=>/[\u3400-\u9fff]/.test(c)&&!JOYO.has(c)))continue;
+    const r=vw.has(w)?V.find(v=>v.word===w).reading:[...R[w]][0],segs=ftAlign(w,r);if(!segs)continue;
+    const lk=segs.map(s=>s.k).lastIndexOf(1),stem=segs.slice(0,lk+1),tail=segs.slice(lk+1).map(s=>s.t).join('');
+    const key=stem.map(s=>s.t).join(''),need=tail.length===1&&/[うくぐすつぬぶむる]/.test(tail)?'':tail.slice(0,1);
+    const e={segs:stem,need,len:key.length,rf:r};const L=D.get(key[0])||[];L.push({key,...e});D.set(key[0],L)}
+  for(const L of D.values())L.sort((a,b)=>b.len-a.len||b.need.length-a.need.length);FTD=D;FTN=n;return D}
+function furiText(t){t=String(t==null?'':t);if(!furi||!/[\u3400-\u9fff]/.test(t))return esc(t);const D=ftDict();let out='',i=0;
+  while(i<t.length){const c=t[i],L=/[\u3400-\u9fff]/.test(c)&&!/[\u3400-\u9fff]/.test(t[i-1]||'')?D.get(c):null;let hit=null;
+    if(L)for(const e of L){if(t.startsWith(e.key,i)){const nx=t[i+e.key.length]||'';if(/[\u3400-\u9fff]/.test(nx))continue;if(e.need&&nx!==e.need)continue;hit=e;break}}
+    if(hit&&hit.rf.length>=2&&t.includes(hit.rf)){out+=esc(hit.key);i+=hit.key.length;continue}  // reading already written out in this text
+    if(hit){out+=hit.segs.map(s=>s.k?`<ruby>${esc(s.t)}<rt>${esc(s.r)}</rt></ruby>`:esc(s.t)).join('');i+=hit.key.length}else{out+=esc(c);i++}}
+  return out}
+if(typeof window!=='undefined')setTimeout(()=>{if(furi)loadGloss().then(()=>{FTD=null;if(typeof rerender==='function'&&/^(mistakes|drills|drill|recall|gpairs|search|kanji|similar)/.test(cur||''))rerender()}).catch(()=>{})},1200);
 const qSnip=(q,n=46)=>{const t=secOf(q)==='読解'?q.question:(q.complete_sentence||q.question||'');return t.length>n?t.slice(0,n)+'…':t};
 
 /* ---- Mistake notebook: n1_mist = {id:{n:misses,l:lastOk(0/1),s:okStreak,t:time}} ---- */
@@ -1002,7 +1035,7 @@ function mistakesView(){const m=mistDB(),f=store.get('mistF','');
   ${(()=>{const a=rcAll().length,d=rcDue().length;return a?`<a class="hrow rcrow" href="#recall"><span>思</span><b>Recall cards</b><small class="mut">${d?d+' due · ':''}${a} scheduled</small><span class="chev">${ICONS.chev}</span></a>`:''})()}
   <a class="hrow rcrow" href="#drills"><span>弱</span><b>Weak-point drills</b><small class="mut">10-question drills on your weakest spots</small><span class="chev">${ICONS.chev}</span></a>
   <p class="mut sm mhint">${all?`${all} question${all>1?'s':''} · reviewed after 1 · 3 · 7 days, then removed`:'No mistakes yet. Questions you answer wrong appear here.'}</p>
-  <div class="mlist">${rows.map(q=>{const e=m[q.id];return `<div class="mrow"><a class="mra" href="#rq/${q.id}"><span class="mg ja">${secGlyph(q)}</span><span class="mtx"><span class="ja">${esc(qSnip(q))}</span><small class="mut">${esc(q.category)} · 正解 ${esc(q.answer_word)}</small></span>
+  <div class="mlist">${rows.map(q=>{const e=m[q.id];return `<div class="mrow"><a class="mra" href="#rq/${q.id}"><span class="mg ja">${secGlyph(q)}</span><span class="mtx"><span class="ja">${furiText(qSnip(q))}</span><small class="mut">${esc(q.category)} · 正解 <span class="ja">${furiText(q.answer_word)}</span></small></span>
     <span class="mst"><span class="${e.l?'t-ok':'t-bad'}">${e.l?'✓':'✕'}</span><small class="mut">${e.d<=dn()?'<b class="mdue">due</b>':'in '+(e.d-dn())+'d'} · ×${e.n}</small></span></a><button class="mrm" data-id="${q.id}" aria-label="Remove from notebook" title="Remove">✕</button></div>`}).join('')}</div>`;
   $('#mf').querySelectorAll('button').forEach(b=>b.onclick=()=>{store.set('mistF',b.dataset.v);mistakesView()});
   if($('#mdv'))$('#mdv').onclick=()=>{const o=store.get('quizOpts',{}),t=dn();nav('quiz/play',()=>start(shuffle(rows.filter(q=>m[q.id].d<=t)),{...o,autoplay:false},true))};
@@ -1036,20 +1069,20 @@ function drillsView(){app.innerHTML='<p class="mut">Loading…</p>';loadGP().cat
   app.innerHTML=`<div class="ph"><h1 class="pt">Drills 弱点練習</h1></div>
   <div class="mfil">${seg3('drf',[['','All'],['g','Grammar'],['s','Kanji'],['c','Type'],['x','Section']],f)}</div>
   <p class="mut sm mhint">${L.length?'Your weakest spots from your answers and mistakes. Each drill is 10 questions; results go into your Mistakes schedule.':'No weak spots yet. Answer some questions and the spots you miss most show up here.'}</p>
-  <div class="mlist">${rows.map(x=>`<a class="mrow drow" href="#drill/${encodeURIComponent(x.key)}"><span class="mra"><span class="mg drt">${DR_T[x.t][0]}</span><span class="mtx"><span class="ja">${esc(x.name)}</span><small class="mut">${esc(DR_T[x.t])} · ${esc(x.sub||'')}</small></span>
+  <div class="mlist">${rows.map(x=>`<a class="mrow drow" href="#drill/${encodeURIComponent(x.key)}"><span class="mra"><span class="mg drt">${DR_T[x.t][0]}</span><span class="mtx"><span class="ja">${furiText(x.name)}</span><small class="mut">${esc(DR_T[x.t])} · ${furiText(x.sub||'')}</small></span>
    <span class="mst"><b class="${x.acc!=null&&x.acc<.6?'t-bad':''}">${drAcc(x)}</b><small class="mut">${x.c}/${x.a}${x.due?' · '+x.due+' due':''}</small></span></span></a>`).join('')}</div>`;
   $('#drf').querySelectorAll('button').forEach(b=>b.onclick=()=>{store.set('drF',b.dataset.v);drillsView()})})}
 function drillDetail(key){app.innerHTML='<p class="mut">Loading…</p>';loadGP().catch(()=>{}).then(()=>{key=decodeURIComponent(key||'');const sp=drRank().find(x=>x.key===key)||(()=>{const s0=drSpots().find(x=>x.key===key);return s0&&{...s0,a:0,c:0,w:0,due:0,acc:null}})();
   if(!sp){app.innerHTML='<div class="card">Drill not found. <a href="#drills">All drills</a></div>';return}
   const rc=drRecall(sp),un=drUntested(sp),g=sp.t==='g'?(window.GPAIRS||[]).find(x=>x.id===sp.gid):null;
-  app.innerHTML=`<div class="ph"><h1 class="pt ja">${esc(sp.name)}</h1></div>
-  <div class="card drcard"><p class="mut sm">${esc(DR_T[sp.t])} · ${esc(sp.sub||'')}</p>
+  app.innerHTML=`<div class="ph"><h1 class="pt ja">${furiText(sp.name)}</h1></div>
+  <div class="card drcard"><p class="mut sm">${esc(DR_T[sp.t])} · ${furiText(sp.sub||'')}</p>
    <div class="totals">${[['Accuracy',drAcc(sp)],['Answered',sp.a],['Missed',sp.w],['Questions',sp.qs.length]].map(([a,b])=>`<div class="tot"><b>${b}</b><span>${a}</span></div>`).join('')}</div>
    <button class="btn primary big full" id="drgo">Start drill · 10 questions</button>
    ${rc.length?`<button class="btn ghost full" id="drrc">Recall cards <small class="mut">${rc.length}</small></button>`:''}
-   ${g?`<a class="hrow" href="#gpairs/${g.id}"><span class="ja">文</span><b>Grammar pair</b><small class="mut">${esc(g.title)}</small><span class="chev">${ICONS.chev}</span></a>`:''}
+   ${g?`<a class="hrow" href="#gpairs/${g.id}"><span class="ja">文</span><b>Grammar pair</b><small class="mut">${furiText(g.title)}</small><span class="chev">${ICONS.chev}</span></a>`:''}
    ${sp.t==='s'?`<a class="hrow" href="#similar/${sp.sid}"><span class="ja">似</span><b>Look-alike group</b><small class="mut">${esc(sp.name)}</small><span class="chev">${ICONS.chev}</span></a>`:''}
-   ${un.length?`<p class="mut sm">Not yet tested in a question: ${un.map(p=>`<span class="pill ja">${esc(p.p)}</span>`).join('')}</p>`:''}</div>`;
+   ${un.length?`<p class="mut sm">Not yet tested in a question: ${un.map(p=>`<span class="pill ja">${furiText(p.p)}</span>`).join('')}</p>`:''}</div>`;
   $('#drgo').onclick=()=>{const o=store.get('quizOpts',{}),L=drPick(sp,10);nav('quiz/play',()=>{start(L,{...o,autoplay:false,shuffle:true},false,10);S.drill=sp.key})};
   if($('#drrc'))$('#drrc').onclick=()=>{DRRC=shuffle(rc);location.hash='recall/drill'}})}
 let DRRC=null;
@@ -1070,9 +1103,9 @@ function recallView(a){if(!window.GPAIRS&&(a==='drill'||Object.keys(rcDB()).some
   if(R_.i>=tot){app.innerHTML=hd+`<div class="card center rce"><p class="rcd">${R_.ok} / ${tot}</p><p class="mut sm">Correct cards move to the next step (1 → 3 → 7 days); missed ones start again tomorrow.</p><div class="row center"><a class="btn ghost" href="#mistakes">Mistakes</a><a class="btn primary" href="#home">Home</a></div></div>`;return}
   const id=R_.q[R_.i],x=rcCard(id);if(!x){R_.i++;return recallView()}const c=x.c,A=R_.a;
   if(!R_.o||R_.o.id!==id)R_.o={id,o:shuffle([c.m,...c.o])};
-  app.innerHTML=hd+`<div class="card rcc"><p class="mut sm">What does this mean?</p><p class="rcw ja">${esc(c.w)}</p><p class="rcr">${A!=null&&c.r?esc(c.r):'&nbsp;'}</p>
+  app.innerHTML=hd+`<div class="card rcc"><p class="mut sm">What does this mean?</p><p class="rcw ja">${furiText(c.w)}</p><p class="rcr">${A!=null&&c.r&&!/<rt>/.test(furiText(c.w))?esc(c.r):'&nbsp;'}</p>
   <div class="choices">${R_.o.o.map((m,i)=>`<button class="choice${A!=null?' dis'+(m===c.m?' ok':i===A?' bad':''):''}" data-i="${i}"><span class="cv">${esc(m)}</span></button>`).join('')}</div>
-  ${A!=null?`<div class="rcx">${c.ex?`<div class="ja">${esc(c.ex)}</div><div class="mut sm">${esc(c.en)}</div>`:''}${x.q?`<a class="mut sm" href="#rq/${x.q.id}">From Q${x.q.id} ›</a>`:`<a class="mut sm" href="#gpairs/${x.g.id}">Grammar pair ›</a>`}</div><button class="btn primary big full" id="rcnx">${R_.i+1<tot?'Next →':'Finish'}</button>`:''}</div>`;
+  ${A!=null?`<div class="rcx">${c.ex?`<div class="ja">${furiText(c.ex)}</div><div class="mut sm">${esc(c.en)}</div>`:''}${x.q?`<a class="mut sm" href="#rq/${x.q.id}">From Q${x.q.id} ›</a>`:`<a class="mut sm" href="#gpairs/${x.g.id}">Grammar pair ›</a>`}</div><button class="btn primary big full" id="rcnx">${R_.i+1<tot?'Next →':'Finish'}</button>`:''}</div>`;
   if(A==null)app.querySelectorAll('.rcc .choice').forEach(b=>b.onclick=()=>{const i=+b.dataset.i,ok=R_.o.o[i]===c.m;R_.a=i;if(ok)R_.ok++;rcRec(id,ok);recallView()});
   else $('#rcnx').onclick=()=>{R_.i++;R_.a=null;R_.o=null;recallView();window.scrollTo(0,0)}}
 // ---- v85 mock exam: N1 言語知識・読解 proportions, time scaled from 110 min / 70 items, no feedback until the end
@@ -1209,8 +1242,8 @@ function doSearch(raw){const q0=raw.trim();if(!q0)return null;const x=sIdx(),nq=
   return out}
 function searchView(){const st=VS[cur]||{};const EXP=new Set(st.exp||[]);
   app.innerHTML=`<div class="search sbx"><input type="search" id="s" placeholder="Kanji, word, reading or grammar (e.g. がてら)" value="${esc(st.q||'')}" autocomplete="off" lang="ja" enterkeyhint="search"></div><div id="sr"></div>`;
-  const G=[['g','Grammar 文法',r=>`<a class="sres" href="#gpairs/${r.g.id}"><b class="ja">${esc(r.p.p)}</b><span class="mut sm">${esc(r.p.ja)} · ${esc(r.p.en)}</span></a>`],
-   ['q','Questions 問題',q=>`<a class="sres" href="#rq/${q.id}"><span class="mg ja">${secGlyph(q)}</span><span><span class="ja">${esc(qSnip(q,40))}</span><small class="mut"> · ${esc(q.answer_word)}</small></span></a>`],
+  const G=[['g','Grammar 文法',r=>`<a class="sres" href="#gpairs/${r.g.id}"><b class="ja">${furiText(r.p.p)}</b><span class="mut sm">${furiText(r.p.ja)} · ${esc(r.p.en)}</span></a>`],
+   ['q','Questions 問題',q=>`<a class="sres" href="#rq/${q.id}"><span class="mg ja">${secGlyph(q)}</span><span><span class="ja">${furiText(qSnip(q,40))}</span><small class="mut"> · <span class="ja">${furiText(q.answer_word)}</span></small></span></a>`],
    ['v','Words 語',v=>`<a class="sres" href="#vocab/${encodeURIComponent(v.word)}"><b class="ja">${esc(v.word)}</b><span class="mut sm">${esc(v.reading)} · ${esc(v.meaning_en)}</span></a>`],
    ['k','Kanji 漢字',k=>`<a class="sres" href="#kanji/${encodeURIComponent(k.kanji)}"><b class="ja kbig">${esc(k.kanji)}</b><span class="mut sm">${esc((k.onyomi||[]).concat(k.kunyomi||[]).slice(0,4).join('・'))} · ${esc((k.meaning_en||'').split(';')[0])}</span></a>`],
    ['s','Look-alikes 似た漢字',g=>`<a class="sres" href="#similar/${g.id}"><b class="ja">${g.members.map(m=>esc(m.kanji)).join(' ')}</b><span class="mut sm">${esc(g.part_meaning||g.shared_label||'')}</span></a>`]];
@@ -1243,7 +1276,7 @@ function gpairsView(id){app.innerHTML='<p class="mut">Loading…</p>';loadGP().t
   const st=VS[cur]||{};
   app.innerHTML=`<div class="ph"><h1 class="pt">Grammar pairs 似た文法</h1></div><div class="search"><input type="search" id="s" placeholder="Search patterns…" value="${esc(st.q||'')}"><span class="mut sm" id="cnt"></span></div><div id="sl" class="sgrid"></div>`;
   const draw=()=>{const t=hira($('#s').value.trim()).toLowerCase();const f=GP.filter(g=>!t||hira([g.title,g.en,...g.patterns.flatMap(p=>[p.p,p.ja,p.en])].join(' ')).toLowerCase().includes(t));$('#cnt').textContent=`${f.length} groups`;
-    $('#sl').innerHTML=f.map(g=>`<a class="stile gtile" href="#gpairs/${g.id}"><span class="stp ja gtp">${esc(g.patterns[0].p)}</span><span class="stm">${esc(g.title)}</span><span class="stk ja">${g.patterns.slice(1).map(p=>esc(p.p)).join('・')}</span></a>`).join('')};
+    $('#sl').innerHTML=f.map(g=>`<a class="stile gtile" href="#gpairs/${g.id}"><span class="stp ja gtp">${furiText(g.patterns[0].p)}</span><span class="stm">${furiText(g.title)}</span><span class="stk ja">${g.patterns.slice(1).map(p=>furiText(p.p)).join('・')}</span></a>`).join('')};
   $('#s').oninput=draw;draw();const y=(SCR[NAV.k]||{}).y;if(y)window.scrollTo(0,y)}).catch(()=>{app.innerHTML='<div class="card">Could not load grammar pairs (offline?).</div>'})}
 
 /* ---- Offline audio (service worker + Cache API) ---- */
@@ -1268,7 +1301,7 @@ function offlineRow(root){const box=root.querySelector('#aud');if(!box)return;
   paint()}
 
 window.addEventListener('hashchange',route);
-window.__n1q=Q;window.__sim=SIM;window.__simDiff=simDiff;window.__n1={goal:{add:gmAdd,tick:gmTick,line:goalLine,streak:goalStreak,mins:minsOn,idle:()=>gmLast},pace:{tgt:PACE_T,now:()=>PT&&{...PT,ms:ptNow()}},plan:{next:nextJLPT,exam:examDate,left:daysLeft,day:dayPlan},dr:{rank:drRank,pick:drPick,recall:drRecall,spots:drSpots},bk:{collect:bkCollect,json:bkJSON,parse:bkParse,apply:bkApply,confirm:bkConfirm,remind:bkNeedRemind},kt:kanjiTypes,pick:smartPick,nav:()=>NAV,ss:()=>SS,state:()=>S,start:(ids)=>nav('quiz/play',()=>start(Q.filter(q=>ids.includes(q.id)),store.get("quizOpts",{}),false))};
+window.__n1q=Q;window.__sim=SIM;window.__simDiff=simDiff;window.__n1={furi:furiText,lemma:lemmaSplit,goal:{add:gmAdd,tick:gmTick,line:goalLine,streak:goalStreak,mins:minsOn,idle:()=>gmLast},pace:{tgt:PACE_T,now:()=>PT&&{...PT,ms:ptNow()}},plan:{next:nextJLPT,exam:examDate,left:daysLeft,day:dayPlan},dr:{rank:drRank,pick:drPick,recall:drRecall,spots:drSpots},bk:{collect:bkCollect,json:bkJSON,parse:bkParse,apply:bkApply,confirm:bkConfirm,remind:bkNeedRemind},kt:kanjiTypes,pick:smartPick,nav:()=>NAV,ss:()=>SS,state:()=>S,start:(ids)=>nav('quiz/play',()=>start(Q.filter(q=>ids.includes(q.id)),store.get("quizOpts",{}),false))};
 // ---- v51 swipe: ← next, → previous on Study and Quiz (play) screens. Ignores left-edge (system back), vertical scrolls, h-scrollable areas, inputs.
 const SWX=24,SWT=60;
 function hScrollable(t){for(let n=t;n&&n!==app&&n.nodeType===1;n=n.parentElement){const o=getComputedStyle(n).overflowX;if((o==='auto'||o==='scroll')&&n.scrollWidth>n.clientWidth+2)return true}return false}
