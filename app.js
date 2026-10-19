@@ -1,6 +1,6 @@
 (function(){
 'use strict';
-const APP_VERSION='v108';
+const APP_VERSION='v109';
 const SECTIONS=['文字・語彙','文法','読解'];
 const SEC_INFO={'文字・語彙':{en:'Kanji & Vocabulary',glyph:'字'},'文法':{en:'Grammar',glyph:'文'},'読解':{en:'Reading',glyph:'読'}};
 const IC=(d,extra='')=>`<svg class="ico" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"${extra}>${d}</svg>`;
@@ -349,6 +349,8 @@ let teacherP=null;function loadTeacher(){return teacherP||(teacherP=new Promise(
 function fillTr(el,q,wk){if(!el.querySelector('.ttx[data-ph]'))return;loadTeacher().then(()=>{const x=el.querySelector('.ttx');if(x){const d=document.createElement('div');d.innerHTML=trHTML(q,wk);x.replaceWith(d.firstElementChild);if(el._wire)el._wire();if(el._sync)el._sync()}}).catch(()=>{})}
 // v83: when the answer was wrong and a tailored clip exists, the player plays that clip first (it ends with a chime), then the
 // main explanation, on one combined timeline. Nothing auto-plays.
+// v109: one pending hashchange listener at a time, so old players (and their DOM) can be freed during a long quiz
+let TCH_OFF=null;
 function bindTeacher(el,q,wk){if(!el)return;if(TCH){TCH.pause();TCH=null}
   const W=wk&&q.teacher.w&&q.teacher.w[wk],D0=W?W[1]:0,DM=q.teacher.duration,DT=D0+DM;
   const a=new Audio(W?W[0]:q.teacher.audio),b=el.querySelector('.tpb'),bar=el.querySelector('.tbar'),fill=bar.querySelector('i'),tm=el.querySelector('.ttm');a.preload='none';
@@ -375,7 +377,7 @@ function bindTeacher(el,q,wk){if(!el)return;if(TCH){TCH.pause();TCH=null}
   el.addEventListener('click',e=>{const tb=e.target.closest('.tken');if(tb){e.stopPropagation();const on=!store.get('enAll',false);store.set('enAll',on);el.querySelectorAll('.tkar').forEach(x=>x.classList.toggle('enall',on));el.querySelectorAll('.tken').forEach(b=>b.textContent=on?'Hide English':'Show all English');return}
     const sg=e.target.closest('.tsg');if(!sg||sg.classList.contains('cur'))return;e.stopPropagation();if(TCH&&TCH!==a)TCH.pause();seek(+sg.dataset.s);last=-2;sync()});
   el._sync=()=>{last=-2;sync()};
-  window.addEventListener('hashchange',()=>a.pause(),{once:true})}
+  if(TCH_OFF)window.removeEventListener('hashchange',TCH_OFF);TCH_OFF=()=>{a.pause();TCH_OFF=null};window.addEventListener('hashchange',TCH_OFF,{once:true})}
 document.addEventListener('click',e=>{const b=e.target.closest&&e.target.closest('.fubtn');if(!b)return;e.preventDefault();furiOn=!furiOn;store.set('furigana',furiOn);applyFuri();
   document.querySelectorAll('.fubtn').forEach(x=>{x.setAttribute('aria-pressed',furiOn);x.setAttribute('aria-label','Furigana '+(furiOn?'on':'off')+' (tap to toggle)')});const hf=document.getElementById('hf');if(hf)hf.checked=furiOn});
 const TS=['s','m','l','xl'],aaBtn=()=>{const t=store.get('ts','m');return fuBtn()+`<button class="aa aats" type="button" aria-label="Text size: ${t.toUpperCase()} (tap to change)" title="Text size">A<small>a</small><i>${t.toUpperCase()}</i></button>`};
@@ -480,7 +482,7 @@ function kanjiGrid(){
     $('#cnt').textContent=`${f.length} kanji`;
     $('#kg').innerHTML=f.map(x=>`<a class="ktile${kv.has(x.kanji)?' seen':''}" href="#kanji/${encodeURIComponent(x.kanji)}">${lvBadge(x)}<span class="kc">${esc(x.kanji)}</span><span class="km">${esc(x.meaning_en.split(';')[0])}</span></a>`).join('')};
   $('#lvb').querySelectorAll('.lvf').forEach(b=>b.onclick=()=>{store.set('kanjiLevel',b.dataset.l);$('#lvb').querySelectorAll('.lvf').forEach(x=>x.classList.toggle('on',x===b));draw()});
-  $('#s').oninput=draw;$('#tc').onclick=()=>{store.set('kanjiMode','cards');location.hash='kanjicards'};wireSeg();draw();
+  {let tm;$('#s').oninput=()=>{clearTimeout(tm);tm=setTimeout(draw,90)}}$('#tc').onclick=()=>{store.set('kanjiMode','cards');location.hash='kanjicards'};wireSeg();draw();
 }
 function sampleWords(c,limit){const ws=V.filter(v=>(v.kanji||[]).includes(c));
   if(!ws.length)return '<p class="mut sm">No sample words</p>';
