@@ -1,6 +1,6 @@
 (function(){
 'use strict';
-const APP_VERSION='v114';
+const APP_VERSION='v115';
 const SECTIONS=['文字・語彙','文法','読解'];
 const SEC_INFO={'文字・語彙':{en:'Kanji & Vocabulary',glyph:'字'},'文法':{en:'Grammar',glyph:'文'},'読解':{en:'Reading',glyph:'読'}};
 const IC=(d,extra='')=>`<svg class="ico" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"${extra}>${d}</svg>`;
@@ -321,7 +321,7 @@ function results(celebrate=true){S.done=true;
   if(celebrate&&p>=80)confetti();
 }
 function confetti(){if(reduced())return;const c=document.createElement('div');c.className='confetti';
-  const cols=['#d9412b','#3f51a5','#f2b134','#2e8b57','#e86aa6'];
+  const cols=['#2f6fd6','#3f51a5','#f2b134','#2e8b57','#e86aa6'];
   for(let i=0;i<70;i++){const s=document.createElement('i');s.style.left=Math.random()*100+'%';s.style.background=cols[i%5];s.style.animationDelay=Math.random()*.6+'s';s.style.animationDuration=1.8+Math.random()*1.4+'s';s.style.setProperty('--dx',(Math.random()*160-80)+'px');s.style.setProperty('--r',(Math.random()*720)+'deg');c.appendChild(s)}
   document.body.appendChild(c);setTimeout(()=>c.remove(),3800)}
 
