@@ -1,6 +1,6 @@
 (function(){
 'use strict';
-const APP_VERSION='v107';
+const APP_VERSION='v108';
 const SECTIONS=['文字・語彙','文法','読解'];
 const SEC_INFO={'文字・語彙':{en:'Kanji & Vocabulary',glyph:'字'},'文法':{en:'Grammar',glyph:'文'},'読解':{en:'Reading',glyph:'読'}};
 const IC=(d,extra='')=>`<svg class="ico" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"${extra}>${d}</svg>`;
@@ -100,7 +100,7 @@ function home(){
   const o=store.get('quizOpts',{cat:'',shuffle:true,n:10,autoplay:false});
   $('#qq').onclick=()=>{nav('quiz/play',()=>{start(smartPick(Q,10,'all'),{...o,shuffle:true},false,10);S.rkey='all'})};
   $('#qm').onclick=()=>{nav('quiz/play',()=>start(shuffle(Q.filter(q=>missed.includes(q.id))),o,true))};$('#qqs').onclick=()=>$('#qq').click();if($('#qms'))$('#qms').onclick=()=>$('#qm').click();
-  app.querySelectorAll('.seccard').forEach(b=>b.onclick=()=>{const sec=b.dataset.sec;store.set('quizOpts',{...o,cat:sec});nav('quiz/play',()=>{start(smartPick(Q.filter(q=>secOf(q)===sec),o.n||10,sec),{...o,cat:sec,shuffle:true},false,o.n||10);S.rkey=sec})});
+  app.querySelectorAll('.seccard').forEach(b=>b.onclick=()=>{const sec=b.dataset.sec;store.set('quizOpts',{...o,cats:[sec]});nav('quiz/play',()=>{start(smartPick(Q.filter(q=>secOf(q)===sec),o.n||10,sec),{...o,cat:sec,shuffle:true},false,o.n||10);S.rkey=sec})});
   if(store.get('wordsFilter',null)===null)store.set('wordsFilter',false);
 }
 let pending=null;function nav(h,fn){pending=fn;if(location.hash==='#'+h)route();else location.hash=h}
@@ -130,33 +130,40 @@ function progress(){
 /* ---------- Quiz ---------- */
 let S=null;
 function quizSetup(){
-  const cats=SECTIONS.filter(x=>Q.some(q=>secOf(q)===x)),missed=store.get('missed',[]),o=store.get('quizOpts',{cat:'',shuffle:true,n:10,autoplay:false});if(o.cat&&!SECTIONS.includes(o.cat))o.cat='';
+  const cats=SECTIONS.filter(x=>Q.some(q=>secOf(q)===x)),missed=store.get('missed',[]),o=store.get('quizOpts',{cats:[],shuffle:true,n:10,autoplay:false});let sel=selCats(o);
   app.innerHTML=`<h1 class="pt">Quiz 問題</h1>${S&&!S.done?`<a class="card resq" href="#quiz/play">▶ <b>Resume your quiz</b> <span class="mut sm">· question ${S.si+1}/${S.steps.length}</span></a>`:''}<div class="card form">
-  <label><span class="lbl">Section</span><select id="cat"><option value="">All (${Q.length})</option>${cats.map(c=>`<option ${c===o.cat?'selected':''} value="${esc(c)}">${esc(c)} (${Q.filter(q=>secOf(q)===c).length})</option>`).join('')}</select></label>
+  <div class="msec"><span class="lbl">Section</span><div class="secpills" id="secp" role="group" aria-label="Sections"><button type="button" class="spill" data-c="" aria-pressed="false">全部 All <small>${Q.length}</small></button>${cats.map(c=>`<button type="button" class="spill" data-c="${esc(c)}" aria-pressed="false">${esc(c)} <small>${Q.filter(q=>secOf(q)===c).length}</small></button>`).join('')}</div><p class="mut sm" id="selc"></p></div>
   <label><span class="lbl">Number of questions</span><input id="n" type="number" min="1" max="${Q.length}" value="${o.n}"></label>
   <label class="sw"><input type="checkbox" id="shuf" ${o.shuffle?'checked':''}><span></span> Shuffle questions <small class="mut">· unseen first</small></label>
   <label class="sw"><input type="checkbox" id="auto" ${o.autoplay?'checked':''}><span></span> Autoplay audio after answering</label>
   <label class="sw"><input type="checkbox" id="shc" ${o.sc!==false?'checked':''}><span></span> Shuffle choices</label>
-  <p class="rhint mut sm" id="rhint">${roundHint(o.cat||'all')}</p>
+  <p class="rhint mut sm" id="rhint">${roundHint(rkeyCats(sel))}</p>
   <div class="row"><button class="btn primary big" id="go">Start quiz</button><button class="btn ghost big" id="rm" ${missed.length?'':'disabled'}>↺ Review missed only (${missed.length})</button></div></div>`;
-  const opts=()=>{const x={cat:$('#cat').value,shuffle:$('#shuf').checked,n:Math.max(1,+$('#n').value||10),autoplay:$('#auto').checked,sc:$('#shc').checked};store.set('quizOpts',x);return x};
-  $('#cat').addEventListener('change',()=>{$('#rhint').textContent=roundHint($('#cat').value||'all')});
-  $('#go').onclick=()=>{const x=opts();let p=Q.filter(q=>!x.cat||secOf(q)===x.cat);p=roundPick(p,x.n,x.cat||'all',!x.shuffle);if(!p.length){toast('Everything here is scheduled for review later');return}nav('quiz/play',()=>{start(p,x,false,x.n);S.rkey=x.cat||'all'})};
+  const opts=()=>{const x={cats:sel.slice(),shuffle:$('#shuf').checked,n:Math.max(1,+$('#n').value||10),autoplay:$('#auto').checked,sc:$('#shc').checked};store.set('quizOpts',x);return x};
+  const paint=()=>{app.querySelectorAll('.spill').forEach(b=>{const on=b.dataset.c?sel.includes(b.dataset.c):!sel.length;b.classList.toggle('on',on);b.setAttribute('aria-pressed',on)});$('#selc').textContent=sel.length?`Selected: ${poolOf(rkeyCats(sel)).length}`:`All: ${Q.length}`;$('#rhint').textContent=roundHint(rkeyCats(sel))};paint();
+  app.querySelectorAll('.spill').forEach(b=>b.onclick=()=>{const c=b.dataset.c;if(!c)sel=[];else{sel=sel.includes(c)?sel.filter(x=>x!==c):[...sel,c];if(sel.length>=cats.length)sel=[]}sel=SECTIONS.filter(x=>sel.includes(x));store.set('quizOpts',{...store.get('quizOpts',{}),cats:sel});paint()});
+  $('#go').onclick=()=>{const x=opts();const rk=rkeyCats(x.cats);let p=poolOf(rk);p=roundPick(p,x.n,rk,!x.shuffle);if(!p.length){toast('Everything here is scheduled for review later');return}nav('quiz/play',()=>{start(p,x,false,x.n);S.rkey=rk})};
   $('#rm').onclick=()=>{const x=opts();let p=Q.filter(q=>missed.includes(q.id));if(x.shuffle)p=shuffle(p);nav('quiz/play',()=>start(p,x,true))};
 }
 // v39: ~60% of a random quiz comes from the least-attempted questions (passage groups = one unit, min member count)
 // v81: unseen-first rounds per filter ('all' or a section). A question counts as seen when shown; passages stay whole;
 // when a round is exhausted a new one starts (topped up with least-answered). Scheduled mistakes are excluded until due.
 const RIV=[1,3,7];
+// v108: multi-section filter. quizOpts.cats = [] (All) or a subset of SECTIONS; legacy quizOpts.cat migrates.
+function selCats(o){let c=Array.isArray(o.cats)?o.cats:(o.cat?[o.cat]:[]);c=SECTIONS.filter(x=>c.includes(x));return c}
+const rkeyCats=c=>!c.length||SECTIONS.every(x=>c.includes(x)||!Q.some(q=>secOf(q)===x))?'all':c.join('+');
+const poolOf=k=>k==='all'?Q:Q.filter(q=>k.split('+').includes(secOf(q)));
 function rounds(){let r=store.get('rounds',null);if(!r){const att=store.get('qAtt',{}),seenIds=Object.keys(att).map(Number).filter(i=>QBY[i]);r={all:{n:1,s:seenIds}};
   SECTIONS.forEach(sec=>{r[sec]={n:1,s:seenIds.filter(i=>secOf(QBY[i])===sec)}});
-  for(const k in r){const pool=k==='all'?Q:Q.filter(q=>secOf(q)===k);if(pool.every(q=>r[k].s.includes(q.id)))r[k]={n:2,s:[]}}store.set('rounds',r)}return r}
+  for(const k in r){const pool=poolOf(k);if(pool.every(q=>r[k].s.includes(q.id)))r[k]={n:2,s:[]}}store.set('rounds',r)}return r}
 const rkeyOf=list=>{if(list.length>=Q.length)return'all';const s0=secOf(list[0]);return list.every(q=>secOf(q)===s0)&&list.length===Q.filter(q=>secOf(q)===s0).length?s0:'all'};
+// a new combined key ('文法+読解') starts from what its sections have already seen in their current rounds
+function seedKey(r,key,peek){if(r[key])return r[key];const v={n:1,s:key.includes('+')?[...new Set(key.split('+').flatMap(k=>(r[k]||{s:[]}).s))]:[]};if(!peek)r[key]=v;return v}
 function notDueSet(){const m=mistDB(),t=dn();return new Set(Object.keys(m).filter(id=>m[id].d>t).map(Number))}
-function roundInfo(key){const r=rounds()[key]||{n:1,s:[]},pool=key==='all'?Q:Q.filter(q=>secOf(q)===key),S_=new Set(r.s);return {n:r.n,seen:pool.filter(q=>S_.has(q.id)).length,tot:pool.length}}
+function roundInfo(key){const r=seedKey(rounds(),key,true),pool=poolOf(key),S_=new Set(r.s);return {n:r.n,seen:pool.filter(q=>S_.has(q.id)).length,tot:pool.length}}
 const roundHint=key=>{const i=roundInfo(key);return `Round ${i.n} · ${i.seen}/${i.tot} seen`};
-function markSeen(qs){const r=rounds();let ch=false;for(const q of qs)for(const k of ['all',secOf(q)]){if(!r[k])r[k]={n:1,s:[]};if(!r[k].s.includes(q.id)){r[k].s.push(q.id);ch=true}}if(ch)store.set('rounds',r)}
-function roundPick(list,limit,key,ordered){const att=store.get('qAtt',{}),ex=notDueSet(),r=rounds();if(!r[key])r[key]={n:1,s:[]};const R_=r[key];
+function markSeen(qs){const r=rounds();let ch=false;for(const q of qs)for(const k of ['all',secOf(q),...Object.keys(r).filter(k=>k.includes('+')&&k.split('+').includes(secOf(q)))]){if(!r[k])r[k]={n:1,s:[]};if(!r[k].s.includes(q.id)){r[k].s.push(q.id);ch=true}}if(ch)store.set('rounds',r)}
+function roundPick(list,limit,key,ordered){const att=store.get('qAtt',{}),ex=notDueSet(),r=rounds();seedKey(r,key);const R_=r[key];
   const units=[],gs=new Set();for(const q of list){const g=q.passage_group;let u;if(!g)u=[q];else{if(gs.has(g))continue;gs.add(g);u=Q.filter(x=>x.passage_group===g).sort((a,b)=>a.id-b.id)}if(!u.some(x=>ex.has(x.id)))units.push(u)}
   if(!units.length)return [];const order=a=>ordered?a.slice().sort((x,y)=>x[0].id-y[0].id):shuffle(a);
   if(!(limit>0))limit=1e9;let seen=new Set(R_.s);const pick=[];let c=0;

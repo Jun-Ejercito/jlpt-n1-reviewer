@@ -1062,3 +1062,11 @@ button.mpc{font:inherit;color:inherit;cursor:pointer}
 .sans>.sbig{text-align:center}.sans .sbig .say{font-size:.42em;vertical-align:middle}
 .sans .smean{text-align:center;margin:6px 0 14px}.spos{display:inline-block;font-size:.68em;color:var(--mut,#888);border:1px solid var(--line);border-radius:999px;padding:0 .6em;margin-left:.3em;vertical-align:.12em;white-space:nowrap}
 .sans .sex,.sans .leech,.sans .story,.sans ul{text-align:left}
+/* v108 multi-section pills: one row, label over count */
+.msec{display:flex;flex-direction:column;gap:6px;margin-bottom:var(--s3,12px)}
+.secpills{display:flex;gap:5px}
+.spill{font:inherit;font-size:.78em;line-height:1.2;border:1px solid var(--line);background:transparent;color:var(--ink);border-radius:14px;padding:5px 2px;flex:1 1 0;min-width:0;cursor:pointer;white-space:nowrap;display:flex;flex-direction:column;align-items:center}
+.spill small{opacity:.6;font-size:.9em}
+.spill.on{background:var(--accent-soft);border-color:var(--accent);color:var(--accent)}
+.spill:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+#selc{margin:0}
