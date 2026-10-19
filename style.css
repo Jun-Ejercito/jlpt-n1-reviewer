@@ -1080,3 +1080,12 @@ button.mpc{font:inherit;color:inherit;cursor:pointer}
 .bkopt .btn{display:flex;flex-direction:column;align-items:flex-start;text-align:left;gap:2px;padding:12px 14px;white-space:normal}
 .bkopt .btn.ghost{align-items:center}
 .bksheet{z-index:90}
+/* v111 drills */
+.drt{font-size:.8em;font-weight:600}
+.drow .mst b{font-size:1em}
+.drcard{display:flex;flex-direction:column;gap:12px}
+.drcard .totals{margin:0}
+.drcard .pill{margin:2px 4px 2px 0}
+a.drow,a.drow *{text-decoration:none;color:inherit}a.drow .t-bad{color:var(--accent)}
+.drcard .totals{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+.drcard>.mut.sm:first-child{margin:0}

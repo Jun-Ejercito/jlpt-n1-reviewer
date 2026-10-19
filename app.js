@@ -1,6 +1,6 @@
 (function(){
 'use strict';
-const APP_VERSION='v110';
+const APP_VERSION='v111';
 const SECTIONS=['文字・語彙','文法','読解'];
 const SEC_INFO={'文字・語彙':{en:'Kanji & Vocabulary',glyph:'字'},'文法':{en:'Grammar',glyph:'文'},'読解':{en:'Reading',glyph:'読'}};
 const IC=(d,extra='')=>`<svg class="ico" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"${extra}>${d}</svg>`;
@@ -230,7 +230,7 @@ function answer(k,j=0){
   if(S.ans[j]!=null)return;
   const q=S.list[S.i+j],ok=k===String(q.answer);S.ans[j]=k;S.past=S.past||{};S.past[S.si]={...S.ans};
   let missed=store.get('missed',[]),st=store.get('stats',{answered:0,correct:0}),cs=store.get('catStats',{});
-  st.answered++;{const qa=store.get('qAtt',{});qa[q.id]=(qa[q.id]||0)+1;store.set('qAtt',qa)}cs[q.category]=cs[q.category]||{a:0,c:0};cs[q.category].a++;
+  st.answered++;{const qa=store.get('qAtt',{});qa[q.id]=(qa[q.id]||0)+1;store.set('qAtt',qa)}qResAdd(q,ok);cs[q.category]=cs[q.category]||{a:0,c:0};cs[q.category].a++;
   if(ok){S.score++;st.correct++;cs[q.category].c++;if(S.missedMode)missed=missed.filter(x=>x!==q.id)}else{S.wrong.push({q,k});if(!missed.includes(q.id))missed.push(q.id)}
   if(!ok){srsMiss(q);rcAdd(q,k)}mistRec(q,ok);store.set('missed',missed);store.set('stats',st);store.set('catStats',cs);logActivity();
   renderAnswered(j,true);
@@ -639,12 +639,12 @@ function resumeQuiz(){if(S.done)return results(false);const a=S.ans||{};showQ();
 function resumeStudy(){if(SS.graded){SS.i++;SS.graded=false;SS.shown=false}const sh=SS.shown;SS.shown=false;studyCard();if(sh&&SS.items[SS.i])reveal(SS.items[SS.i])}
 document.addEventListener('click',e=>{if(e.target.closest&&e.target.closest('#qend')&&confirm('End this quiz? Answers so far are saved.')){S=null;saveSess();replaceTo('quiz')}});
 const TABS=[['home',ICONS.home,'Home'],['quiz',ICONS.quiz,'Quiz'],['vocab',ICONS.vocab,'Words'],['kanji',ICONS.kanji,'Kanji'],['progress',ICONS.progress,'Progress']];
-const TITLES={home:'JLPT N1',quiz:'Quiz',vocab:'Words',kanji:'Kanji',kanjicards:'Kanji cards',similar:'Look-alike',progress:'Progress',tips:'読解 Tips',study:'Study',studyguide:'How to study',today:'Today',mistakes:'Mistakes',recall:'Recall',mock:'Mock exam',rq:'Review',search:'Search',gpairs:'Grammar pairs'};
+const TITLES={home:'JLPT N1',quiz:'Quiz',vocab:'Words',kanji:'Kanji',kanjicards:'Kanji cards',similar:'Look-alike',progress:'Progress',tips:'読解 Tips',study:'Study',studyguide:'How to study',today:'Today',mistakes:'Mistakes',recall:'Recall',mock:'Mock exam',rq:'Review',search:'Search',drills:'Drills',drill:'Drill',gpairs:'Grammar pairs'};
 function header(){const h=$('header'),root=(cur||'home').split('/')[0],showBack=NAV.d>0||root!=='home';
   h.innerHTML=`${showBack?`<button class="hb icon" id="hbk" aria-label="Back">${ICONS.back}</button>`:'<span class="hbsp"></span>'}<a href="#home" class="htl">${esc(TITLES[root]||'JLPT N1')}</a>
    <span class="hbr"><a class="hb icon" id="hsr" href="#search" aria-label="Search" title="Search"><svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/></svg></a><button class="hb icon" id="hs" aria-label="Settings" title="Settings">⚙</button></span>`;
   if($('#hbk'))$('#hbk').onclick=goBack;$('#hs').onclick=openSettings;
-  const tabRoot=(root==='kanjicards'||root==='similar')?'kanji':(root==='tips'||root==='study'||root==='studyguide'||['today','mistakes','rq','search','gpairs'].includes(root))?'home':root;
+  const tabRoot=(root==='kanjicards'||root==='similar')?'kanji':(root==='tips'||root==='study'||root==='studyguide'||['today','mistakes','rq','search','gpairs','drills','drill','recall'].includes(root))?'home':root;
   $('#tabs').innerHTML=TABS.map(([k,i,l])=>`<a href="#${k==='kanji'&&store.get('kanjiMode','grid')==='cards'?'kanjicards':k}" data-tab="${k}" class="tab${tabRoot===k?' on':''}" ${tabRoot===k?'aria-current="page"':''}><span class="ti">${i}</span><span>${l}</span></a>`).join('');
   $('#tabs').querySelectorAll('[data-tab]').forEach(a=>a.onclick=()=>{const t=a.dataset.tab;   // entering a tab fresh → new random order
     if(t==='vocab'){ORDER.vocab=null;delete VS.vocab}if(t==='kanji'){ORDER.kanji=null;delete VS.kanjicards;delete VS.kanji}
@@ -662,7 +662,7 @@ function route(){if(S&&S.view!=null){S.si=S.view;S.ans={...((S.past||{})[S.view]
   const sv=fresh?null:SCR[NAV.k];if(sv&&sv.open){const ds=app.querySelectorAll('details');sv.open.forEach(i=>{if(ds[i])ds[i].open=true})}
   const y=sv?sv.y:(p==='quiz'||p==='study'?0:(VS[h]||{}).y||0);window.scrollTo(0,y);requestAnimationFrame(()=>window.scrollTo(0,y));saveSess();
 }
-function render(p,a){if(p==='vocab')deck('vocab',a);else if(p==='kanji'){if(a)kanjiDetail(a);else kanjiGrid()}else if(p==='kanjicards')deck('kanji',a);else if(p==='similar'){if(a)simDetail(a);else similarView()}else if(p==='tips')tipsView();else if(p==='study'){if(a){if(SS&&SS.mode===a&&SS.items&&SS.i<SS.items.length)resumeStudy();else studyStart(a)}else studyHome()}else if(p==='studyguide')studyGuide();else if(p==='progress')progress();else if(p==='mistakes')mistakesView();else if(p==='recall')recallView();else if(p==='mock'){if(a==='play')mockPlay();else if(a==='res')mockRes();else mockView()}else if(p==='rq')reviewQ(a);else if(p==='search')searchView();else if(p==='listen'){try{localStorage.removeItem('n1_listen')}catch(e){}replaceTo('home');return}else if(p==='gpairs')gpairsView(a);else if(p==='today')todayView();else home()}
+function render(p,a){if(p==='vocab')deck('vocab',a);else if(p==='kanji'){if(a)kanjiDetail(a);else kanjiGrid()}else if(p==='kanjicards')deck('kanji',a);else if(p==='similar'){if(a)simDetail(a);else similarView()}else if(p==='tips')tipsView();else if(p==='study'){if(a){if(SS&&SS.mode===a&&SS.items&&SS.i<SS.items.length)resumeStudy();else studyStart(a)}else studyHome()}else if(p==='studyguide')studyGuide();else if(p==='progress')progress();else if(p==='mistakes')mistakesView();else if(p==='recall')recallView(a);else if(p==='drills')drillsView();else if(p==='drill')drillDetail(a);else if(p==='mock'){if(a==='play')mockPlay();else if(a==='res')mockRes();else mockView()}else if(p==='rq')reviewQ(a);else if(p==='search')searchView();else if(p==='listen'){try{localStorage.removeItem('n1_listen')}catch(e){}replaceTo('home');return}else if(p==='gpairs')gpairsView(a);else if(p==='today')todayView();else home()}
 function rerender(){const y=window.scrollY;
   if(S&&!S.done&&document.querySelector('.choice')){const a=S.ans||{};showQ();for(const j in a){S.ans[j]=a[j];renderAnswered(+j,false)}}
   else if(S&&S.done)results(false);
@@ -960,6 +960,7 @@ function mistakesView(){const m=mistDB(),f=store.get('mistF','');
   <div class="mfil">${seg3('mf',[['','All'],...SECTIONS.map(s=>[s,SEC_INFO[s].glyph+' '+s])],f)}</div>
   ${(()=>{const t=dn(),due=rows.filter(q=>m[q.id].d<=t).length;return (due?`<button class="btn primary full" id="mdv">↺ Review due <small>${due}</small></button>`:'')+(rows.length?`<button class="btn ${due?'ghost':'primary'} full" id="mrv">Review all <small>${rows.length}</small></button>`:'')})()}
   ${(()=>{const a=rcAll().length,d=rcDue().length;return a?`<a class="hrow rcrow" href="#recall"><span>思</span><b>Recall cards</b><small class="mut">${d?d+' due · ':''}${a} scheduled</small><span class="chev">${ICONS.chev}</span></a>`:''})()}
+  <a class="hrow rcrow" href="#drills"><span>弱</span><b>Weak-point drills</b><small class="mut">10-question drills on your weakest spots</small><span class="chev">${ICONS.chev}</span></a>
   <p class="mut sm mhint">${all?`${all} question${all>1?'s':''} · reviewed after 1 · 3 · 7 days, then removed`:'No mistakes yet. Questions you answer wrong appear here.'}</p>
   <div class="mlist">${rows.map(q=>{const e=m[q.id];return `<div class="mrow"><a class="mra" href="#rq/${q.id}"><span class="mg ja">${secGlyph(q)}</span><span class="mtx"><span class="ja">${esc(qSnip(q))}</span><small class="mut">${esc(q.category)} · 正解 ${esc(q.answer_word)}</small></span>
     <span class="mst"><span class="${e.l?'t-ok':'t-bad'}">${e.l?'✓':'✕'}</span><small class="mut">${e.d<=dn()?'<b class="mdue">due</b>':'in '+(e.d-dn())+'d'} · ×${e.n}</small></span></a><button class="mrm" data-id="${q.id}" aria-label="Remove from notebook" title="Remove">✕</button></div>`}).join('')}</div>`;
@@ -968,14 +969,62 @@ function mistakesView(){const m=mistDB(),f=store.get('mistF','');
   if($('#mrv'))$('#mrv').onclick=()=>{const o=store.get('quizOpts',{});nav('quiz/play',()=>start(shuffle(rows),{...o,autoplay:false},true))};
   app.querySelectorAll('.mrm').forEach(b=>b.onclick=e=>{e.preventDefault();const id=b.dataset.id;mistRemove(id);mistakesView();toast('Removed from Mistakes','Undo',()=>{const m=mistDB();m[id]={n:1,l:0,s:0,t:Date.now(),d:dn()+1};store.set('mist',m);if(cur==='mistakes')mistakesView()})})}
 // ---- v84 recall cards: a wrong choice schedules a mini meaning card for that distractor on the 1/3/7-day schedule
+/* v111 weak-point drills: per-question [answered, correct] in n1_qRes (older history estimated from qAtt and the Mistakes count) */
+function qResAdd(q,ok){const r=store.get('qRes',{}),e=r[q.id]||qResOld(q.id);e[0]++;if(ok)e[1]++;r[q.id]=e;store.set('qRes',r)}
+function qResOld(id){const a=store.get('qAtt',{})[id]||0,m=(store.get('mist',{})[id]||{}).n||0;return [a,Math.max(0,a-m)]}
+function qResAll(){const r=store.get('qRes',{}),a=store.get('qAtt',{}),m=store.get('mist',{}),o={};for(const id in a){o[id]=r[id]?r[id].slice():[a[id],Math.max(0,a[id]-((m[id]||{}).n||0))]}for(const id in r)if(!o[id])o[id]=r[id].slice();return o}
+const DR_T={g:'Grammar',s:'Look-alike',c:'Category',x:'Section'};
+function drSpots(){const G=window.GPAIRS||[],out=[];
+  G.forEach(g=>g.patterns.forEach(p=>{const qs=(p.q||[]).filter(i=>QBY[i]);if(qs.length)out.push({key:'g:'+g.id+':'+p.p,t:'g',name:p.p,sub:g.title,qs,gid:g.id})}));
+  const ak=q=>[...String(q.answer_word||'')].filter(c=>KBY[c]);
+  SIM.filter(g=>g.kanji.length>=2).forEach(g=>{const qs=Q.filter(q=>ak(q).some(c=>g.kanji.includes(c))).map(q=>q.id);if(qs.length)out.push({key:'s:'+g.id,t:'s',name:g.kanji.join('・'),sub:'look-alike kanji',qs,sid:g.id})});
+  [...new Set(Q.map(q=>q.category))].forEach(c=>out.push({key:'c:'+c,t:'c',name:c,sub:secOf(Q.find(q=>q.category===c)),qs:Q.filter(q=>q.category===c).map(q=>q.id)}));
+  SECTIONS.forEach(x=>out.push({key:'x:'+x,t:'x',name:x,sub:SEC_INFO[x].en,qs:Q.filter(q=>secOf(q)===x).map(q=>q.id)}));return out}
+function drRank(){const R_=qResAll(),m=mistDB(),t=dn();return drSpots().map(sp=>{let a=0,c=0,due=0;for(const id of sp.qs){const e=R_[id];if(e){a+=e[0];c+=e[1]}if(m[id]&&m[id].d<=t)due++}
+   return {...sp,a,c,w:a-c,due,acc:a?c/a:null,score:(c+1)/(a+2)}}).filter(x=>x.w>0).sort((x,y)=>x.score-y.score||y.w-x.w||x.qs.length-y.qs.length)}
+function drPick(sp,n=10){const R_=qResAll(),m=mistDB(),t=dn(),seenR=new Set((rounds().all||{s:[]}).s),pri=id=>{const e=R_[id],mm=m[id];return mm&&mm.d<=t?0:e&&e[1]<e[0]?1:!seenR.has(+id)&&!e?2:3};
+  const ord=ids=>shuffle(ids.slice()).sort((a,b)=>pri(a)-pri(b)||((R_[a]||[0])[0]-(R_[b]||[0])[0]));let ids=ord(sp.qs);
+  if(ids.length<n&&sp.t==='g'){const g=(window.GPAIRS||[]).find(x=>x.id===sp.gid);if(g){const more=g.patterns.flatMap(p=>p.q||[]).filter(i=>QBY[i]&&!ids.includes(i));ids=ids.concat(ord([...new Set(more)]))}}
+  if(ids.length<n&&sp.t!=='x'){const cats=new Set(sp.qs.map(i=>QBY[i].category)),more=Q.filter(q=>cats.has(q.category)&&!ids.includes(q.id)).map(q=>q.id);ids=ids.concat(ord(more))}
+  return ids.map(i=>QBY[i]).filter(Boolean)}
+// recall cards for a spot: distractor cards of its questions + grammar-pattern cards (patterns of its pair group that you have not met in a question yet)
+function drRecall(sp){const ids=[];for(const id of sp.qs){const q=QBY[id];if(q&&q.rc)for(const k in q.rc)ids.push(q.id+'_'+k)}
+  if(sp.t==='g'){const g=(window.GPAIRS||[]).find(x=>x.id===sp.gid),att=store.get('qAtt',{});if(g)g.patterns.forEach((p,i)=>{if(!(p.q||[]).some(q=>att[q]))ids.push('g'+g.id+'_'+i)})}return ids}
+function drUntested(sp){if(sp.t!=='g')return[];const g=(window.GPAIRS||[]).find(x=>x.id===sp.gid),att=store.get('qAtt',{});return g?g.patterns.filter(p=>!(p.q||[]).some(q=>att[q])):[]}
+const drAcc=x=>x.acc==null?'—':Math.round(x.acc*100)+'%';
+function drillsView(){app.innerHTML='<p class="mut">Loading…</p>';loadGP().catch(()=>{}).then(()=>{const L=drRank(),f=store.get('drF','');const rows=L.filter(x=>!f||x.t===f).slice(0,12);
+  app.innerHTML=`<div class="ph"><h1 class="pt">Drills 弱点練習</h1></div>
+  <div class="mfil">${seg3('drf',[['','All'],['g','Grammar'],['s','Kanji'],['c','Type'],['x','Section']],f)}</div>
+  <p class="mut sm mhint">${L.length?'Your weakest spots from your answers and mistakes. Each drill is 10 questions; results go into your Mistakes schedule.':'No weak spots yet. Answer some questions and the spots you miss most show up here.'}</p>
+  <div class="mlist">${rows.map(x=>`<a class="mrow drow" href="#drill/${encodeURIComponent(x.key)}"><span class="mra"><span class="mg drt">${DR_T[x.t][0]}</span><span class="mtx"><span class="ja">${esc(x.name)}</span><small class="mut">${esc(DR_T[x.t])} · ${esc(x.sub||'')}</small></span>
+   <span class="mst"><b class="${x.acc!=null&&x.acc<.6?'t-bad':''}">${drAcc(x)}</b><small class="mut">${x.c}/${x.a}${x.due?' · '+x.due+' due':''}</small></span></span></a>`).join('')}</div>`;
+  $('#drf').querySelectorAll('button').forEach(b=>b.onclick=()=>{store.set('drF',b.dataset.v);drillsView()})})}
+function drillDetail(key){app.innerHTML='<p class="mut">Loading…</p>';loadGP().catch(()=>{}).then(()=>{key=decodeURIComponent(key||'');const sp=drRank().find(x=>x.key===key)||(()=>{const s0=drSpots().find(x=>x.key===key);return s0&&{...s0,a:0,c:0,w:0,due:0,acc:null}})();
+  if(!sp){app.innerHTML='<div class="card">Drill not found. <a href="#drills">All drills</a></div>';return}
+  const rc=drRecall(sp),un=drUntested(sp),g=sp.t==='g'?(window.GPAIRS||[]).find(x=>x.id===sp.gid):null;
+  app.innerHTML=`<div class="ph"><h1 class="pt ja">${esc(sp.name)}</h1></div>
+  <div class="card drcard"><p class="mut sm">${esc(DR_T[sp.t])} · ${esc(sp.sub||'')}</p>
+   <div class="totals">${[['Accuracy',drAcc(sp)],['Answered',sp.a],['Missed',sp.w],['Questions',sp.qs.length]].map(([a,b])=>`<div class="tot"><b>${b}</b><span>${a}</span></div>`).join('')}</div>
+   <button class="btn primary big full" id="drgo">Start drill · 10 questions</button>
+   ${rc.length?`<button class="btn ghost full" id="drrc">Recall cards <small class="mut">${rc.length}</small></button>`:''}
+   ${g?`<a class="hrow" href="#gpairs/${g.id}"><span class="ja">文</span><b>Grammar pair</b><small class="mut">${esc(g.title)}</small><span class="chev">${ICONS.chev}</span></a>`:''}
+   ${sp.t==='s'?`<a class="hrow" href="#similar/${sp.sid}"><span class="ja">似</span><b>Look-alike group</b><small class="mut">${esc(sp.name)}</small><span class="chev">${ICONS.chev}</span></a>`:''}
+   ${un.length?`<p class="mut sm">Not yet tested in a question: ${un.map(p=>`<span class="pill ja">${esc(p.p)}</span>`).join('')}</p>`:''}</div>`;
+  $('#drgo').onclick=()=>{const o=store.get('quizOpts',{}),L=drPick(sp,10);nav('quiz/play',()=>{start(L,{...o,autoplay:false,shuffle:true},false,10);S.drill=sp.key})};
+  if($('#drrc'))$('#drrc').onclick=()=>{DRRC=shuffle(rc);location.hash='recall/drill'}})}
+let DRRC=null;
+function gcCard(id){const m=/^g(\d+)_(\d+)$/.exec(id);if(!m||!window.GPAIRS)return null;const G=window.GPAIRS,g=G.find(x=>x.id===+m[1]),p=g&&g.patterns[+m[2]];if(!p)return null;
+  const pool=[...g.patterns.filter(x=>x!==p),...shuffle(G.flatMap(x=>x.patterns)).slice(0,12)].map(x=>x.en).filter((e,i,a)=>e&&e!==p.en&&a.indexOf(e)===i).slice(0,3);
+  return {q:null,g,k:m[2],c:{w:p.p,r:p.form,m:p.en,o:pool,ex:p.ex,en:p.exen}}}
 const rcDB=()=>store.get('rc',{});
-const rcCard=id=>{const[qi,k]=String(id).split('_'),q=QBY[qi];return q&&q.rc&&q.rc[k]?{q,k,c:q.rc[k]}:null};
+const rcCard=id=>{if(String(id)[0]==='g')return gcCard(String(id));const[qi,k]=String(id).split('_'),q=QBY[qi];return q&&q.rc&&q.rc[k]?{q,k,c:q.rc[k]}:null};
 function rcAdd(q,k){if(!q.rc||!q.rc[k])return;const r=rcDB(),id=q.id+'_'+k,e=r[id];r[id]={s:0,d:dn()+RIV[0],n:(e?e.n:0)+1};store.set('rc',r)}
 function rcDue(){const r=rcDB(),t=dn();return Object.keys(r).filter(id=>rcCard(id)&&r[id].d<=t)}
 const rcAll=()=>Object.keys(rcDB()).filter(id=>rcCard(id));
-function rcRec(id,ok){const r=rcDB(),e=r[id];if(!e)return;if(!ok){e.s=0;e.d=dn()+RIV[0];e.n=(e.n||0)+1}else if(e.d<=dn()){e.s=(e.s||0)+1;if(e.s>=RIV.length)delete r[id];else e.d=dn()+RIV[e.s]}store.set('rc',r)}
+function rcRec(id,ok){const r=rcDB();let e=r[id];if(!e){if(ok)return;e=r[id]={s:0,d:dn()+RIV[0],n:0}}if(!ok){e.s=0;e.d=dn()+RIV[0];e.n=(e.n||0)+1}else if(e.d<=dn()){e.s=(e.s||0)+1;if(e.s>=RIV.length)delete r[id];else e.d=dn()+RIV[e.s]}store.set('rc',r)}
 const RCS={};
-function recallView(){let R_=RCS[NAV.k];if(!R_)R_=RCS[NAV.k]={q:shuffle(rcDue()),i:0,ok:0,a:null,o:null};
+function recallView(a){if(!window.GPAIRS&&(a==='drill'||Object.keys(rcDB()).some(k=>k[0]==='g'))){app.innerHTML='<p class="mut">Loading…</p>';loadGP().then(()=>{if((cur||'').startsWith('recall'))recallView(a)}).catch(()=>{window.GPAIRS=window.GPAIRS||[];recallView(a)});return}
+  let R_=RCS[NAV.k];if(!R_)R_=RCS[NAV.k]={q:a==='drill'&&DRRC?DRRC:shuffle(rcDue()),i:0,ok:0,a:null,o:null};
   const tot=R_.q.length,hd=`<div class="ph"><h1 class="pt">Recall 思い出す</h1>${tot&&R_.i<tot?`<span class="mut sm rcn">${R_.i+1} / ${tot}</span>`:''}</div>`;
   if(!tot){app.innerHTML=hd+`<div class="card center rce"><p>No recall cards due.</p><p class="mut sm">When you pick a wrong choice, a mini card for that word comes back after 1 · 3 · 7 days.</p>${rcAll().length?`<p class="mut sm">${rcAll().length} scheduled</p>`:''}</div>`;return}
   if(R_.i>=tot){app.innerHTML=hd+`<div class="card center rce"><p class="rcd">${R_.ok} / ${tot}</p><p class="mut sm">Correct cards move to the next step (1 → 3 → 7 days); missed ones start again tomorrow.</p><div class="row center"><a class="btn ghost" href="#mistakes">Mistakes</a><a class="btn primary" href="#home">Home</a></div></div>`;return}
@@ -983,7 +1032,7 @@ function recallView(){let R_=RCS[NAV.k];if(!R_)R_=RCS[NAV.k]={q:shuffle(rcDue())
   if(!R_.o||R_.o.id!==id)R_.o={id,o:shuffle([c.m,...c.o])};
   app.innerHTML=hd+`<div class="card rcc"><p class="mut sm">What does this mean?</p><p class="rcw ja">${esc(c.w)}</p><p class="rcr">${A!=null&&c.r?esc(c.r):'&nbsp;'}</p>
   <div class="choices">${R_.o.o.map((m,i)=>`<button class="choice${A!=null?' dis'+(m===c.m?' ok':i===A?' bad':''):''}" data-i="${i}"><span class="cv">${esc(m)}</span></button>`).join('')}</div>
-  ${A!=null?`<div class="rcx">${c.ex?`<div class="ja">${esc(c.ex)}</div><div class="mut sm">${esc(c.en)}</div>`:''}<a class="mut sm" href="#rq/${x.q.id}">From Q${x.q.id} ›</a></div><button class="btn primary big full" id="rcnx">${R_.i+1<tot?'Next →':'Finish'}</button>`:''}</div>`;
+  ${A!=null?`<div class="rcx">${c.ex?`<div class="ja">${esc(c.ex)}</div><div class="mut sm">${esc(c.en)}</div>`:''}${x.q?`<a class="mut sm" href="#rq/${x.q.id}">From Q${x.q.id} ›</a>`:`<a class="mut sm" href="#gpairs/${x.g.id}">Grammar pair ›</a>`}</div><button class="btn primary big full" id="rcnx">${R_.i+1<tot?'Next →':'Finish'}</button>`:''}</div>`;
   if(A==null)app.querySelectorAll('.rcc .choice').forEach(b=>b.onclick=()=>{const i=+b.dataset.i,ok=R_.o.o[i]===c.m;R_.a=i;if(ok)R_.ok++;rcRec(id,ok);recallView()});
   else $('#rcnx').onclick=()=>{R_.i++;R_.a=null;R_.o=null;recallView();window.scrollTo(0,0)}}
 // ---- v85 mock exam: N1 言語知識・読解 proportions, time scaled from 110 min / 70 items, no feedback until the end
@@ -1027,7 +1076,7 @@ function mockPlay(){clearInterval(MT);if(!M)return replaceTo('mock');if(M.done)r
   const tick=()=>{const r=(M.end-Date.now())/1000,e=$('#mtm');if(!e||cur!=='mock/play'){clearInterval(MT);return}e.textContent=mFmt(r);e.classList.toggle('low',r<300);if(r<=0){clearInterval(MT);toast('Time is up');mockFinish()}};MT=setInterval(tick,1000)}
 function mockFinish(){if(!M||M.done)return;clearInterval(MT);const L=M.ids.map(i=>QBY[i]),sc={};MSECS.forEach(s=>sc[s]={c:0,t:0});
   for(const q of L){const k=M.ans[q.id],ok=k===String(q.answer),s=sc[secOf(q)];s.t++;if(ok)s.c++;
-    if(k!=null){const qa=store.get('qAtt',{});qa[q.id]=(qa[q.id]||0)+1;store.set('qAtt',qa);mistRec(q,ok);if(!ok){srsMiss(q);rcAdd(q,k)}}}
+    if(k!=null){const qa=store.get('qAtt',{});qa[q.id]=(qa[q.id]||0)+1;store.set('qAtt',qa);qResAdd(q,ok);mistRec(q,ok);if(!ok){srsMiss(q);rcAdd(q,k)}}}
   const s60=s=>s.t?Math.round(60*s.c/s.t):0,lk=(sc['文字・語彙'].t+sc['文法'].t)?Math.round(60*(sc['文字・語彙'].c+sc['文法'].c)/(sc['文字・語彙'].t+sc['文法'].t)):0,rd=s60(sc['読解']);
   M.done=true;M.res={sc,lk,rd,tot:lk+rd,used:Math.round((M.secs*1000-(M.end-Date.now()))/60000)};mSave();
   const H=store.get('mocks',[]);H.push({d:dayKey(),full:M.full,v:s60(sc['文字・語彙']),g:s60(sc['文法']),r:rd,lk,rd,tot:lk+rd});store.set('mocks',H.slice(-50));logActivity();replaceTo('mock/res')}
@@ -1162,7 +1211,7 @@ function offlineRow(root){const box=root.querySelector('#aud');if(!box)return;
   paint()}
 
 window.addEventListener('hashchange',route);
-window.__n1q=Q;window.__sim=SIM;window.__simDiff=simDiff;window.__n1={bk:{collect:bkCollect,json:bkJSON,parse:bkParse,apply:bkApply,confirm:bkConfirm,remind:bkNeedRemind},kt:kanjiTypes,pick:smartPick,nav:()=>NAV,ss:()=>SS,state:()=>S,start:(ids)=>nav('quiz/play',()=>start(Q.filter(q=>ids.includes(q.id)),store.get("quizOpts",{}),false))};
+window.__n1q=Q;window.__sim=SIM;window.__simDiff=simDiff;window.__n1={dr:{rank:drRank,pick:drPick,recall:drRecall,spots:drSpots},bk:{collect:bkCollect,json:bkJSON,parse:bkParse,apply:bkApply,confirm:bkConfirm,remind:bkNeedRemind},kt:kanjiTypes,pick:smartPick,nav:()=>NAV,ss:()=>SS,state:()=>S,start:(ids)=>nav('quiz/play',()=>start(Q.filter(q=>ids.includes(q.id)),store.get("quizOpts",{}),false))};
 // ---- v51 swipe: ← next, → previous on Study and Quiz (play) screens. Ignores left-edge (system back), vertical scrolls, h-scrollable areas, inputs.
 const SWX=24,SWT=60;
 function hScrollable(t){for(let n=t;n&&n!==app&&n.nodeType===1;n=n.parentElement){const o=getComputedStyle(n).overflowX;if((o==='auto'||o==='scroll')&&n.scrollWidth>n.clientWidth+2)return true}return false}
