@@ -1148,3 +1148,16 @@ a.drow .t-bad{color:var(--bad)}
 @keyframes rdpop{0%{transform:scale(0);opacity:0}100%{transform:scale(1);opacity:1}}
 .rdnum b{display:block;font-size:2rem}.rdres.fail .rdrh{color:var(--warn)}
 @media (prefers-reduced-motion:reduce){.rdhalo,.rdbig.pop i{animation:none}}
+
+/* v118 answer cards */
+.fb .fbh{margin-bottom:8px}.fb .verdict{font-size:1em}
+.acard,.ycard{border-radius:12px;padding:10px 12px;margin:8px 0}
+.acard{background:var(--ok-soft)}.ycard{background:var(--bad-soft)}
+.ahd{display:flex;align-items:baseline;flex-wrap:wrap;gap:6px 10px}
+.ahd .aw{font-weight:700;font-size:1.15em}.ahd .aw.long{font-weight:500;font-size:1em}
+.ard{font-weight:700;font-size:1.3em;color:var(--ok)}
+.amean{margin:6px 0 0;font-weight:600}.akey{margin:4px 0 0;font-size:.92em}
+.ycard .orow{display:block;border:0;padding:4px 0 0}.ycard .oline{display:flex;flex-direction:column;gap:2px}.ycard .on2{font-weight:600}.ycard .onote{font-size:.92em}
+.badge.bad{background:var(--bad);color:var(--card)}
+.asent{margin:10px 2px 4px}.asent .sent{margin:0 0 2px}
+.fb .others{margin-top:8px}.fb .others>.lbl{display:block;margin-bottom:2px}

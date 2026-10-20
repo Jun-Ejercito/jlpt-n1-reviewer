@@ -1,6 +1,6 @@
 (function(){
 'use strict';
-const APP_VERSION='v117';
+const APP_VERSION='v118';
 const SECTIONS=['文字・語彙','文法','読解'];
 const SEC_INFO={'文字・語彙':{en:'Kanji & Vocabulary',glyph:'字'},'文法':{en:'Grammar',glyph:'文'},'読解':{en:'Reading',glyph:'読'}};
 const IC=(d,extra='')=>`<svg class="ico" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"${extra}>${d}</svg>`;
@@ -274,6 +274,45 @@ function answer(k,j=0){
   renderAnswered(j,true);
   if(q.audio&&S.opts.autoplay)play(q.audio);
 }
+/* v118 post-answer view: verdict → 正解 card (word, meaning, key point) → Your answer card (if wrong) → completed sentence → teacher → More */
+function ansSplit(q){const ex=q.explain,raw=String(ex?ex.answer_note:q.explanation_en||'').trim(),E=x=>x.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
+  let t=raw;const ws=[q.answer_word,q.choices[q.answer]].filter(Boolean).map(String).sort((a,b)=>b.length-a.length);
+  for(const w of ws){const m=t.match(new RegExp('^'+E(w)+'な?\\s*(?:[（(][^)）]{0,30}[)）])?\\s*(?:means\\b|[:：—–=]|is\\b)?\\s*'));if(m&&m[0].trim().length>w.length-1&&t.length>m[0].length){t=t.slice(m[0].length);break}}
+  if(t===raw)t=stripW(raw,q.answer_word)||raw;
+  const sents=t.match(/[^.。!?]+(?:[.。!?](?=\s|$)|$)\s*/g)||[t],first=(sents[0]||'').trim(),rest=sents.slice(1).join('').trim();
+  let mean='',key=first;const stripped=t!==raw;
+  if(stripped&&!isOrderQ(q)&&secOf(q)!=='読解'){const c=first.match(/^([^:;：]{1,70}?)\s*[:;：]\s*(.+)$/);if(c){mean=c[1];key=c[2]}else if(first.length<=60&&!/[\u3040-\u9fff]/.test(first.replace(/\([^)]*\)/g,''))){mean=first.replace(/[.。]\s*$/,'');key=''}}
+  if(!key&&rest){const s2=rest.match(/^[^.。]+[.。]?/)[0];key=s2;return{mean,key,rest:rest.slice(s2.length).trim()}}
+  return{mean,key,rest}}
+function orowHTML(q,o,wrongCard){const cn=(q.choice_notes||{})[o.key]||null;
+  const fake=cn?/not a real word|wrong reading|does not connect|not natural|not a (common|natural|correct)/.test(cn.note)&&!cn.example_ja:o.fake;
+  const ls=lemmaSplit(stripW(cn?(cn.meaning_en&&cn.meaning_en.trim()!==String(q.choices[o.key]).trim()?cn.meaning_en:''):(o.form?o.form+' ':'')+o.note,q.choices[o.key],cn&&cn.reading),q.choices[o.key]);
+  let mean=ls.gloss;const form=cn&&cn.form?`<span class="of">${esc(cn.form)}</span> `:'';
+  // the parsed explanation note often carries a usage hint, e.g. "view (見晴らしのいい部屋)": use it when it extends the meaning
+  const on=o.note&&!o.fake?String(o.note):'';if(on&&mean&&on.startsWith(mean.trim())&&on.length>mean.trim().length)mean=on;else if(!mean&&on)mean=on;
+  let note=cn&&cn.note&&!/^\s*wrong\s*$/i.test(cn.note)?cn.note:'';
+  if(wrongCard&&!note&&mean&&!fake){const am=ansSplit(q).mean;note='Doesn’t fit here: the sentence needs '+(am?'“'+am.replace(/\s*\(.*$/,'')+'”':'「'+q.answer_word+'」')+'.'}
+  if(note&&mean&&note.trim()===mean.trim())note='';
+  return `<div class="orow${fake?' fake':''}">${wrongCard?'':`<span class="badge">${esc(dk(q,o.key))}</span>`}<div class="obody"><div class="oline">${wrongCard?'':`<span class="ow">${choiceHTML(q,o.key,true)}</span>`}${mean?`<span class="on2">${form}${wrongCard?'':'— '}${furiText(rmap(q,mean))}${ls.lem?` <small class="olem mut ja">(${furiText(ls.lem)})</small>`:''}</span>`:''}${note?`<span class="onote">${furiText(rmap(q,note))}</span>`:''}</div>
+   ${cn&&cn.example_ja?`<div class="oex"><span class="rei">例</span><div><div class="ja">${furi&&cn.example_ja_ruby?cn.example_ja_ruby:esc(cn.example_ja)}</div><div class="oen">${esc(cn.example_en)}</div></div></div>`:''}</div></div>`}
+function fbHTML(q,k,ok,sent){const ex=q.explain,A=ansSplit(q),ord=isOrderQ(q),rd=secOf(q)==='読解',kr=/読み|reading \(/.test(q.category)&&secOf(q)==='文字・語彙';
+  const aw=String(q.answer_word||''),ac=String(q.choices[q.answer]||''),sameW=aw===ac||ord||rd;
+  const others=ex?ex.others.slice().sort((a,b)=>corder(q).indexOf(String(a.key))-corder(q).indexOf(String(b.key))):[];
+  const mine=ok?null:(others.find(o=>String(o.key)===String(k))||{key:k,note:'',fake:false}),rest=others.filter(o=>!mine||String(o.key)!==String(mine.key));
+  const word=kr?`<span class="aw ja">${F(q,'answer_word')}</span><span class="ard ja">${esc(ac)}</span>`:`<span class="aw ja${rd?' long':''}">${rd?choiceHTML(q,q.answer,true):sameW?F(q,'answer_word'):choiceHTML(q,q.answer,true)}</span>${!sameW?`<span class="mut sm ja">(${F(q,'answer_word')})</span>`:''}`;
+  return `<div class="card fb ${ok?'is-ok':'is-bad'}">
+  <div class="fbh"><div class="verdict">${ok?'<span class="vi">✓</span> Correct':'<span class="vi">✕</span> Incorrect'}</div>${q.audio?`<button class="abtn" aria-label="Play audio" title="Play audio">🔊</button>`:''}</div>
+  <div class="acard"><div class="ahd"><span class="badge ok">正解 ${esc(dk(q,q.answer))}</span>${word}${rd||ord?'':`<span class="mut sm">${esc(q.answer_romaji)}</span>`}</div>
+   ${ord?orderAnsHTML(q):''}${A.mean?`<p class="amean">${furiText(rmap(q,A.mean))}</p>`:''}${A.key?`<p class="akey">${furiText(rmap(q,A.key))}</p>`:''}</div>
+  ${ok?'':`<div class="ycard"><div class="ahd"><span class="badge bad">Your answer ${esc(dk(q,k))}</span><span class="aw ja${rd?' long':''}">${choiceHTML(q,k,true)}</span></div>${ex?orowHTML(q,mine,true):''}</div>`}
+  ${rd||ord&&!q.complete_sentence?'':`<div class="asent"><p class="ja sent">${sent}</p><p class="mut sm en">${esc(q.complete_sentence_en)}</p></div>`}
+  ${q.teacher?teacherHTML(q,ok?null:k):''}
+  <details class="more"><summary><span class="lbl">More</span><small class="mut">${[rest.length?'other choices':'',q.example_ja?'example':'',ex&&ex.tip?'tip':'',A.rest?'explanation':'',rd?'sentence':''].filter(Boolean).join(' · ')}</small></summary>
+  ${rd?`<p class="ja sent">${sent}</p><p class="mut sm en">${esc(q.complete_sentence_en)}</p>`:''}
+  ${A.rest?`<p class="anote">${furiText(rmap(q,A.rest))}</p>`:''}
+  ${rest.length?`<div class="others dsc${isLongQ(q)?' usage':''}"><span class="lbl">Other choices</span>${rest.map(o=>orowHTML(q,o,false)).join('')}</div>`:''}
+  ${ex&&ex.tip?`<p class="tip">💡 <b>Tip</b> ${furiText(rmap(q,ex.tip))}</p>`:''}
+  ${q.example_ja?`<div class="ex tight"><span class="lbl">Example 例文</span><div class="ja">${F(q,'example_ja')}</div><div class="mut sm">${esc(q.example_en)}</div></div>`:''}</details></div>`}
 function renderAnswered(j,anim){
   const q=S.list[S.i+j],k=S.ans[j],ok=k===String(q.answer),box=$('#gq'+j),[st,n]=S.steps[S.si];
   box.querySelectorAll('.choice').forEach(b=>{b.classList.add('dis');b.setAttribute('aria-disabled','true');b.querySelector('.cv').innerHTML=choiceHTML(q,b.dataset.k,true);
@@ -283,22 +322,7 @@ function renderAnswered(j,anim){
   const ex=q.explain;
   const gw=box.querySelector('.gw');if(gw){const d=gw.querySelector('details');gw.innerHTML=guideHTML(q,true,d&&d.open)}
   app.querySelectorAll(`mark.ks[data-qs~="${q.id}"]`).forEach(m=>m.classList.add('on'));
-  box.querySelector('.fbw').innerHTML=`<div class="card fb ${ok?'is-ok':'is-bad'}">
-  <div class="fbh"><div class="verdict">${ok?'<span class="vi">✓</span> Correct':'<span class="vi">✕</span> Incorrect'}${ok?'':`<span class="ya">Your answer: <b>${esc(dk(q,k))}</b> ${choiceHTML(q,k,true)}</span>`}</div>
-   ${q.audio?`<button class="abtn" aria-label="Play audio" title="Play audio">🔊</button>`:''}</div>
-  ${isOrderQ(q)?orderAnsHTML(q):''}
-  <div class="achip"><span class="badge ok">正解 ${esc(dk(q,q.answer))}</span><span class="aw">${F(q,'answer_word')}</span><span class="mut sm">${esc(q.answer_romaji)}</span></div>
-  ${q.teacher?teacherHTML(q,ok?null:k):''}
-  <details class="more"><summary><span class="lbl">More</span><small class="mut">sentence · note · other choices · example</small></summary>
-  <p class="ja sent">${sent}</p><p class="mut sm en">${esc(q.complete_sentence_en)}</p>
-  ${ex?`<p class="anote">${furiText(rmap(q,stripW(ex.answer_note,q.answer_word)))}</p>
-   <details class="others dsc${isLongQ(q)?' usage':''}"><summary><span class="lbl">Other choices (${ex.others.length})</span></summary>${ex.others.slice().sort((a,b)=>corder(q).indexOf(String(a.key))-corder(q).indexOf(String(b.key))).map(o=>{const cn=(q.choice_notes||{})[o.key]||null;
-     const fake=cn?/not a real word|wrong reading|does not connect|not natural|not a (common|natural|correct)/.test(cn.note)&&!cn.example_ja:o.fake;
-     const ls=lemmaSplit(stripW(cn?(cn.meaning_en&&cn.meaning_en.trim()!==String(q.choices[o.key]).trim()?cn.meaning_en:''):(o.form?o.form+' ':'')+o.note,q.choices[o.key],cn&&cn.reading),q.choices[o.key]),mean=ls.gloss, form=cn&&cn.form?`<span class="of">${esc(cn.form)}</span> `:'';
-     return `<div class="orow${fake?' fake':''}"><span class="badge">${esc(dk(q,o.key))}</span><div class="obody"><div class="oline"><span class="ow">${choiceHTML(q,o.key,true)}</span>${mean?`<span class="on2">${form}— ${furiText(rmap(q,mean))}${ls.lem?` <small class="olem mut ja">(${furiText(ls.lem)})</small>`:''}</span>`:''}${cn&&cn.note&&!/^\s*wrong\s*$/i.test(cn.note)?`<span class="onote">${furiText(rmap(q,cn.note))}</span>`:''}</div>
-      ${cn&&cn.example_ja?`<div class="oex"><span class="rei">例</span><div><div class="ja">${furi&&cn.example_ja_ruby?cn.example_ja_ruby:esc(cn.example_ja)}</div><div class="oen">${esc(cn.example_en)}</div></div></div>`:''}</div></div>`}).join('')}</details>
-   ${ex.tip?`<p class="tip">💡 <b>Tip</b> ${furiText(rmap(q,ex.tip))}</p>`:''}`:`<p class="anote">${furiText(rmap(q,q.explanation_en))}</p>`}
-  <div class="ex tight"><span class="lbl">Example 例文</span><div class="ja">${F(q,'example_ja')}</div><div class="mut sm">${esc(q.example_en)}</div></div></details></div>`;
+  box.querySelector('.fbw').innerHTML=fbHTML(q,k,ok,sent);
   if(q.audio)box.querySelector('.abtn').onclick=()=>play(q.audio);
   if(q.teacher)bindTeacher(box.querySelector('.tch'),q,ok?null:k);
   const done=Object.keys(S.ans).length>=n;
