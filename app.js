@@ -1,6 +1,6 @@
 (function(){
 'use strict';
-const APP_VERSION='v118';
+const APP_VERSION='v119';
 const SECTIONS=['文字・語彙','文法','読解'];
 const SEC_INFO={'文字・語彙':{en:'Kanji & Vocabulary',glyph:'字'},'文法':{en:'Grammar',glyph:'文'},'読解':{en:'Reading',glyph:'読'}};
 const IC=(d,extra='')=>`<svg class="ico" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"${extra}>${d}</svg>`;
@@ -44,7 +44,7 @@ const applyFuri=()=>document.documentElement.classList.toggle('nofuri',!furiOn);
 const F=(o,f)=>furi&&o[f+'_ruby']?o[f+'_ruby']:esc(o[f]);
 // reading shown beside a word only when furigana is off (ruby already carries it) and it adds info
 const RD=(o,cls='mut')=>o.reading===o.word?'':(o.word_ruby&&/<ruby>/.test(o.word_ruby))?`<span class="${cls} offuri">${esc(o.reading)}</span>`:`<span class="${cls}">${esc(o.reading)}</span>`;
-let audio=null;function play(src){if(!src)return;if(audio)audio.pause();audio=new Audio(src);audio.play().catch(()=>{})}
+let audio=null;function play(src){if(!src)return;if(audio)audio.pause();audio=new Audio(src);audio.defaultPlaybackRate=audio.playbackRate=1;audio.preservesPitch=true;audio.play().catch(()=>{})}
 
 /* ---- theme ---- */
 function applyTheme(){const t=store.get('theme','auto');const dark=t==='dark'||(t==='auto'&&matchMedia('(prefers-color-scheme: dark)').matches);document.documentElement.dataset.theme=dark?'dark':'light'}
@@ -746,7 +746,12 @@ const DAYMS=864e5,dn=()=>{const t=new Date();return Math.floor((t.getTime()-t.ge
 const KSET=new Set(K.map(x=>x.kanji)),KBY=Object.fromEntries(K.map(x=>[x.kanji,x])),VBY=Object.fromEntries(V.map(x=>[x.id,x])),VW={};V.forEach(v=>{if(!VW[v.word])VW[v.word]=v});
 const kOfW=v=>(v.kanji||[]).filter(c=>KSET.has(c));
 const hira=s=>String(s||'').replace(/[\u30a1-\u30f6]/g,c=>String.fromCharCode(c.charCodeAt(0)-96)).replace(/[\s　・.]/g,'');
-const say=window.__say=t=>{try{if(!window.speechSynthesis||!t)return;speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(t);u.lang='ja-JP';u.rate=.9;speechSynthesis.speak(u)}catch(e){}};
+/* v119: speak at natural speed (rate 1.0, was 0.9) with the best Japanese voice available (iOS: Kyoko/O-ren, enhanced first) */
+let JAV=null;const jaVoice=()=>{try{const vs=speechSynthesis.getVoices().filter(v=>/^ja[-_]?JP?/i.test(v.lang)||/^ja$/i.test(v.lang));if(!vs.length)return null;
+  const sc=v=>(/enhanced|premium|拡張|高品質/i.test(v.name)?4:0)+(/kyoko|o-?ren|nanami|google|siri/i.test(v.name)?2:0)+(/ja[-_]JP/i.test(v.lang)?1:0)+(v.localService?.5:0);return vs.sort((a,b)=>sc(b)-sc(a))[0]}catch(e){return null}};
+if(window.speechSynthesis){JAV=jaVoice();speechSynthesis.onvoiceschanged=()=>{JAV=jaVoice()}}
+const SAY_RATE=1;
+const say=window.__say=t=>{try{if(!window.speechSynthesis||!t)return;speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(t);u.lang='ja-JP';if(!JAV)JAV=jaVoice();if(JAV)u.voice=JAV;u.rate=SAY_RATE;u.pitch=1;window.__lastUtt=u;speechSynthesis.speak(u)}catch(e){}};
 // v94: kanji back enhancements — key word, stroke order (KanjiVG), tappable parts, look-alike strip, progress, listen
 function kHead(x){const v=sampleV(x.kanji);
   return `<div class="khead"><button type="button" class="kbig kstroke ja" data-k="${esc(x.kanji)}" aria-label="Play stroke order for ${esc(x.kanji)}" title="Tap to see stroke order">${esc(x.kanji)}</button><div><div class="kmean">${esc(x.meaning_en)}</div>
@@ -1397,7 +1402,15 @@ function gpairsView(id){app.innerHTML='<p class="mut">Loading…</p>';loadGP().t
 /* ---- Offline audio (service worker + Cache API) ---- */
 const AUDIO_CACHE='n1-audio';
 let SWOK=false;
-if('serviceWorker' in navigator&&(location.hostname!=='127.0.0.1'||/[?&]sw\b/.test(location.search))&&!/[?&]nosw\b/.test(location.search)){navigator.serviceWorker.register('sw.js').then(()=>{SWOK=true}).catch(()=>{})}
+if('serviceWorker' in navigator&&(location.hostname!=='127.0.0.1'||/[?&]sw\b/.test(location.search))&&!/[?&]nosw\b/.test(location.search)){navigator.serviceWorker.register('sw.js').then(reg=>{SWOK=true;
+   // v119: check for a new version when the app comes back to the foreground and every 30 min
+   const chk=()=>reg.update().catch(()=>{});document.addEventListener('visibilitychange',()=>{if(!document.hidden)chk()});setInterval(chk,30*60e3)}).catch(()=>{});
+  const had=!!navigator.serviceWorker.controller;navigator.serviceWorker.addEventListener('controllerchange',()=>{if(had)swToast()})}
+/* v119: a new service worker took over → this page still runs the old code. Offer a one-tap reload (auto-reload when idle on Home). */
+function swToast(){if(document.getElementById('swup'))return;const b=document.createElement('button');b.id='swup';b.className='swup';b.type='button';b.innerHTML='New version · <b>tap to update</b>';
+  b.onclick=()=>{sessionStorage.setItem('n1_swReloaded',String(Date.now()));location.reload()};document.body.appendChild(b);
+  if((cur===''||cur==='home')&&!S&&Date.now()-(+sessionStorage.getItem('n1_swReloaded')||0)>60e3)setTimeout(()=>{if(document.getElementById('swup')&&(cur===''||cur==='home'))b.click()},1500)}
+window.__swToast=swToast;
 let AMAN=null;const audioManifest=()=>AMAN||(AMAN=fetch('audio/manifest.json?v='+APP_VERSION.slice(1)).then(r=>r.json()).catch(e=>{AMAN=null;throw e}));
 const mb=b=>(b/1e6).toFixed(b<1e7?1:0)+' MB';
 async function audioStatus(){if(!window.caches)return null;const m=await audioManifest(),c=await caches.open(AUDIO_CACHE),ks=new Set((await c.keys()).map(r=>new URL(r.url).pathname.replace(/^.*?\/audio\//,'audio/')));

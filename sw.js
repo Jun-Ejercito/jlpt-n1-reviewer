@@ -1,16 +1,17 @@
 // JLPT N1 Reviewer service worker: app shell cached; audio cached on demand (Range-aware)
-const V='n1-shell-v118',AUD='n1-audio-v82';
+const V='n1-shell-v119',AUD='n1-audio-v119';
 // v109: precache the exact versioned URLs index.html requests (the bare names were never matched, so install
 // downloaded data.js etc. twice). Fonts and stroke files live in a long-lived static cache that survives version bumps.
 const VN=V.split('-v').pop(),STATIC='n1-static-v1';
 self.addEventListener('install',e=>{self.skipWaiting();e.waitUntil(caches.open(V).then(c=>c.addAll(['./','index.html',...['style.css','app.js','data.js','tips.js'].map(f=>f+'?v='+VN)]).catch(()=>{})))});
+// v119: q174–q440 sentence mp3s re-timed to natural speed (were ~25% slow) — new AUD name drops every cached copy
 // v96: audio files regenerated in place (same names) — purge just these from the audio cache
 const STALE=[];
 const purge=()=>caches.open(AUD).then(c=>Promise.all(STALE.map(p=>c.delete(new URL(p,self.registration.scope).href))));
 self.addEventListener('activate',e=>e.waitUntil(purge().catch(()=>{}).then(()=>caches.keys()).then(ks=>Promise.all(ks.filter(k=>(k.startsWith('n1-shell-')&&k!==V)||(k.startsWith('n1-audio')&&k!==AUD)||(k.startsWith('n1-static')&&k!==STATIC)).map(k=>caches.delete(k)))).then(()=>self.clients.claim())));
 const strip=u=>{const x=new URL(u);x.search='';return x.href};
 async function audio(req){const c=await caches.open(AUD),key=strip(req.url);let r=await c.match(key);
-  if(!r){const net=fetch(key).then(async res=>{if(res.ok&&res.status===200)await c.put(key,res.clone());return res});
+  if(!r){const net=fetch(key,{cache:'reload'}).then(async res=>{if(res.ok&&res.status===200)await c.put(key,res.clone());return res});
     const range=req.headers.get('range');if(!range)return net;
     // ranged request on a miss: stream the network's ranged reply now, cache the full file in the background
     net.catch(()=>{});return fetch(req)}
