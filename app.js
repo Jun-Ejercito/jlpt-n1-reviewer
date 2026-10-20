@@ -1,6 +1,6 @@
 (function(){
 'use strict';
-const APP_VERSION='v119';
+const APP_VERSION='v120';
 const SECTIONS=['文字・語彙','文法','読解'];
 const SEC_INFO={'文字・語彙':{en:'Kanji & Vocabulary',glyph:'字'},'文法':{en:'Grammar',glyph:'文'},'読解':{en:'Reading',glyph:'読'}};
 const IC=(d,extra='')=>`<svg class="ico" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"${extra}>${d}</svg>`;
@@ -44,7 +44,7 @@ const applyFuri=()=>document.documentElement.classList.toggle('nofuri',!furiOn);
 const F=(o,f)=>furi&&o[f+'_ruby']?o[f+'_ruby']:esc(o[f]);
 // reading shown beside a word only when furigana is off (ruby already carries it) and it adds info
 const RD=(o,cls='mut')=>o.reading===o.word?'':(o.word_ruby&&/<ruby>/.test(o.word_ruby))?`<span class="${cls} offuri">${esc(o.reading)}</span>`:`<span class="${cls}">${esc(o.reading)}</span>`;
-let audio=null;function play(src){if(!src)return;if(audio)audio.pause();audio=new Audio(src);audio.defaultPlaybackRate=audio.playbackRate=1;audio.preservesPitch=true;audio.play().catch(()=>{})}
+let audio=null;function play(src){if(!src)return;if(audio)audio.pause();try{speechSynthesis.cancel()}catch(e){}if(typeof TCH!=='undefined'&&TCH)TCH.pause();audio=new Audio(src);audio.defaultPlaybackRate=audio.playbackRate=1;audio.preservesPitch=true;audio.play().catch(()=>{})}
 
 /* ---- theme ---- */
 function applyTheme(){const t=store.get('theme','auto');const dark=t==='dark'||(t==='auto'&&matchMedia('(prefers-color-scheme: dark)').matches);document.documentElement.dataset.theme=dark?'dark':'light'}
@@ -301,11 +301,11 @@ function fbHTML(q,k,ok,sent){const ex=q.explain,A=ansSplit(q),ord=isOrderQ(q),rd
   const mine=ok?null:(others.find(o=>String(o.key)===String(k))||{key:k,note:'',fake:false}),rest=others.filter(o=>!mine||String(o.key)!==String(mine.key));
   const word=kr?`<span class="aw ja">${F(q,'answer_word')}</span><span class="ard ja">${esc(ac)}</span>`:`<span class="aw ja${rd?' long':''}">${rd?choiceHTML(q,q.answer,true):sameW?F(q,'answer_word'):choiceHTML(q,q.answer,true)}</span>${!sameW?`<span class="mut sm ja">(${F(q,'answer_word')})</span>`:''}`;
   return `<div class="card fb ${ok?'is-ok':'is-bad'}">
-  <div class="fbh"><div class="verdict">${ok?'<span class="vi">✓</span> Correct':'<span class="vi">✕</span> Incorrect'}</div>${q.audio?`<button class="abtn" aria-label="Play audio" title="Play audio">🔊</button>`:''}</div>
+  <div class="fbh"><div class="verdict">${ok?'<span class="vi">✓</span> Correct':'<span class="vi">✕</span> Incorrect'}</div></div>
   <div class="acard"><div class="ahd"><span class="badge ok">正解 ${esc(dk(q,q.answer))}</span>${word}${rd||ord?'':`<span class="mut sm">${esc(q.answer_romaji)}</span>`}</div>
    ${ord?orderAnsHTML(q):''}${A.mean?`<p class="amean">${furiText(rmap(q,A.mean))}</p>`:''}${A.key?`<p class="akey">${furiText(rmap(q,A.key))}</p>`:''}</div>
   ${ok?'':`<div class="ycard"><div class="ahd"><span class="badge bad">Your answer ${esc(dk(q,k))}</span><span class="aw ja${rd?' long':''}">${choiceHTML(q,k,true)}</span></div>${ex?orowHTML(q,mine,true):''}</div>`}
-  ${rd||ord&&!q.complete_sentence?'':`<div class="asent"><p class="ja sent">${sent}</p><p class="mut sm en">${esc(q.complete_sentence_en)}</p></div>`}
+  ${rd||ord&&!q.complete_sentence?'':`<div class="asent"${q.audio?` data-a="${esc(q.audio)}"`:''}><p class="ja sent">${sent}</p><p class="mut sm en">${esc(q.complete_sentence_en)}</p></div>`}
   ${q.teacher?teacherHTML(q,ok?null:k):''}
   <details class="more"><summary><span class="lbl">More</span><small class="mut">${[rest.length?'other choices':'',q.example_ja?'example':'',ex&&ex.tip?'tip':'',A.rest?'explanation':'',rd?'sentence':''].filter(Boolean).join(' · ')}</small></summary>
   ${rd?`<p class="ja sent">${sent}</p><p class="mut sm en">${esc(q.complete_sentence_en)}</p>`:''}
@@ -323,7 +323,6 @@ function renderAnswered(j,anim){
   const gw=box.querySelector('.gw');if(gw){const d=gw.querySelector('details');gw.innerHTML=guideHTML(q,true,d&&d.open)}
   app.querySelectorAll(`mark.ks[data-qs~="${q.id}"]`).forEach(m=>m.classList.add('on'));
   box.querySelector('.fbw').innerHTML=fbHTML(q,k,ok,sent);
-  if(q.audio)box.querySelector('.abtn').onclick=()=>play(q.audio);
   if(q.teacher)bindTeacher(box.querySelector('.tch'),q,ok?null:k);
   const done=Object.keys(S.ans).length>=n;
   if(done){$('.qprog div').style.width=`${(S.si+1)*100/S.steps.length}%`;
@@ -436,7 +435,7 @@ function bindTeacher(el,q,wk){if(!el)return;if(TCH){TCH.pause();TCH=null}
      if(c!==last){last=c;S_.forEach((s,i)=>{s.classList.toggle('cur',i===c);s.classList.toggle('past',i<c)});
        const tr=el.querySelector('.ttr');if(c>=0&&tr&&tr.open&&Date.now()-uScroll>2500){const r=S_[c].getBoundingClientRect(),H=innerHeight;if(r.top<H*.2||r.bottom>H*.75)S_[c].scrollIntoView({block:'center',behavior:reduced()?'auto':'smooth'})}}}
     if(!a.paused)raf=requestAnimationFrame(sync)};
-  a.addEventListener('play',()=>{cancelAnimationFrame(raf);raf=requestAnimationFrame(sync)});a.addEventListener('pause',()=>{cancelAnimationFrame(raf);sync()});a.addEventListener('seeked',sync);
+  a.addEventListener('play',()=>{spkStop();cancelAnimationFrame(raf);raf=requestAnimationFrame(sync)});a.addEventListener('pause',()=>{cancelAnimationFrame(raf);sync()});a.addEventListener('seeked',sync);
   ['touchmove','wheel'].forEach(ev=>window.addEventListener(ev,()=>{uScroll=Date.now()},{passive:true}));
   el.addEventListener('click',e=>{const tb=e.target.closest('.tken');if(tb){e.stopPropagation();const on=!store.get('enAll',false);store.set('enAll',on);el.querySelectorAll('.tkar').forEach(x=>x.classList.toggle('enall',on));el.querySelectorAll('.tken').forEach(b=>b.textContent=on?'Hide English':'Show all English');return}
     const sg=e.target.closest('.tsg');if(!sg||sg.classList.contains('cur'))return;e.stopPropagation();if(TCH&&TCH!==a)TCH.pause();seek(+sg.dataset.s);last=-2;sync()});
@@ -904,7 +903,6 @@ function reveal(it,auto){if(SS.shown)return;closePeek();SS.shown=true;{const t=d
   $('#sbar').innerHTML=`<div class="grades">${[[1,'Again'],[2,'Hard'],[3,'Good'],[4,'Easy']].map(([g,l])=>`<button class="gbtn g${g}${sug===g?' sug':''}" data-g="${g}"><b>${l}</b><small>${ivLabel(sched(st,g).iv)}</small></button>`).join('')}</div>${SS.tip?'<p class="swtip" aria-hidden="true">Tip: swipe ← next (skip) · → previous card</p>':''}`;
   if(SS.tip){SS.tip=false;setTimeout(()=>{const t=document.querySelector('.swtip');if(t)t.classList.add('gone')},3500)}
   app.querySelectorAll('.gbtn').forEach(b=>b.onclick=()=>grade(it,+b.dataset.g));
-  app.querySelectorAll('.say').forEach(b=>b.onclick=e=>{e.stopPropagation();say(b.dataset.t)});
   const mn=$('#mn');if(mn)mn.onchange=()=>{const n=store.get('srsNote',{});n[it.key]=mn.value;store.set('srsNote',n)};
   if(it.key[0]==='w'&&store.get('srsSpeak',false))say(VBY[+it.key.slice(1)].word);
 }
@@ -1411,6 +1409,27 @@ function swToast(){if(document.getElementById('swup'))return;const b=document.cr
   b.onclick=()=>{sessionStorage.setItem('n1_swReloaded',String(Date.now()));location.reload()};document.body.appendChild(b);
   if((cur===''||cur==='home')&&!S&&Date.now()-(+sessionStorage.getItem('n1_swReloaded')||0)>60e3)setTimeout(()=>{if(document.getElementById('swup')&&(cur===''||cur==='home'))b.click()},1500)}
 window.__swToast=swToast;
+/* v120 inline speaker buttons: one compact .say button beside every Japanese sentence/word that can be heard.
+   mp3 (question sentence, speed 1.0) when the block carries data-a, otherwise speechSynthesis (rate 1.0, best ja-JP voice).
+   Text = the Japanese only: ruby <rt>/<rp>, English lines and buttons are stripped. One plays at a time; teacher audio stops it and vice versa. */
+const SPK_ICON='<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9.5h3.2L12 5.5v13l-4.8-4H4z" fill="currentColor"/><path class="w1" d="M15.5 9a4 4 0 0 1 0 6" /><path class="w2" d="M18 6.5a7.5 7.5 0 0 1 0 11"/></svg>';
+const SPK_SEL=['.asent .sent','.fb .ex .ja','.oex .ja','#fbk .ex>.ja','.sw-ex>.ja','.gpx>.ja','.gpm>.ja','.rcx>.ja','.simw>.ja:first-child','.wsheet .ws','.passage>.ptext','.card>p.ja:first-child','.sex>.ja'];
+const jaText=el=>{const c=el.cloneNode(true);c.querySelectorAll('rt,rp,button,.say,.mut,.oen,.gpxe,.gpe,small').forEach(x=>x.remove());return c.textContent.replace(/［\d+］/g,'').replace(/\s+/g,' ').trim()};
+function spkDecorate(root){(root||document).querySelectorAll('.say:not([data-v120])').forEach(b=>{b.dataset.v120=1;b.innerHTML=SPK_ICON;b.classList.add('spk');b.title='Listen'});(root||document).querySelectorAll(SPK_SEL.join(',')).forEach(el=>{
+  let b=el.querySelector(':scope>.say')||el.parentElement.querySelector(':scope>.say');
+  if(b){if(!b.dataset.v120){b.dataset.v120=1;b.innerHTML=SPK_ICON;b.classList.add('spk');b.title='Listen'}return}
+  const t=jaText(el);if(!t||!/[\u3040-\u30ff\u3400-\u9fff]/.test(t))return;
+  const holder=el.closest('[data-a]'),src=holder&&el.matches('.asent .sent')?holder.dataset.a:'';
+  b=document.createElement('button');b.type='button';b.className='say spk';b.dataset.v120=1;b.dataset.t=t;if(src)b.dataset.a=src;b.setAttribute('aria-label','Listen');b.title='Listen';b.innerHTML=SPK_ICON;
+  if(el.matches('.passage>.ptext')){b.classList.add('spk-p');el.prepend(b)}else el.append(b)})}
+function spkStop(){try{if(window.speechSynthesis)speechSynthesis.cancel()}catch(e){}if(audio&&audio.__spk){audio.pause();audio=null}document.querySelectorAll('.say.playing').forEach(b=>{b.classList.remove('playing');b.setAttribute('aria-pressed','false')})}
+document.addEventListener('click',e=>{const b=e.target.closest('.say');if(!b)return;e.stopPropagation();e.preventDefault();
+  const was=b.classList.contains('playing');spkStop();if(audio)audio.pause();if(typeof TCH!=='undefined'&&TCH)TCH.pause();if(was)return;
+  const t=b.dataset.t||jaText(b.parentElement),done=()=>{b.classList.remove('playing');b.setAttribute('aria-pressed','false')};b.classList.add('playing');b.setAttribute('aria-pressed','true');window.__spkLast={t,a:b.dataset.a||''};
+  if(b.dataset.a){play(b.dataset.a);audio.__spk=1;audio.onended=audio.onpause=done;audio.onerror=()=>{done();say(t)}}
+  else{say(t);const u=window.__lastUtt;if(u){u.onend=u.onerror=done}else done()}},true);
+new MutationObserver(()=>{if(spkDecorate.p)return;spkDecorate.p=requestAnimationFrame(()=>{spkDecorate.p=0;spkDecorate()})}).observe(document.body,{childList:true,subtree:true});
+window.__spk={decorate:spkDecorate,stop:spkStop,text:jaText};
 let AMAN=null;const audioManifest=()=>AMAN||(AMAN=fetch('audio/manifest.json?v='+APP_VERSION.slice(1)).then(r=>r.json()).catch(e=>{AMAN=null;throw e}));
 const mb=b=>(b/1e6).toFixed(b<1e7?1:0)+' MB';
 async function audioStatus(){if(!window.caches)return null;const m=await audioManifest(),c=await caches.open(AUDIO_CACHE),ks=new Set((await c.keys()).map(r=>new URL(r.url).pathname.replace(/^.*?\/audio\//,'audio/')));
@@ -1464,7 +1483,6 @@ function studyView(dir){const it0=SS.items[SS.view],it=typeof it0==='string'?{ke
    <div class="sback">${backHTML(it)}</div></div>
   <div class="stbar" id="sbar"><div class="frow rov"><span class="mut sm">${it.g?`Graded: <b>${GNAME[it.g]||'—'}</b>`:'Not graded'}</span><button class="btn primary" id="rtc" type="button">Back to current →</button></div></div>`;
   $('#rtc').onclick=()=>{SS.view=null;studyCard();slideIn($('#sc'),'next')};
-  app.querySelectorAll('.say').forEach(b=>b.onclick=e=>{e.stopPropagation();say(b.dataset.t)});
   slideIn($('#sc'),dir);window.scrollTo(0,0)}
 // Quiz: next = Next button once the step is answered; prev = read-only view of earlier steps
 function quizSwipe(dir){
