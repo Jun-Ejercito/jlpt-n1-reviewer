@@ -845,7 +845,7 @@ rt{margin:0 -.6em}
 .todayb .tdl{display:flex;flex-direction:column;align-items:flex-start;gap:2px;text-align:left}.todayb b{font-size:1.05em}.todayb small{opacity:.85;font-size:.8em;font-weight:400}
 .tdots{display:inline-flex;gap:5px;flex:none}.tdots i{width:7px;height:7px;border-radius:50%;background:currentColor;opacity:.3}.tdots i.on{opacity:1;width:16px;border-radius:4px}.tdots i.done{opacity:.75}
 .ph .tdots{color:var(--indigo)}
-.hsc{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;margin:8px 0}
+.hsc{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:6px;margin:8px 0}
 .hsl{display:flex;flex-direction:column;align-items:center;gap:2px;padding:9px 2px;border:1px solid var(--line);border-radius:12px;background:var(--card);color:var(--ink);text-decoration:none;font-size:.78em;text-align:center;min-height:58px;justify-content:center}
 .hsl .hsi{font-size:1.25em;color:var(--indigo);line-height:1.1}.hsl small{font-size:.9em}
 .tdsteps{padding:6px 14px}.tds{display:flex;align-items:center;gap:12px;padding:10px 0;border-top:1px solid var(--line)}.tds:first-child{border-top:0}
@@ -1118,3 +1118,33 @@ a.drow .t-bad{color:var(--bad)}
 .pacefb.slow b{color:var(--warn)}
 .gwarn{color:var(--warn)}
 [data-theme=dark] .btn.primary,[data-theme=dark] .seg .on,[data-theme=dark] .spc.on,[data-theme=dark] .td-k{color:#0b1424}
+
+/* v117 Exam Road */
+.rdph{display:flex;align-items:center;justify-content:space-between}
+.rdsum{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:6px 0 4px}
+.rdsum>div{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px;text-align:center}
+.rdsum b{display:block;font-size:1.25rem}.rdsum small{color:var(--mut);font-size:.72rem}
+.rdhere{margin:6px 2px 10px}
+.rdmap{position:relative;max-width:420px;margin:0 auto}
+.rdsvg{width:100%;display:block}
+.rdpath{fill:none;stroke:var(--line2);stroke-width:5;stroke-linecap:round;stroke-dasharray:1 10}
+.rdn{fill:var(--card);stroke:var(--accent);stroke-width:2.5}
+.rdn.clr{fill:var(--accent)}.rdn.lock{stroke:var(--line);fill:var(--bg)}
+.rdn.cur{stroke-width:3.5}
+.rdnt{fill:var(--card);font-size:13px;font-weight:700;pointer-events:none}
+.rdn:not(.clr)+.rdnt{fill:var(--accent)}
+.rdhalo{fill:none;stroke:var(--accent);stroke-width:2;opacity:.45;animation:rdpulse 2.4s ease-in-out infinite}
+@keyframes rdpulse{50%{opacity:.1;transform:scale(1.15)}}
+.rdlab{position:absolute;transform:translateY(-50%);display:flex;flex-direction:column;max-width:46%;text-decoration:none;color:var(--ink);padding:4px 6px;border-radius:8px}
+.rdlab.l{text-align:right;align-items:flex-end}.rdlab b{font-size:.9rem;font-weight:600}.rdlab small{font-size:.72rem}
+.rdlab.lock{opacity:.5}.rdlab.cur b{color:var(--accent)}
+.rdlab:focus-visible{outline:2px solid var(--accent)}
+.rdst i{font-style:normal;color:var(--line)}.rdst i.on{color:var(--accent)}
+.rdfoot{text-align:center;margin-top:14px}
+.rdres{text-align:center;padding:24px 16px}.rdrh{font-size:1.35rem;margin:6px 0 10px}
+.rdbig{font-size:2.2rem;letter-spacing:6px}
+.rdbig.pop i.on{display:inline-block;animation:rdpop .6s cubic-bezier(.3,1.6,.5,1) both}
+.rdbig.pop i:nth-child(2){animation-delay:.15s}.rdbig.pop i:nth-child(3){animation-delay:.3s}
+@keyframes rdpop{0%{transform:scale(0);opacity:0}100%{transform:scale(1);opacity:1}}
+.rdnum b{display:block;font-size:2rem}.rdres.fail .rdrh{color:var(--warn)}
+@media (prefers-reduced-motion:reduce){.rdhalo,.rdbig.pop i{animation:none}}

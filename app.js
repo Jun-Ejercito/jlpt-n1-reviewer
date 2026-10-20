@@ -1,6 +1,6 @@
 (function(){
 'use strict';
-const APP_VERSION='v116';
+const APP_VERSION='v117';
 const SECTIONS=['文字・語彙','文法','読解'];
 const SEC_INFO={'文字・語彙':{en:'Kanji & Vocabulary',glyph:'字'},'文法':{en:'Grammar',glyph:'文'},'読解':{en:'Reading',glyph:'読'}};
 const IC=(d,extra='')=>`<svg class="ico" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"${extra}>${d}</svg>`;
@@ -84,7 +84,7 @@ function home(){
   ${todayBtn()}
   ${goalLine()}
   ${bkNeedRemind()?`<div class="bkrem" id="bkrem"><span>${bkAgeDays()>=1e8?'No backup yet':'No backup for '+bkAgeDays()+' days'}</span><button class="lnk" id="bkgo">Back up</button><button class="lnk mut" id="bkno" aria-label="Remind me later">Later</button></div>`:''}
-  <nav class="hsc">${[['#mistakes','✕','Mistakes',Object.keys(mistDB()).filter(id=>QBY[id]).length||''],['#gpairs','文','Grammar pairs',''],['#mock','模','Mock exam',''],['#search','<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/></svg>','Search','']].map(([h,i,l,n])=>`<a href="${h}" class="hsl"><span class="hsi ja">${i}</span><span>${l}</span>${n?`<small class="mut">${n}</small>`:''}</a>`).join('')}</nav>
+  <nav class="hsc">${[['#mistakes','✕','Mistakes',Object.keys(mistDB()).filter(id=>QBY[id]).length||''],['#gpairs','文','Grammar pairs',''],['#mock','模','Mock exam',''],['#road','道','Road',''],['#search','<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/></svg>','Search','']].map(([h,i,l,n])=>`<a href="${h}" class="hsl"><span class="hsi ja">${i}</span><span>${l}</span>${n?`<small class="mut">${n}</small>`:''}</a>`).join('')}</nav>
   <details class="hsec"><summary>Study details 学習</summary>${todayCard(buildQueue('mixed'))}</details>
   <div class="hq"><button class="btn ghost" id="qqs">${ICONS.bolt} Quick quiz <small class="mut">10 questions</small></button>${missed.length?`<button class="btn ghost" id="qms">${ICONS.redo} Review missed <small class="mut">${missed.length}</small></button>`:''}</div>
   <details class="hsec"><summary>Today's goal & stats</summary><section class="hero2">
@@ -687,12 +687,12 @@ function resumeQuiz(){if(S.done)return results(false);const a=S.ans||{};showQ();
 function resumeStudy(){if(SS.graded){SS.i++;SS.graded=false;SS.shown=false}const sh=SS.shown;SS.shown=false;studyCard();if(sh&&SS.items[SS.i])reveal(SS.items[SS.i])}
 document.addEventListener('click',e=>{if(e.target.closest&&e.target.closest('#qend')&&confirm('End this quiz? Answers so far are saved.')){S=null;saveSess();replaceTo('quiz')}});
 const TABS=[['home',ICONS.home,'Home'],['quiz',ICONS.quiz,'Quiz'],['vocab',ICONS.vocab,'Words'],['kanji',ICONS.kanji,'Kanji'],['progress',ICONS.progress,'Progress']];
-const TITLES={home:'JLPT N1',quiz:'Quiz',vocab:'Words',kanji:'Kanji',kanjicards:'Kanji cards',similar:'Look-alike',progress:'Progress',tips:'読解 Tips',study:'Study',studyguide:'How to study',today:'Today',mistakes:'Mistakes',recall:'Recall',mock:'Mock exam',rq:'Review',search:'Search',drills:'Drills',drill:'Drill',gpairs:'Grammar pairs'};
+const TITLES={home:'JLPT N1',quiz:'Quiz',vocab:'Words',kanji:'Kanji',kanjicards:'Kanji cards',similar:'Look-alike',progress:'Progress',tips:'読解 Tips',study:'Study',studyguide:'How to study',today:'Today',mistakes:'Mistakes',recall:'Recall',mock:'Mock exam',rq:'Review',search:'Search',drills:'Drills',road:'Exam Road',drill:'Drill',gpairs:'Grammar pairs'};
 function header(){const h=$('header'),root=(cur||'home').split('/')[0],showBack=NAV.d>0||root!=='home';
   h.innerHTML=`${showBack?`<button class="hb icon" id="hbk" aria-label="Back">${ICONS.back}</button>`:'<span class="hbsp"></span>'}<a href="#home" class="htl">${esc(TITLES[root]||'JLPT N1')}</a>
    <span class="hbr"><a class="hb icon" id="hsr" href="#search" aria-label="Search" title="Search"><svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/></svg></a><button class="hb icon" id="hs" aria-label="Settings" title="Settings">⚙</button></span>`;
   if($('#hbk'))$('#hbk').onclick=goBack;$('#hs').onclick=openSettings;
-  const tabRoot=(root==='kanjicards'||root==='similar')?'kanji':(root==='tips'||root==='study'||root==='studyguide'||['today','mistakes','rq','search','gpairs','drills','drill','recall'].includes(root))?'home':root;
+  const tabRoot=(root==='kanjicards'||root==='similar')?'kanji':(root==='tips'||root==='study'||root==='studyguide'||['today','mistakes','rq','search','gpairs','drills','drill','recall','road'].includes(root))?'home':root;
   $('#tabs').innerHTML=TABS.map(([k,i,l])=>`<a href="#${k==='kanji'&&store.get('kanjiMode','grid')==='cards'?'kanjicards':k}" data-tab="${k}" class="tab${tabRoot===k?' on':''}" ${tabRoot===k?'aria-current="page"':''}><span class="ti">${i}</span><span>${l}</span></a>`).join('');
   $('#tabs').querySelectorAll('[data-tab]').forEach(a=>a.onclick=()=>{const t=a.dataset.tab;   // entering a tab fresh → new random order
     if(t==='vocab'){ORDER.vocab=null;delete VS.vocab}if(t==='kanji'){ORDER.kanji=null;delete VS.kanjicards;delete VS.kanji}
@@ -710,7 +710,7 @@ function route(){if(S&&S.view!=null){S.si=S.view;S.ans={...((S.past||{})[S.view]
   const sv=fresh?null:SCR[NAV.k];if(sv&&sv.open){const ds=app.querySelectorAll('details');sv.open.forEach(i=>{if(ds[i])ds[i].open=true})}
   const y=sv?sv.y:(p==='quiz'||p==='study'?0:(VS[h]||{}).y||0);window.scrollTo(0,y);requestAnimationFrame(()=>window.scrollTo(0,y));saveSess();
 }
-function render(p,a){if(p==='vocab')deck('vocab',a);else if(p==='kanji'){if(a)kanjiDetail(a);else kanjiGrid()}else if(p==='kanjicards')deck('kanji',a);else if(p==='similar'){if(a)simDetail(a);else similarView()}else if(p==='tips')tipsView();else if(p==='study'){if(a){if(SS&&SS.mode===a&&SS.items&&SS.i<SS.items.length)resumeStudy();else studyStart(a)}else studyHome()}else if(p==='studyguide')studyGuide();else if(p==='progress')progress();else if(p==='mistakes')mistakesView();else if(p==='recall')recallView(a);else if(p==='drills')drillsView();else if(p==='drill')drillDetail(a);else if(p==='mock'){if(a==='play')mockPlay();else if(a==='res')mockRes();else mockView()}else if(p==='rq')reviewQ(a);else if(p==='search')searchView();else if(p==='listen'){try{localStorage.removeItem('n1_listen')}catch(e){}replaceTo('home');return}else if(p==='gpairs')gpairsView(a);else if(p==='today')todayView();else home()}
+function render(p,a){if(p==='vocab')deck('vocab',a);else if(p==='kanji'){if(a)kanjiDetail(a);else kanjiGrid()}else if(p==='kanjicards')deck('kanji',a);else if(p==='similar'){if(a)simDetail(a);else similarView()}else if(p==='tips')tipsView();else if(p==='study'){if(a){if(SS&&SS.mode===a&&SS.items&&SS.i<SS.items.length)resumeStudy();else studyStart(a)}else studyHome()}else if(p==='studyguide')studyGuide();else if(p==='progress')progress();else if(p==='mistakes')mistakesView();else if(p==='recall')recallView(a);else if(p==='drills')drillsView();else if(p==='drill')drillDetail(a);else if(p==='road'){if(a==='play')roadPlay();else if(a==='res')roadRes();else if(a!=null&&a!=='')roadStage(a);else roadView()}else if(p==='mock'){if(a==='play')mockPlay();else if(a==='res')mockRes();else mockView()}else if(p==='rq')reviewQ(a);else if(p==='search')searchView();else if(p==='listen'){try{localStorage.removeItem('n1_listen')}catch(e){}replaceTo('home');return}else if(p==='gpairs')gpairsView(a);else if(p==='today')todayView();else home()}
 function rerender(){const y=window.scrollY;
   if(S&&!S.done&&document.querySelector('.choice')){const a=S.ans||{};showQ();for(const j in a){S.ans[j]=a[j];renderAnswered(+j,false)}}
   else if(S&&S.done)results(false);
@@ -1165,6 +1165,97 @@ function mockRes(){clearInterval(MT);if(!M||!M.done)return replaceTo('mock');con
   <p class="mut sm">Pass mark: each section ≥ 19 and total ≥ 100 / 180. 聴解 (0–60) isn't included here, so you'd need ${Math.max(19,100-R_.tot)}+ in listening${R_.tot+60<100?' (out of reach on this estimate)':''}. ${R_.lk>=19&&R_.rd>=19?'Both sections clear the 19 minimum.':'A section is below the 19 minimum.'}</p></div>
   <div class="row center"><a class="btn primary" href="#mock">Mock home</a><a class="btn ghost" href="#home">Home</a></div>
   ${wrong.length?`<h2 class="sec-t">Review (${wrong.length})</h2><div class="mlist">${wrong.map(q=>`<a class="mrow mra" href="#rq/${q.id}"><span class="mg ja">${secGlyph(q)}</span><span class="mtx"><span class="ja">${esc(qSnip(q))}</span><small class="mut">${M.ans[q.id]!=null?'Your answer '+esc(String(q.choices[M.ans[q.id]]).slice(0,20)):'Unanswered'} · 正解 ${esc(String(q.answer_word).slice(0,20))}</small></span></a>`).join('')}</div>`:''}`}
+/* ===== v117 Exam Road 合格への道: a self-contained game mode. Weekly stages from the start date to the exam date, each ending in a
+   ~15-question checkpoint. Answers still go to the normal history + Mistakes schedule; the mode never changes study settings.
+   Own keys: n1_roadStart, n1_road (cleared stages), n1_roadAtt (attempts), n1_roadMute, n1_roadLast (last question ids). ===== */
+const RD_NAMES={v:['文字の森','語彙の谷','漢字の峠','言葉の泉','表記の野'],g:['文法の川','文型の橋','敬語の里','接続の渡し','構文の坂'],r:['読解の山','長文の峰','速読の関','情報の宿','論理の尾根']};
+const RD_N=15,RD_PASS=.7,RD_ITEM=Math.round(110*60/70);  // non-reading items use the real paper's pace (110 min / ~70 items, ~94 s); 読解 uses PACE_T
+const dAdd=(d,n)=>{const [y,m,dd]=d.split('-').map(Number),x=new Date(y,m-1,dd);x.setDate(x.getDate()+n);return dayKey(x)};
+const dDiff=(a,b)=>{const p=s=>{const [y,m,d]=s.split('-').map(Number);return new Date(y,m-1,d)};return Math.round((p(b)-p(a))/864e5)};
+function rdMix(t,final){if(final)return{v:6,g:5,r:4};const g=Math.round(3+5*Math.sin(Math.PI*t)),rest=RD_N-g,r=Math.round(rest*(.1+.8*t));return{v:rest-r,g,r}}
+function roadPlan(){let start=store.get('roadStart','');if(!start){start=dayKey();store.set('roadStart',start)}
+  const ex=examDate(),C=store.get('road',{}),done=Object.values(C).sort((a,b)=>a.start<b.start?-1:1);
+  let cur=start;if(done.length){const e=dAdd(done[done.length-1].end,1);if(e>cur)cur=e}
+  const plan=[];if(cur<=ex){const len=dDiff(cur,ex)+1;let n=Math.max(1,Math.ceil(len/7));const last=len-7*(n-1);if(n>1&&last<4)n--;
+    for(let i=0;i<n;i++){const s=dAdd(cur,7*i),e=i===n-1?ex:dAdd(s,6);plan.push({id:'r'+s,start:s,end:e})}}
+  const all=[...done.map(d=>({...d,cleared:true})),...plan],N=all.length,cnt={v:0,g:0,r:0};
+  all.forEach((s,i)=>{const t=N>1?i/(N-1):1,final=i===N-1&&!s.cleared&&s.end===ex;s.final=final||s.name==='合格城';s.no=i+1;s.mix=s.mix||rdMix(t,s.final);s.ph=s.mix.v>=s.mix.g&&s.mix.v>=s.mix.r?'v':s.mix.g>=s.mix.r?'g':'r';
+    if(!s.name){s.name=s.final?'合格城':RD_NAMES[s.ph][cnt[s.ph]++%RD_NAMES[s.ph].length]}else cnt[s.ph]++;s.mix=s.mix||rdMix(t,s.final);s.label=s.final?'本番':'第'+(i+1)+'関'});
+  const today=dayKey(),ci=all.findIndex(s=>s.start<=today&&today<=s.end),curI=ci<0?(all.length&&today<all[0].start?0:all.length-1):ci;
+  all.forEach((s,i)=>{s.open=s.cleared||s.start<=today||(i===curI+1&&all[curI]&&all[curI].cleared)||(i<=curI);s.early=!s.cleared&&s.start>today&&s.open});
+  const here=all.findIndex(s=>!s.cleared);
+  return{all,curI,here:here<0?all.length:here,ex,start}}
+function rdLimit(L){return L.reduce((a,q)=>a+(secOf(q)==='読解'?PACE_T(q):RD_ITEM),0)}
+function rdPick(st){const R_=qResAll(),m=mistDB(),last=new Set(store.get('roadLast',[])),want={'文字・語彙':st.mix.v,'文法':st.mix.g,'読解':st.mix.r},out=[];
+  const pri=u=>{const ids=u.map(q=>q.id),seen=ids.some(i=>R_[i]),weak=ids.some(i=>m[i]||(R_[i]&&R_[i][1]/R_[i][0]<.7));return (last.has(ids[0])?4:0)+(!seen?0:weak?1:2)+Math.random()*1.5};
+  for(const sec of SECTIONS){const need=want[sec];if(!need)continue;const gs=new Set(),units=[];
+    for(const q of Q){if(secOf(q)!==sec)continue;const g=q.passage_group;if(g){if(gs.has(g))continue;gs.add(g);units.push(Q.filter(x=>x.passage_group===g).sort((a,b)=>a.id-b.id))}else units.push([q])}
+    let c=0;for(const u of units.map(u=>({u,p:pri(u)})).sort((a,b)=>a.p-b.p).map(x=>x.u)){if(c>=need)break;if(sec==='読解'&&c+u.length>need+1&&c>0)continue;out.push(...u);c+=u.length}}
+  store.set('roadLast',out.map(q=>q.id));return out}
+let RS=(()=>{try{return JSON.parse(sessionStorage.getItem('n1_roadS'))}catch(e){return null}})(),RT=0;
+const rsSave=()=>sessionStorage.setItem('n1_roadS',JSON.stringify(RS));
+function rdChime(){if(store.get('roadMute',false))return;try{const A=window.__rdAC||(window.__rdAC=new (window.AudioContext||window.webkitAudioContext)()),t=A.currentTime;
+  [[659.3,0],[987.8,.12]].forEach(([f,d])=>{const o=A.createOscillator(),g=A.createGain();o.type='sine';o.frequency.value=f;g.gain.setValueAtTime(0,t+d);g.gain.linearRampToValueAtTime(.12,t+d+.02);g.gain.exponentialRampToValueAtTime(.001,t+d+.9);o.connect(g).connect(A.destination);o.start(t+d);o.stop(t+d+1)});window.__rdChimed=(window.__rdChimed||0)+1}catch(e){}}
+const fmtD=d=>{const [y,m,dd]=d.split('-').map(Number);return `${m}/${dd}`};
+const starsHTML=(n,max=3)=>`<span class="rdst" aria-label="${n} of ${max} stars">${[...Array(max)].map((_,i)=>`<i class="${i<n?'on':''}">★</i>`).join('')}</span>`;
+function roadView(){clearInterval(RT);const P=roadPlan(),A=P.all,today=dayKey(),stars=A.reduce((a,s)=>a+(s.stars||0),0),nx=A[P.here];
+  const W=340,GAP=118,H=60+GAP*A.length,X=i=>W/2+Math.sin(i*1.15)*95,Y=i=>40+GAP*(A.length-1-i);   // exam at the top, today at the bottom
+  let d=`M${X(0)},${Y(0)+40}`;for(let i=0;i<A.length;i++){const x=X(i),y=Y(i);if(i===0)d+=` L${x},${y}`;else{const px=X(i-1),py=Y(i-1),my=(py+y)/2;d+=` C${px},${my} ${x},${my} ${x},${y}`}}
+  const hi=Math.min(P.here,A.length-1);
+  app.innerHTML=`<div class="ph rdph"><h1 class="pt">合格への道 <small class="mut">Exam Road</small></h1><button class="aa" id="rdmu" aria-pressed="${!store.get('roadMute',false)}" aria-label="Chime ${store.get('roadMute',false)?'off':'on'}" title="Clear chime">${store.get('roadMute',false)?'🔇':'🔔'}</button></div>
+  <div class="rdsum"><div><b>${Math.max(0,daysLeft())}</b><small>days left</small></div><div><b>${stars}<span class="mut">/${A.length*3}</span></b><small>stars</small></div><div><b>${nx?fmtD(nx.end):'—'}</b><small>${nx?'next checkpoint':'all cleared'}</small></div></div>
+  <p class="rdhere mut sm">${nx?`You are here · <b>${esc(nx.label)} ${esc(nx.name)}</b>${nx.start>today?' · opens '+fmtD(nx.start):''}`:'All stages cleared · 合格城 reached 🎉'}</p>
+  <div class="rdmap"><svg viewBox="0 0 ${W} ${H}" class="rdsvg" aria-hidden="true"><path d="${d}" class="rdpath"/>
+   ${A.map((s,i)=>`<circle cx="${X(i)}" cy="${Y(i)}" r="${s.final?17:13}" class="rdn${s.cleared?' clr':''}${i===P.here?' cur':''}${!s.open?' lock':''}"/>${s.cleared?`<text x="${X(i)}" y="${Y(i)+5}" text-anchor="middle" class="rdnt">✓</text>`:s.final?`<text x="${X(i)}" y="${Y(i)+5}" text-anchor="middle" class="rdnt ja">城</text>`:''}`).join('')}
+   ${A.length?`<g class="rdme" style="transform:translate(${X(hi)}px,${Y(hi)}px)"><circle r="23" class="rdhalo"/></g>`:''}</svg>
+   ${A.map((s,i)=>`<a class="rdlab${X(i)>W/2?' l':' r'}${!s.open?' lock':''}${i===P.here?' cur':''}" style="top:${Y(i)/H*100}%;${X(i)>W/2?`right:${(1-(X(i)-24)/W)*100}%`:`left:${(X(i)+24)/W*100}%`}" href="#road/${i}"><b class="ja">${esc(s.label)} ${esc(s.name)}</b><small class="mut">${fmtD(s.start)}–${fmtD(s.end)}${s.cleared?' · '+starsHTML(s.stars):!s.open?' · 🔒':s.early?' · early':''}</small></a>`).join('')}
+  </div>
+  <p class="mut sm rdfoot">Start ${fmtD(P.start)} · exam ${esc(fmtExam(P.ex))}. Each checkpoint: ~${RD_N} questions, pass at 70%. Answers also count in your normal history and Mistakes.</p>`;
+  $('#rdmu').onclick=()=>{store.set('roadMute',!store.get('roadMute',false));roadView()};
+  const me=app.querySelector('.rdlab.cur')||app.querySelector('.rdlab:last-child');if(me&&!reduced())setTimeout(()=>me.scrollIntoView({block:'center'}),50)}
+function roadStage(i){const P=roadPlan(),s=P.all[+i];if(!s){app.innerHTML='<div class="card">Stage not found. <a href="#road">Map</a></div>';return}const att=store.get('roadAtt',{})[s.id]||0,today=dayKey();
+  const mixT=`語彙 ${s.mix.v} · 文法 ${s.mix.g} · 読解 ${s.mix.r}`,foc={v:'Vocabulary-heavy: kanji readings, words, paraphrase',g:'Grammar focus: 文法形式, sentence order, text grammar',r:'Reading and pace: 内容理解, 統合理解, 情報検索'}[s.final?'r':s.ph];
+  app.innerHTML=`<div class="ph"><h1 class="pt ja">${esc(s.label)} ${esc(s.name)}</h1></div>
+  <div class="card rdst-c"><p class="mut sm">${fmtD(s.start)}–${fmtD(s.end)}${s.final?' · exam week':''}</p><p>${esc(s.final?'Final checkpoint: a balanced mini paper':foc)}</p><p class="mut sm">${mixT} · pass 70% · stars for score and time</p>
+   ${s.cleared?`<p>Cleared ${starsHTML(s.stars)} <span class="mut sm">best ${s.best}% · ${fmtT(s.sec)}</span></p>`:''}
+   ${s.open?`<button class="btn primary big full" id="rdgo">${s.cleared?'Play again':att?'Retry checkpoint':s.early?'Early challenge':'Start checkpoint'} · ${RD_N} questions</button>`:`<p class="mut">🔒 Opens ${fmtD(s.start)}${P.all[P.curI]&&!P.all[P.curI].cleared?' — or clear this week’s checkpoint for an early challenge':''}.</p>`}
+   ${att?`<p class="mut sm">${att} attempt${att>1?'s':''}</p>`:''}</div>`;
+  if($('#rdgo'))$('#rdgo').onclick=()=>{if(RS&&!RS.done&&!confirm('Discard the unfinished checkpoint?'))return;rdStart(+i,false)}}
+function rdStart(i,rep){const s=roadPlan().all[i];if(!s||!s.open)return replaceTo('road');const L=rdPick(s),secs=rdLimit(L);
+  RS={stage:s.id,i,ids:L.map(q=>q.id),ans:{},si:0,secs,t0:Date.now(),end:Date.now()+secs*1000,done:false,perm:{}};L.forEach(q=>{if(!isOrderQ(q))RS.perm[q.id]=shuffle(Object.keys(q.choices))});rsSave();if(rep)replaceTo('road/play');else location.hash='road/play'}
+function roadPlay(){clearInterval(RT);if(!RS)return replaceTo('road');if(RS.done)return replaceTo('road/res');const L=RS.ids.map(i=>QBY[i]).filter(Boolean),ST=mSteps(L),[st,n]=ST[RS.si],qs=L.slice(st,st+n),q0=qs[0],na=Object.keys(RS.ans).length;
+  const S0=S;S={perm:RS.perm};const co=q=>corder(q),dkr=(q,k)=>dk(q,k);
+  app.innerHTML=`<div class="qtop mkt rdq"><span class="mktm" id="rtm">${mFmt((RS.end-Date.now())/1000)}</span><div class="qprog"><div style="width:${na*100/L.length}%"></div></div><span class="mut sm">${RS.si+1}/${ST.length}</span>${aaBtn()}</div>
+  ${n>1?`<div class="card qcardq gpass"><p class="qmeta">${esc(secOf(q0))} · ${n} questions</p>${passageHTML(q0,true)}</div>`:''}
+  ${qs.map((q,j)=>`<div class="gq"><div class="card qcardq"><p class="qmeta">Q${st+j+1} · ${esc(secOf(q))}</p>${n>1?'':passageHTML(q)}${questionHTML(q)}</div>
+  <div class="choices${isLongQ(q)?' usage long':''}">${co(q).map(k=>`<button class="choice${RS.ans[q.id]===String(k)?' sel':''}" data-q="${q.id}" data-k="${esc(k)}" aria-pressed="${RS.ans[q.id]===String(k)}"><span class="ck">${esc(dkr(q,k))}</span><span class="cv">${choiceHTML(q,k,false)}</span></button>`).join('')}</div></div>`).join('')}
+  <div class="nextbar mknav"><button class="btn ghost" id="rpv" ${RS.si?'':'disabled'}>← Prev</button><button class="btn ghost" id="rfin">Finish</button><button class="btn primary" id="rnx">${RS.si+1<ST.length?'Next →':'Finish'}</button></div>`;
+  S=S0;
+  app.querySelectorAll('.choice').forEach(b=>b.onclick=()=>{const id=b.dataset.q;RS.ans[id]=RS.ans[id]===b.dataset.k?undefined:b.dataset.k;if(RS.ans[id]===undefined)delete RS.ans[id];rsSave();
+    app.querySelectorAll(`.choice[data-q="${id}"]`).forEach(c=>{const on=RS.ans[id]===c.dataset.k;c.classList.toggle('sel',on);c.setAttribute('aria-pressed',on)});$('.qprog div').style.width=Object.keys(RS.ans).length*100/L.length+'%'});
+  $('#rpv').onclick=()=>{RS.si--;rsSave();roadPlay();window.scrollTo(0,0)};
+  $('#rnx').onclick=()=>{if(RS.si+1<ST.length){RS.si++;rsSave();roadPlay();window.scrollTo(0,0)}else $('#rfin').click()};
+  $('#rfin').onclick=()=>{const left=L.length-Object.keys(RS.ans).length;if(confirm(left?`${left} unanswered. Finish now?`:'Finish and score now?'))roadFinish()};
+  RT=setInterval(()=>{const r=(RS.end-Date.now())/1000,e=$('#rtm');if(!e||cur!=='road/play'){clearInterval(RT);return}e.textContent=mFmt(r);e.classList.toggle('low',r<60);if(r<=0){clearInterval(RT);toast('Time is up');roadFinish()}},1000)}
+function roadFinish(){if(!RS||RS.done)return;clearInterval(RT);const L=RS.ids.map(i=>QBY[i]).filter(Boolean);let c=0;
+  for(const q of L){const k=RS.ans[q.id],ok=k===String(q.answer);if(ok)c++;if(k!=null){const qa=store.get('qAtt',{});qa[q.id]=(qa[q.id]||0)+1;store.set('qAtt',qa);qResAdd(q,ok);mistRec(q,ok);if(!ok){srsMiss(q);rcAdd(q,k)}}}
+  const sec=Math.min(RS.secs,Math.round((Date.now()-RS.t0)/1000)),pc=L.length?Math.round(100*c/L.length):0,pass=pc>=RD_PASS*100,stars=pass?1+(pc>=85?1:0)+(sec<=RS.secs*.75?1:0):0;
+  const A=store.get('roadAtt',{});A[RS.stage]=(A[RS.stage]||0)+1;store.set('roadAtt',A);
+  let first=false;if(pass){const P=roadPlan(),s=P.all.find(x=>x.id===RS.stage),C=store.get('road',{}),old=C[RS.stage];first=!old;
+    if(s)C[RS.stage]={id:s.id,name:s.name,start:s.start,end:s.end,mix:s.mix,stars:Math.max(stars,old?old.stars:0),best:Math.max(pc,old?old.best:0),sec:old&&old.best>pc?old.sec:sec,at:dayKey()};store.set('road',C)}
+  RS.done=true;RS.res={c,n:L.length,pc,pass,stars,sec,first};rsSave();logActivity();replaceTo('road/res')}
+function roadRes(){clearInterval(RT);if(!RS||!RS.done)return replaceTo('road');const r=RS.res,P=roadPlan(),s=P.all.find(x=>x.id===RS.stage)||{label:'',name:''},nx=P.all[P.here];
+  const L=RS.ids.map(i=>QBY[i]).filter(Boolean),wrong=L.filter(q=>RS.ans[q.id]!==String(q.answer));
+  app.innerHTML=`<div class="card rdres ${r.pass?'pass':'fail'}"><p class="mut sm ja">${esc(s.label)} ${esc(s.name)}</p>
+   <h1 class="rdrh">${r.pass?'突破！ Stage cleared':'もう一度 · Not yet'}</h1>
+   ${r.pass?`<div class="rdbig">${starsHTML(r.stars)}</div>`:''}
+   <div class="rdnum"><b>${r.pc}%</b><span class="mut">${r.c}/${r.n} correct · ${fmtT(r.sec)} / ${fmtT(RS.secs)}</span></div>
+   <p class="mut sm">${r.pass?(r.stars<3?`★ for passing · ★ for 85%+ · ★ for finishing within 75% of the time.`:'Perfect run.'):'You need 70% to clear. Retry any time; the questions change each attempt.'}</p>
+   <div class="row center">${r.pass?(nx?`<a class="btn primary" href="#road">Map · next: ${esc(nx.name)}</a>`:`<a class="btn primary" href="#road">Map</a>`):`<button class="btn primary" id="rdre">Retry</button><a class="btn ghost" href="#road">Map</a>`}</div></div>
+  ${wrong.length?`<h2 class="sec-t">Review (${wrong.length})</h2><div class="mlist">${wrong.map(q=>`<a class="mrow mra" href="#rq/${q.id}"><span class="mg ja">${secGlyph(q)}</span><span class="mtx"><span class="ja">${furiText(qSnip(q))}</span><small class="mut">${RS.ans[q.id]!=null?'Your answer '+esc(String(q.choices[RS.ans[q.id]]).slice(0,20)):'Unanswered'} · 正解 <span class="ja">${furiText(String(q.answer_word).slice(0,20))}</span></small></span></a>`).join('')}</div>`:''}`;
+  if(r.pass&&!RS.chimed){RS.chimed=1;rsSave();rdChime();if(!reduced())app.querySelector('.rdbig')?.classList.add('pop')}
+  if($('#rdre'))$('#rdre').onclick=()=>rdStart(RS.i,true)}
+
 // review one question (answerable; teacher audio after answering). Uses a throw-away quiz state so a running quiz is untouched.
 function reviewQ(id){const q=QBY[+id];if(!q){app.innerHTML='<div class="card">Question not found.</div>';return}
   const e=mistDB()[q.id];
@@ -1301,7 +1392,7 @@ function offlineRow(root){const box=root.querySelector('#aud');if(!box)return;
   paint()}
 
 window.addEventListener('hashchange',route);
-window.__n1q=Q;window.__sim=SIM;window.__simDiff=simDiff;window.__n1={furi:furiText,lemma:lemmaSplit,goal:{add:gmAdd,tick:gmTick,line:goalLine,streak:goalStreak,mins:minsOn,idle:()=>gmLast},pace:{tgt:PACE_T,now:()=>PT&&{...PT,ms:ptNow()}},plan:{next:nextJLPT,exam:examDate,left:daysLeft,day:dayPlan},dr:{rank:drRank,pick:drPick,recall:drRecall,spots:drSpots},bk:{collect:bkCollect,json:bkJSON,parse:bkParse,apply:bkApply,confirm:bkConfirm,remind:bkNeedRemind},kt:kanjiTypes,pick:smartPick,nav:()=>NAV,ss:()=>SS,state:()=>S,start:(ids)=>nav('quiz/play',()=>start(Q.filter(q=>ids.includes(q.id)),store.get("quizOpts",{}),false))};
+window.__n1q=Q;window.__sim=SIM;window.__simDiff=simDiff;window.__n1={road:{plan:roadPlan,pick:rdPick,limit:rdLimit,finish:()=>roadFinish(),rs:()=>RS,chimes:()=>window.__rdChimed||0},furi:furiText,lemma:lemmaSplit,goal:{add:gmAdd,tick:gmTick,line:goalLine,streak:goalStreak,mins:minsOn,idle:()=>gmLast},pace:{tgt:PACE_T,now:()=>PT&&{...PT,ms:ptNow()}},plan:{next:nextJLPT,exam:examDate,left:daysLeft,day:dayPlan},dr:{rank:drRank,pick:drPick,recall:drRecall,spots:drSpots},bk:{collect:bkCollect,json:bkJSON,parse:bkParse,apply:bkApply,confirm:bkConfirm,remind:bkNeedRemind},kt:kanjiTypes,pick:smartPick,nav:()=>NAV,ss:()=>SS,state:()=>S,start:(ids)=>nav('quiz/play',()=>start(Q.filter(q=>ids.includes(q.id)),store.get("quizOpts",{}),false))};
 // ---- v51 swipe: ← next, → previous on Study and Quiz (play) screens. Ignores left-edge (system back), vertical scrolls, h-scrollable areas, inputs.
 const SWX=24,SWT=60;
 function hScrollable(t){for(let n=t;n&&n!==app&&n.nodeType===1;n=n.parentElement){const o=getComputedStyle(n).overflowX;if((o==='auto'||o==='scroll')&&n.scrollWidth>n.clientWidth+2)return true}return false}
