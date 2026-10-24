@@ -1,5 +1,5 @@
 // JLPT N1 Reviewer service worker: app shell cached; audio cached on demand (Range-aware)
-const V='n1-shell-v123',AUD='n1-audio-v119';
+const V='n1-shell-v124',AUD='n1-audio-v119';
 // v109: precache the exact versioned URLs index.html requests (the bare names were never matched, so install
 // downloaded data.js etc. twice). Fonts and stroke files live in a long-lived static cache that survives version bumps.
 const VN=V.split('-v').pop(),STATIC='n1-static-v1';
