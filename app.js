@@ -1,6 +1,6 @@
 (function(){
 'use strict';
-const APP_VERSION='v125';
+const APP_VERSION='v126';
 const SECTIONS=['文字・語彙','文法','読解'];
 const SEC_INFO={'文字・語彙':{en:'Kanji & Vocabulary',glyph:'字'},'文法':{en:'Grammar',glyph:'文'},'読解':{en:'Reading',glyph:'読'}};
 const IC=(d,extra='')=>`<svg class="ico" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"${extra}>${d}</svg>`;
@@ -822,9 +822,74 @@ function buildQueue(mode){const db=srsDB(),t=dn(),cfg=srsCfg(),nt=newToday(),wan
 // v100: no 'type the reading' card when the headword has no kanji (e.g. あせる)
 const hasKanji=w=>/[\u3400-\u9fff\uf900-\ufaff々]/.test(w||'');
 function wordTypes(v){const t=hasKanji(v.word)?['wr','mw','ty']:['wr','mw'];if(v.example_ja&&v.example_ja.includes(v.word))t.splice(2,0,'cz');return t}
-window.__n1test={hasKanji,wordTypes:v=>wordTypes(v),words:()=>V,force:(w,t)=>{const v=V.find(x=>x.word===w);if(!SS||!v)return false;SS.items[SS.i]={key:'w'+v.id,type:t};SS.shown=false;SS.known=null;SS.graded=false;studyCard();return true}};
+window.__n1test={hasKanji,wordTypes:v=>wordTypes(v),words:()=>V,mc:()=>SS&&SS.items[SS.i]&&SS.items[SS.i].mc,forceK:(c,t)=>{if(!SS||!KBY[c])return false;SS.items[SS.i]={key:'k'+c,type:t};SS.shown=false;SS.known=null;SS.graded=false;studyCard();return true},wd:(w,cz)=>{const v=V.find(x=>x.word===w);return v?wordDistractors(v,cz).map(x=>x.word):null},rd:w=>{const v=V.find(x=>x.word===w);return v?readingDistractors(v.word,v.reading,v.kanji):null},force:(w,t)=>{const v=V.find(x=>x.word===w);if(!SS||!v)return false;SS.items[SS.i]={key:'w'+v.id,type:t};SS.known=null;SS.shown=false;SS.known=null;SS.graded=false;studyCard();return true}};
 function kanjiTypes(c){const t=['km'];if(sampleV(c))t.push('kw');if(simGroup(c)&&sampleV(c))t.push('ks');return t}
 function pickType(key,st){const ts=key[0]==='w'?wordTypes(VBY[+key.slice(1)]):kanjiTypes(key.slice(1));if(!st||!st.seen)return ts[0];return ts[(st.seen+key.length)%ts.length]}
+// v126: multiple-choice recall. mw/cz -> pick the word; wr (kanji) & kw -> pick the reading; wr (kana) -> pick the meaning.
+// Distractors: shared / look-alike kanji, similar readings, same part of speech; never a duplicate or another right answer.
+const MC_T={mw:1,cz:1,wr:1,kw:1};
+const posKey=p=>String(p||'').split(/[\/;(]/)[0].trim();
+function lev(a,b){a=[...a];b=[...b];const d=[...Array(b.length+1).keys()];for(let i=1;i<=a.length;i++){let p=d[0];d[0]=i;for(let j=1;j<=b.length;j++){const t=d[j];d[j]=Math.min(d[j]+1,d[j-1]+1,p+(a[i-1]===b[j-1]?0:1));p=t}}return d[b.length]}
+const MCS={},mcSim=c=>MCS[c]||(MCS[c]=[...new Set(SIM.filter(g=>g.kanji.includes(c)).flatMap(g=>g.kanji))].filter(x=>x!==c));
+const mnorm=s=>String(s||'').toLowerCase().replace(/\(.*?\)/g,'').split(/[;,]/).map(x=>x.trim().replace(/^(to|a|an|the) /,'')).filter(Boolean);
+function sameMeaning(a,b){const A=mnorm(a),B=new Set(mnorm(b));return A.some(x=>B.has(x))}
+function wordScore(v,w){const vk=v.kanji||[],wk=w.kanji||[];let s=0;
+  for(const c of wk){if(vk.includes(c))s+=3;else if(vk.some(k=>mcSim(k).includes(c)))s+=3}
+  const ld=lev(hira(v.reading),hira(w.reading));if(ld<=1)s+=3;else if(ld<=2)s+=1.5;
+  if(hira(w.reading)[0]===hira(v.reading)[0])s+=.5;
+  if(posKey(w.part_of_speech)===posKey(v.part_of_speech))s+=2;
+  if(hasKanji(w.word)===hasKanji(v.word))s+=.5;if(Math.abs(w.word.length-v.word.length)<=1)s+=.5;
+  return s+Math.random()*.9}
+function pickTop(c,n){const out=[];for(const x of c.sort((a,b)=>b.s-a.s)){if(out.length>=n)break;out.push(x.v)}return out}
+function wordDistractors(v,cloze){const r=hira(v.reading),cand=[];
+  for(const w of V){if(w.id===v.id||w.word===v.word||hira(w.reading)===r||sameMeaning(w.meaning_en,v.meaning_en))continue;
+    if(cloze&&(w.word.includes(v.word)||v.word.includes(w.word)||(v.example_ja||'').includes(w.word)))continue;
+    cand.push({v:w,s:wordScore(v,w)})}
+  const top=pickTop(cand,8),out=[];for(const w of shuffle(top.slice(0,6)).concat(top.slice(6)))if(out.length<3&&!out.some(o=>o.word===w.word))out.push(w);return out}
+const DK='かがきぎくぐけげこごさざしじすずせぜそぞただちぢつづてでとどはばひびふぶへべほぼ';
+function readVariants(r){const out=new Set(),A=[...r],add=a=>{const s=a.join('');if(s&&s!==r)out.add(s)};
+  const vowel=ch=>{const i='あいうえおかきくけこがぎぐげごさしすせそざじずぜぞたちつてとだぢづでどなにぬねのはひふへほばびぶべぼぱぴぷぺぽまみむめもやゆよらりるれろわ'.indexOf(ch);return i<0?(/[ゃ]/.test(ch)?'a':/[ゅ]/.test(ch)?'u':/[ょ]/.test(ch)?'o':''):'aiueo'[i%5]};
+  A.forEach((ch,i)=>{const nx=A[i+1];
+    if(ch==='う'&&i>0&&/[ou]/.test(vowel(A[i-1])))add(A.slice(0,i).concat(A.slice(i+1)));
+    else if(/[ou]/.test(vowel(ch))&&nx!=='う'&&!/[ゃゅょ]/.test(nx||''))add(A.slice(0,i+1).concat('う',A.slice(i+1)));
+    if(ch==='っ')add(A.slice(0,i).concat(A.slice(i+1)));
+    else if(i>0&&/[かきくけこさしすせそたちつてとぱぴぷぺぽ]/.test(ch)&&A[i-1]!=='っ'&&A[i-1]!=='ん'&&!/[ゃゅょ]/.test(A[i-1]))add(A.slice(0,i).concat('っ',A.slice(i)));
+    const d=DK.indexOf(ch);if(d>=0){const b=A.slice();b[i]=DK[d%2?d-1:d+1];add(b)}
+    if(/[ゃゅょ]/.test(ch))for(const y of 'ゃゅょ')if(y!==ch){const b=A.slice();b[i]=y;add(b)}
+    if(ch==='ん'&&i>0)add(A.slice(0,i).concat(A.slice(i+1)))});
+  return [...out]}
+// on'yomi swaps: split the reading into per-kanji on'yomi, then swap one part for another reading of that kanji or a look-alike's
+const onsOf=c=>{const x=KBY[c];return x?[...new Set((x.onyomi||[]).map(o=>hira(o.replace(/[.\-]/g,''))))]:[]};
+function onSwaps(word,r){const ks=[...word];if(!ks.length||ks.some(c=>!KBY[c]))return[];const out=new Set();
+  const go=(i,pos,parts)=>{if(i===ks.length){if(pos===r.length)parts.forEach((pt,j)=>{const alts=[...onsOf(ks[j]),...mcSim(ks[j]).flatMap(onsOf)];
+      for(const a of alts){for(const v of [a,a.replace(/[つくきち]$/,'っ')])if(v!==pt)out.add(parts.map((q,m)=>m===j?v:q).join(''))}});return}
+    for(const o of onsOf(ks[i]))for(const v of [o,o.replace(/[つくきち]$/,'っ')])if(r.startsWith(v,pos))go(i+1,pos+v.length,parts.concat(v))};
+  go(0,0,[]);out.delete(r);return [...out]}
+function readingDistractors(word,reading,kj){const r=hira(reading),bad=new Set([r,...V.filter(w=>w.word===word).map(w=>hira(w.reading))]);
+  const real=V.filter(w=>w.word!==word&&(w.kanji||[]).some(c=>(kj||[]).includes(c)||(kj||[]).some(k=>mcSim(k).includes(c)))).map(w=>hira(w.reading)).filter(x=>Math.abs(x.length-r.length)<=1&&lev(x,r)<=2);
+  const on=shuffle(onSwaps(word,r)),syn=shuffle(readVariants(r)).sort((a,b)=>lev(a,r)-lev(b,r));const out=[];
+  for(const x of on.slice(0,2).concat(shuffle(real).slice(0,1),syn,on,real))if(out.length<3&&!bad.has(x)&&!out.includes(x))out.push(x);
+  if(out.length<3)for(const w of shuffle(V))if(out.length<3){const x=hira(w.reading);if(!bad.has(x)&&!out.includes(x)&&Math.abs(x.length-r.length)<=1)out.push(x)}
+  return out}
+function meaningDistractors(v){const cand=V.filter(w=>w.id!==v.id&&!sameMeaning(w.meaning_en,v.meaning_en)&&w.meaning_en!==v.meaning_en).map(w=>({v:w,s:wordScore(v,w)}));
+  const out=[];for(const w of pickTop(cand,10))if(out.length<3&&!out.some(o=>o.meaning_en===w.meaning_en))out.push(w);return out.map(w=>w.meaning_en)}
+const rubyOf=w=>{const x=VW[w];return x&&hasKanji(w)&&x.word_ruby?x.word_ruby:esc(w)};
+// it.mc = {kind:'w'|'r'|'m', ans, opts:[...]} ; built once per card so resume/re-render keeps the same order
+function mcBuild(it){if(it.mc)return it.mc;const k=it.key,t=it.type;let mc=null;
+  if(k[0]==='w'){const v=VBY[+k.slice(1)];
+    if(t==='mw'||t==='cz')mc={kind:'w',ans:v.word,opts:shuffle([v.word,...wordDistractors(v,t==='cz').map(w=>w.word)])};
+    else if(t==='wr')mc=hasKanji(v.word)?{kind:'r',ans:hira(v.reading),opts:shuffle([hira(v.reading),...readingDistractors(v.word,v.reading,v.kanji)])}:{kind:'m',ans:v.meaning_en,opts:shuffle([v.meaning_en,...meaningDistractors(v)])}}
+  else if(t==='kw'){const c=k.slice(1),sv=sampleV(c);mc={kind:'r',ans:hira(sv.reading),opts:shuffle([hira(sv.reading),...readingDistractors(sv.word,sv.reading,sv.kanji||[c])])}}
+  if(mc&&mc.opts.length<2)mc=null;it.mc=mc;return mc}
+function mcHTML(mc){return `<div class="mcq${mc.kind==='m'?' mcm':''}">${mc.opts.map((o,i)=>`<button type="button" class="mcopt${mc.kind==='m'?'':' ja'}" data-i="${i}"><span class="ck">${i+1}</span><span class="cv">${mc.kind==='w'?rubyOf(o):esc(o)}</span></button>`).join('')}</div>`}
+function mcPick(it,i){if(!SS||SS.shown||SS.graded)return;const mc=it.mc,ai=mc.opts.indexOf(mc.ans),right=i===ai;
+  app.querySelectorAll('.mcopt').forEach(o=>{const j=+o.dataset.i;o.disabled=true;if(j===ai)o.classList.add('ok');else if(j===i)o.classList.add('bad')});
+  setTimeout(()=>autoGrade(it,right?3:1,i<0?'idk':right),reduced()?0:450)}
+// auto-grade: record the grade (wrong / don't know = Again, the same as before), flip to the back, then Next →; Change / Undo stay available
+function autoGrade(it,g,how){if(!SS||SS.graded)return;const keys=['srs','srsNew','srsLog','srsPri'],snap={};keys.forEach(k=>snap[k]=localStorage.getItem('n1_'+k));
+  const ss={i:SS.i,res:{...SS.res},again:{...SS.again},items:SS.items.slice()},was=srsDB()[it.key];grade(it,g,true);
+  const restore=()=>{keys.forEach(k=>snap[k]==null?localStorage.removeItem('n1_'+k):localStorage.setItem('n1_'+k,snap[k]));delete it.g;Object.assign(SS,ss,{graded:false})};
+  SS.known={it,restore,was,g,how};reveal(it);knownBar(it,false)}
 let SS=null;
 function studyHome(){const q=buildQueue('mixed'),qw=buildQueue('words'),qk=buildQueue('kanji'),cfg=srsCfg();
   app.innerHTML=`<div class="ph"><h1 class="pt">Study 学習</h1><a class="btn sm ghost" href="#studyguide">How to study</a></div>
@@ -851,12 +916,16 @@ function pkHint(){return store.get('peekSeen',0)?'':'<p class="pkh mut sm">Tap c
 function pkWord(v,mean){const hk=hasKanji(v.word),r=hk?`<span class="ja">${esc(v.reading)}</span>`:'',m=mean?`<span class="pkm">${hk?' · ':''}${esc(v.meaning_en)}</span>`:'';return `${pkHint()}<div class="speek" id="pk" hidden aria-live="polite"><div class="pkw ja">${hk&&v.word_ruby?v.word_ruby:esc(v.word)}</div>${r||m?`<p class="pkr">${r}${m}</p>`:''}</div>`}
 function frontHTML(it){const k=it.key,isW=k[0]==='w',t=it.type;
   if(isW){const v=VBY[+k.slice(1)];
+    if(t==='wr'&&it.mc)return it.mc.kind==='r'?`<p class="sp">Choose the <b>reading</b></p><div class="sbig ja">${esc(v.word)}</div>${mcHTML(it.mc)}`:`<p class="sp">Choose the <b>meaning</b></p><div class="sbig ja">${esc(v.word)}</div>${mcHTML(it.mc)}`;
     if(t==='wr')return `<p class="sp">${hasKanji(v.word)?'Read it — recall the <b>reading</b> and <b>meaning</b>':'Recall the <b>meaning</b>'}</p><div class="sbig ja">${esc(v.word)}</div>${pkHint()}<div class="speek" id="pk" hidden aria-live="polite"><p class="pkr"><span class="ja">${esc(v.reading)}</span><span class="pkm"> · ${esc(v.meaning_en)}</span></p>${v.example_ja?`<p class="pkx ja">${furi&&v.example_ja_ruby?v.example_ja_ruby:esc(v.example_ja)}</p><p class="pke mut sm">${esc(v.example_en||'')}</p>`:''}</div>`;
+    if(t==='mw'&&it.mc)return `<div class="smean">${esc(v.meaning_en)}</div>${v.part_of_speech?`<p class="mut sm">${esc(v.part_of_speech)}</p>`:''}${mcHTML(it.mc)}`;
+    if(t==='cz'&&it.mc)return `<div class="scloze ja">${esc(v.example_ja).replace(esc(v.word),'<b class="blank">＿＿＿</b>')}</div>${v.example_en?`<p class="mut sm">${esc(v.example_en)}</p>`:''}${mcHTML(it.mc)}`;
     if(t==='mw')return `<p class="sp">Recall the <b>Japanese word</b></p><div class="smean">${esc(v.meaning_en)}</div><p class="mut sm">${esc(v.part_of_speech||'')}</p>${pkWord(v,0)}`;
     if(t==='cz')return `<p class="sp">Fill the blank — recall the <b>word</b></p><div class="scloze ja">${esc(v.example_ja).replace(esc(v.word),'<b class="blank">＿＿＿</b>')}</div><p class="mut sm">${esc(v.example_en)}</p>${pkWord(v,1)}`;
     return `<p class="sp">Type the <b>reading</b> in kana</p><div class="sbig ja">${esc(v.word)}</div><div class="tyw"><input id="ty" lang="ja" inputmode="text" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="ひらがなで…"><button class="btn primary" id="tyc">Check</button></div>`}
   const c=k.slice(1),x=KBY[c],sv=sampleV(c);
   if(t==='km')return `<p class="sp">Recall the <b>meaning</b> and <b>on/kun</b> readings</p><div class="sbig kj">${esc(c)}</div>${pkHint()}<div class="speek kpeek" id="pk" hidden aria-live="polite"><p class="pkr"><span class="pkm">${esc(x.meaning_en)}</span></p><p class="pkk">${x.onyomi.length?onHTML(x.onyomi,1):''} ${x.kunyomi.length?kunHTML(x.kunyomi,1):''}</p></div>`;
+  if(t==='kw'&&it.mc)return `<p class="sp">Choose the <b>reading</b></p><div class="sbig ja">${esc(sv.word).replace(esc(c),`<span class="kh">${esc(c)}</span>`)}</div>${mcHTML(it.mc)}`;
   if(t==='kw'){const v=V.find(w=>w.word===sv.word)||sv;  // v57: kanji-card peek
     return `<p class="sp">Read this word — focus on <b>${esc(c)}</b></p><div class="sbig ja">${esc(sv.word).replace(esc(c),`<span class="kh">${esc(c)}</span>`)}</div>${pkHint()}<div class="speek kpeek" id="pk" hidden aria-live="polite"><p class="pkr"><span class="ja">${esc(v.reading||sv.reading||'')}</span><span class="pkm"> · ${esc(v.meaning_en||sv.meaning_en||'')}</span></p><p class="pkk"><b class="ja">${esc(c)}</b> ${x.onyomi.length?onHTML(x.onyomi,1):''} ${x.kunyomi.length?kunHTML(x.kunyomi,1):''}</p>${v.example_ja?`<p class="pkx ja">${furi&&v.example_ja_ruby?v.example_ja_ruby:esc(v.example_ja)}</p><p class="pke mut sm">${esc(v.example_en||'')}</p>`:''}</div>`}
   const g=simGroup(c);return `<p class="sp">Which kanji completes the word?</p><div class="sbig ja">${esc(sv.word).replace(esc(c),'<span class="kq">◯</span>')}</div><p class="mut">${esc(sv.reading)} · ${esc(sv.meaning_en)}</p>
@@ -880,14 +949,16 @@ function backHTML(it){const k=it.key,isW=k[0]==='w',st=srsDB()[k]||{},leech=(st.
 function studyCard(){const it0=SS.items[SS.i];if(!it0)return studyDone();
   const it=typeof it0==='string'?{key:it0}:it0;SS.items[SS.i]=it;const db=srsDB();if(!it.type)it.type=pickType(it.key,db[it.key]);
   if(it.type==='ty'&&it.key[0]==='w'&&!hasKanji((VBY[+it.key.slice(1)]||{}).word))it.type=pickType(it.key,db[it.key]);
-  const st=db[it.key],isNew=!st,tot=SS.items.length;
+  if(MC_T[it.type])mcBuild(it);
+  const st=db[it.key],isNew=!st,tot=SS.items.length,isMC=!!it.mc;
   app.innerHTML=`<div class="qtop">${fmBtns()}<div class="qprog"><div style="width:${SS.i*100/tot}%"></div></div><span class="mut sm">${SS.i+1}/${tot}</span>${aaBtn()}</div>
   <div class="scard" id="sc"><div class="stag"><span class="pill${it.key[0]==='w'?'':' sub'}">${it.key[0]==='w'?'語 word':'漢 kanji'}</span>${isNew?'<span class="pill n">new</span>':''}${st&&st.lap>=4?'<span class="pill red">leech</span>':''}${it.re?'<span class="pill sub">again</span>':''}</div>
    <div class="sfront">${frontHTML(it)}</div><div class="sback"></div></div>
-  <div class="stbar" id="sbar"><div class="frow"><button class="btn knw" id="knw" type="button">I know this ✓</button><button class="btn primary" id="rv">Show answer</button></div></div>`;
+  <div class="stbar" id="sbar">${isMC?'<div class="frow mcbar"><button class="btn ghost sm" id="idk" type="button">I don’t know</button></div>':'<div class="frow"><button class="btn knw" id="knw" type="button">I know this ✓</button><button class="btn primary" id="rv">Show answer</button></div>'}</div>`;
+  if(isMC){app.querySelectorAll('.mcopt').forEach(b=>b.onclick=()=>mcPick(it,+b.dataset.i));$('#idk').onclick=()=>mcPick(it,-1)}else{
   $('#knw').onclick=()=>knowIt(SS.items[SS.i]);
   if($('#pk'))$('#sc').addEventListener('click',e=>{if(SS.shown||e.target.closest('a,button,input,.say,rt'))return;togglePeek()});
-  $('#rv').onclick=()=>reveal(it);
+  $('#rv').onclick=()=>reveal(it);}
   const ty=$('#ty');if(ty){const v=VBY[+it.key.slice(1)],ok=()=>hira(ty.value)===hira(v.reading);let comp=false;ty.focus({preventScroll:true});
     ty.addEventListener('compositionstart',()=>comp=true);ty.addEventListener('compositionend',()=>{comp=false;if(ok())reveal(it,true)});
     ty.oninput=e=>{if(!comp&&!e.isComposing&&ok())reveal(it,true)};$('#tyc').onclick=()=>reveal(it,ok());
@@ -917,7 +988,7 @@ function grade(it,g,stay){if(!SS||SS.graded)return;SS.graded=true;const db=srsDB
   if(sc&&!reduced()){sc.classList.add(g===1?'out-l':'out-r');setTimeout(next,180)}else next()}
 document.addEventListener('keydown',e=>{if(!SS||SS.view!=null||!(cur||'').startsWith('study/')||e.target.tagName==='INPUT'||e.target.tagName==='TEXTAREA')return;
   if(SS.known){if(e.key===' '||e.key==='Enter'||e.key==='ArrowRight'){e.preventDefault();knownNext()}else if(/^[1-3]$/.test(e.key)){const b=document.querySelector('.kg.g'+e.key);if(b)b.click()}return}
-  if(!SS.shown&&(e.key===' '||e.key==='Enter')){e.preventDefault();const it=SS.items[SS.i];if(it&&!$('#ty')&&!$('.kopt'))reveal(it)}else if(SS.shown&&/^[1-4]$/.test(e.key))grade(SS.items[SS.i],+e.key);else if(!SS.shown&&/^[kK]$/.test(e.key)&&SS.items[SS.i])knowIt(SS.items[SS.i]);else if(!SS.shown&&/^[pP]$/.test(e.key)&&!e.ctrlKey&&!e.metaKey&&!e.altKey&&$('#pk')){e.preventDefault();togglePeek()}});
+  if(!SS.shown&&(e.key===' '||e.key==='Enter')){e.preventDefault();const it=SS.items[SS.i];if(it&&!$('#ty')&&!$('.kopt')&&!$('.mcopt'))reveal(it)}else if(!SS.shown&&/^[1-4]$/.test(e.key)&&$('.mcopt')){const b=document.querySelectorAll('.mcopt')[+e.key-1];if(b)b.click()}else if(SS.shown&&/^[1-4]$/.test(e.key))grade(SS.items[SS.i],+e.key);else if(!SS.shown&&/^[kK]$/.test(e.key)&&SS.items[SS.i]&&$('#knw'))knowIt(SS.items[SS.i]);else if(!SS.shown&&/^[pP]$/.test(e.key)&&!e.ctrlKey&&!e.metaKey&&!e.altKey&&$('#pk')){e.preventDefault();togglePeek()}});
 // v45: "I know this" — new card → first interval 21d (high ease) as a one-time check; review card → Easy. Undo restores everything.
 function knowIt(it_){closePeek();return knowIt0(it_)}
 // v100: "I know this" records the know grade, then shows the back (like Show answer) with Next →; Undo or change the grade from there.
@@ -927,8 +998,8 @@ function knowIt0(it){if(!SS||SS.graded||!it)return;const keys=['srs','srsNew','s
   const restore=()=>{keys.forEach(k=>snap[k]==null?localStorage.removeItem('n1_'+k):localStorage.setItem('n1_'+k,snap[k]));delete it.g;Object.assign(SS,ss,{graded:false})};
   SS.known={it,restore,was};reveal(it);knownBar(it,isNew)}
 function knownBar(it,isNew){const K=SS.known;if(!K)return;
-  $('#sbar').innerHTML=`<div class="kbar"><p class="kmsg"><span>✓ Marked as known · ${isNew?'back in 21 days':'Easy'}</span><button type="button" class="klink" id="kundo">Undo</button></p>
-  <div class="kchg" role="group" aria-label="Change grade"><span class="mut sm">Change:</span>${[[1,'Again'],[2,'Hard'],[3,'Good']].map(([g,l])=>`<button type="button" class="kg g${g}" data-g="${g}">${l} <small>${ivLabel(sched(K.was,g).iv)}</small></button>`).join('')}</div>
+  $('#sbar').innerHTML=`<div class="kbar"><p class="kmsg${K.how!=null&&K.how!==true?' bad':''}"><span>${K.how!=null?(K.how===true?'✓ Correct · '+ivLabel(sched(K.was,K.g).iv):K.how==='idk'?'Again · back soon':'✕ Again · back soon'):`✓ Marked as known · ${isNew?'back in 21 days':'Easy'}`}</span><button type="button" class="klink" id="kundo">Undo</button></p>
+  <div class="kchg" role="group" aria-label="Change grade"><span class="mut sm">Change:</span>${[[1,'Again'],[2,'Hard'],[3,'Good'],[4,'Easy']].filter(([g])=>K.how!=null?g!==K.g:g<4).map(([g,l])=>`<button type="button" class="kg g${g}" data-g="${g}">${l} <small>${ivLabel(sched(K.was,g).iv)}</small></button>`).join('')}</div>
   <button type="button" class="btn primary knext" id="knext">Next →</button></div>`;
   $('#knext').onclick=knownNext;
   $('#kundo').onclick=()=>{K.restore();SS.known=null;SS.shown=false;studyCard()};
